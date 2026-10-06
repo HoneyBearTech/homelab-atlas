@@ -27,7 +27,7 @@ releases are managed independently.
 | Actor | Does |
 | --- | --- |
 | Maintainer | Merges pull requests, tags releases, runs `git pull` / `docker compose up -d` on the host, configures each app in its web UI |
-| Dependabot | Opens a pull request when an image (tag and digest), a check tool or an Action has a new version |
+| Dependabot | Opens a pull request when an image (tag and digest), a check tool or an Action has a new version; patch and minor updates are auto-merged once the checks pass |
 | CI | Lints, scans for secrets, tests the checker, resolves the Compose file and enforces the policy on every pull request |
 | Release workflow | On a version tag: checks the policy, writes the SBOM, signs the checksums, publishes the GitHub Release |
 | The apps | Talk to each other's APIs on the stack's network, to indexers and the Usenet provider on the internet, and read and write `/media` |
@@ -52,7 +52,8 @@ filesystem. Each app keeps its settings and database in its own Docker volume at
 
 1. Dependabot (or the maintainer) opens a pull request that changes an image's tag and digest.
 2. CI resolves the Compose file and runs the policy check; the maintainer reads the app's release notes.
-3. The pull request is squash-merged; a version tag makes a signed release.
+3. The pull request is squash-merged (automatically for Dependabot's patch and minor updates, once every
+   check passes); a version tag makes a signed release.
 4. On the host: back up, `git checkout <tag>`, `docker compose pull && docker compose up -d`
    ([upgrading.md](upgrading.md)).
 

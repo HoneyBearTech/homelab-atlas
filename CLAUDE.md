@@ -37,8 +37,9 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
 
 ## Rules for the stack
 - **Every image is pinned as `name:tag@sha256:<digest>`.** Never `latest`, never tag-only. Dependabot
-  (`docker-compose` ecosystem) updates tag and digest together; image bumps are merged by hand, never
-  auto-merged (an app may migrate its database).
+  (`docker-compose` ecosystem) updates tag and digest together. Patch and minor updates are auto-merged once
+  the required checks pass (`dependabot-auto-merge.yml`, owner's decision 2026-10-06); major updates wait for
+  the owner (an app may migrate its database). A merge never deploys: atlas changes only on a deliberate pull.
 - **No privileged containers, added capabilities, host network/PID or Docker socket mounts** unless the
   service carries `org.honeybeartech.atlas.allow.<rule>: "<reason>"` and the owner agreed.
   `scripts/check_compose.py` enforces both rules in CI and in the release workflow.
@@ -59,7 +60,7 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
 - Tooling: ruff with every rule family (`select = ["ALL"]`, exceptions in `pyproject.toml`; per-line `noqa`
   with a reason) and `ruff format`; yamllint (`.yamllint.yml`); pytest + coverage (90 % branch floor);
   pip-tools for the hash-pinned `requirements-dev.txt`. CI-only: actionlint, gitleaks, CodeQL (python,
-  actions), Scorecard, dependency review, DCO.
+  actions), Scorecard, dependency review, DCO, Dependabot auto-merge (patch/minor).
 - Releases (`release.yml`, on a `v*.*.*` tag): policy check, source archive, CycloneDX SBOM, `SHA256SUMS`
   signed with cosign keyless, SLSA provenance (Sigstore bundle + in-toto JSONL), GitHub Release from the
   tag's `CHANGELOG.md` section. No images are built or published.

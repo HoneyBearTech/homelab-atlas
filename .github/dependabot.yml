@@ -1,6 +1,7 @@
 version: 2
-# Every update is a pull request that the maintainer reviews and merges by hand: an image bump can migrate
-# an app's database, so it is read (release notes) and deployed deliberately, never auto-merged.
+# Patch and minor updates are auto-merged once every required check passes
+# (workflows/dependabot-auto-merge.yml); major updates wait for the maintainer, since a new major app version
+# can migrate its database one way. A merge changes main only; the server is updated by a deliberate redeploy.
 updates:
   # The stack's images in compose.yaml (version tag and digest).
   - package-ecosystem: "docker-compose"

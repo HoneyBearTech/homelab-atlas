@@ -1,52 +1,71 @@
 # Interfaces
 
-Everything homelab-atlas reads, exposes or runs. homelab-atlas has no HTTP API of its own; the apps' web
-UIs and APIs are documented by their projects.
+Everything homelab-atlas reads, exposes or runs. homelab-atlas has no HTTP API of its own; the apps' web UIs
+and APIs are documented by their projects.
 
-## Settings (`.env`)
+## Settings
 
-Read by `docker compose` from `.env` next to `compose.yaml` (template: [`.env.example`](../.env.example)).
-**Planned**: the stack that reads them isn't in the repository yet.
+### `.env`
 
-| Setting | Example | Meaning |
-| --- | --- | --- |
-| `PUID`, `PGID` | `1000` | User and group the apps run as and write files as. Must own `APPDATA_ROOT` and `DATA_ROOT`. |
-| `TZ` | `Etc/UTC` | Time zone (tz database name) for logs and schedules. |
-| `UMASK` | `002` | File creation mask inside the apps; `002` keeps files group-writable. |
-| `APPDATA_ROOT` | `/srv/appdata` | Host directory with one subdirectory per app, mounted at `/config`. Holds API keys and databases: back it up, keep it private. |
-| `DATA_ROOT` | `/srv/data` | Host directory with downloads and media, mounted at `/data` in every app that moves files. |
+Read by `docker compose` from `.env` next to `compose.yaml` (template: [`.env.example`](../.env.example)). A
+setting marked required stops `docker compose` with an error naming it when it's missing.
 
-## Ports
+| Setting | Required | Example | Meaning |
+| --- | --- | --- | --- |
+| `PUID`, `PGID` | yes | `1000` | User and group the apps run as and write files as. Must be able to read and write `MEDIA_ROOT` and `RECYCLARR_CONFIG_PATH`. |
+| `TZ` | yes | `Etc/UTC` | Time zone (tz database name) for logs and schedules. |
+| `UMASK` | no (default `002`) | `002` | File creation mask inside the linuxserver.io apps; `002` keeps files group-writable without making them world-writable. |
+| `MEDIA_ROOT` | yes | `/srv/media` | Host directory with downloads and media on one filesystem, mounted at `/media` in Radarr, Sonarr, Lidarr, Bazarr and SABnzbd. |
+| `APPDATA_ROOT` | yes | `/srv/appdata` | Host directory for files beside the config volumes: Radarr's custom scripts in `radarr/scripts` and `radarr4k/scripts`, mounted at `/scripts`. |
+| `CONFIG_VOLUME_PREFIX` | yes | `homelab-atlas_` | Prefix of the Docker volumes with each app's config and database: `<prefix>radarr`, `<prefix>radarr4k`, `<prefix>sonarr`, `<prefix>sonarr4k`, `<prefix>lidarr`, `<prefix>bazarr`, `<prefix>bazarr4k`, `<prefix>sabnzbd`. |
+| `RECYCLARR_CONFIG_PATH` | yes | `/srv/appdata/recyclarr` | Host directory with Recyclarr's config, mounted at `/config`. |
 
-**Planned.** Each app's web UI and API, published on the host. The upstream defaults are:
+### `webnut.env`
 
-| Service | Container port |
+Read by the `webnut` service (template: [`webnut.env.example`](../webnut.env.example)); required, mode `600`,
+gitignored.
+
+| Setting | Meaning |
 | --- | --- |
-| Radarr | 7878 |
-| Sonarr | 8989 |
-| Lidarr | 8686 |
-| Bazarr | 6767 |
-| SABnzbd | 8080 |
-| FlareSolverr | 8191 (used by the apps; needs no host port) |
-| Recyclarr | none (no web UI) |
+| `UPS_HOST`, `UPS_PORT` | The NUT server (`upsd`) to read, usually port 3493 |
+| `UPS_USER`, `UPS_PASSWORD` | A NUT user with read access (a secret) |
 
-The 4K instances use the same container ports on different host ports; the mapping will be listed here
-with `compose.yaml`.
+## Services and ports
 
-## Volumes
+| Service | Image | Host port → container | Web UI |
+| --- | --- | --- | --- |
+| `radarr` | `lscr.io/linuxserver/radarr` | 7878 → 7878 | yes |
+| `radarr4k` | `lscr.io/linuxserver/radarr` | 17878 → 7878 | yes |
+| `sonarr` | `lscr.io/linuxserver/sonarr` | 8989 → 8989 | yes |
+| `sonarr4k` | `lscr.io/linuxserver/sonarr` | 8888 → 8989 | yes |
+| `lidarr` | `lscr.io/linuxserver/lidarr` | 8686 → 8686 | yes |
+| `bazarr` | `lscr.io/linuxserver/bazarr` | 6767 → 6767 | yes |
+| `bazarr4k` | `lscr.io/linuxserver/bazarr` | 6768 → 6767 | yes |
+| `sabnzbd` | `lscr.io/linuxserver/sabnzbd` | 8080 → 8080 | yes |
+| `flaresolverr` | `ghcr.io/flaresolverr/flaresolverr` | 8191 → 8191 | no (API for the apps) |
+| `recyclarr` | `recyclarr/recyclarr` | none | no (runs daily) |
+| `dozzle` | `amir20/dozzle` | 4040 → 8080 | yes (container logs) |
+| `webnut` | `teknologist/webnut` | 6543 → 6543 | yes (UPS status) |
 
-| Mount | Host source | Used by |
+Ports are published on every host interface. Exact versions and digests are in [`compose.yaml`](../compose.yaml).
+
+## Volumes and mounts
+
+| Container path | Host source | Services |
 | --- | --- | --- |
-| `/config` | `$APPDATA_ROOT/<app>` | every app |
-| `/data` | `$DATA_ROOT` | the apps that download, import or subtitle files |
+| `/config` | volume `<CONFIG_VOLUME_PREFIX><app>` | the *arr apps, Bazarr, SABnzbd |
+| `/config` | `RECYCLARR_CONFIG_PATH` | recyclarr |
+| `/media` | `MEDIA_ROOT` | the *arr apps, Bazarr, SABnzbd |
+| `/scripts` | `APPDATA_ROOT/radarr/scripts`, `APPDATA_ROOT/radarr4k/scripts` | radarr, radarr4k |
+| `/var/run/docker.sock` (read-only) | the Docker socket | dozzle (an allowed exception, see below) |
 
-No service mounts the Docker socket.
+FlareSolverr keeps nothing worth backing up; Docker gives it an anonymous volume.
 
 ## Labels
 
 | Label | Meaning |
 | --- | --- |
-| `org.honeybeartech.atlas.allow.<rule>` | Lets one service break one policy rule; the value is the reason, and must not be empty. Rules: `image`, `digest`, `latest`, `build`, `privileged`, `cap-add`, `host-network`, `host-pid`, `docker-socket` ([security.md](security.md#policy)). |
+| `org.honeybeartech.atlas.allow.<rule>` | Lets one service break one policy rule; the value is the reason, and must not be empty. Rules: `image`, `digest`, `latest`, `build`, `privileged`, `cap-add`, `host-network`, `host-pid`, `docker-socket` ([security.md](security.md#policy)). In use: `dozzle` (`docker-socket`), `webnut` (`latest`). |
 
 ## Commands
 
@@ -59,9 +78,9 @@ No service mounts the Docker socket.
 
 ## Outbound connections
 
-From the host: the image registries (`lscr.io`, `ghcr.io`, Docker Hub) on `docker compose pull`. From the
-apps: the indexers, the Usenet provider and metadata services they're configured for, and GitHub (Recyclarr
-fetches the TRaSH Guides).
+From the host: the image registries (`lscr.io`, `ghcr.io`, Docker Hub) on `docker compose pull`. From the apps:
+the indexers, the Usenet provider and metadata services they're configured for; Recyclarr fetches the TRaSH
+Guides from GitHub and calls the Radarr and Sonarr APIs; webnut connects to the NUT server.
 
 ## Release files
 

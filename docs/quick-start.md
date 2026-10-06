@@ -1,43 +1,46 @@
 # Quick start
 
-> **Planned.** `compose.yaml` doesn't exist yet: the services are being moved into this repository from
-> the server they run on today ([roadmap](roadmap.md)). These steps are how it will work.
-
-You need a Linux host (the reference is Ubuntu 24.04) with Docker Engine and the Compose v2 plugin, and a
-user in the `docker` group.
+You need a Linux host (the reference is Ubuntu 24.04) with Docker Engine and the Compose v2 plugin, a user in
+the `docker` group, and one directory (or mounted share) that holds both downloads and the media library.
 
 1. **Get the stack.**
 
    ```sh
    git clone https://github.com/HoneyBearTech/homelab-atlas.git && cd homelab-atlas
-   git checkout v0.1.0   # the latest release; see docs/verifying-releases.md to check it first
    ```
+
+   Once releases exist, check out the latest one (`git checkout vX.Y.Z`) and verify it first
+   ([verifying-releases.md](verifying-releases.md)).
 
 2. **Configure it.**
 
    ```sh
    cp .env.example .env && chmod 600 .env
+   cp webnut.env.example webnut.env && chmod 600 webnut.env
    ```
 
-   Set `PUID`/`PGID` to the user that should own the files, `TZ`, and the two host directories:
-   `APPDATA_ROOT` (each app's config and database) and `DATA_ROOT` (downloads and media). Every setting is
-   described in [interfaces.md](interfaces.md#settings-env).
+   In `.env`, set `PUID`/`PGID` to the user that owns your media, `TZ`, `MEDIA_ROOT` (downloads and media),
+   `APPDATA_ROOT` and `RECYCLARR_CONFIG_PATH`. `CONFIG_VOLUME_PREFIX` names the Docker volumes that hold each
+   app's settings; keep the default for a new installation. In `webnut.env`, set your NUT server's address and
+   login. Every setting is described in [interfaces.md](interfaces.md#settings).
 
-3. **Create the directories** as that user, so Docker doesn't create them owned by root:
+3. **Create the host directories** as that user, so Docker doesn't create them owned by root:
 
    ```sh
-   . ./.env && mkdir -p "$APPDATA_ROOT" "$DATA_ROOT"
+   . ./.env && mkdir -p "$MEDIA_ROOT" "$RECYCLARR_CONFIG_PATH" "$APPDATA_ROOT"/radarr/scripts "$APPDATA_ROOT"/radarr4k/scripts
    ```
 
 4. **Check and start.**
 
    ```sh
-   docker compose config --quiet   # the file resolves with your .env
+   docker compose config --quiet   # the file resolves with your settings
    docker compose up -d
    docker compose ps
    ```
 
 5. **Finish each app's setup in its web UI** (ports in [interfaces.md](interfaces.md#ports)): turn on
-   authentication first, then add the download client, root folders under `/data`, and indexers.
+   authentication first, then add the download client, root folders under `/media`, and indexers. Recyclarr
+   creates a starter `recyclarr.yml` in `RECYCLARR_CONFIG_PATH`; add your Radarr and Sonarr URLs and API keys
+   there.
 
 To upgrade later, follow [upgrading.md](upgrading.md); it starts with a backup.

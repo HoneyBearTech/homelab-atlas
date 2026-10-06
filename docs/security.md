@@ -12,8 +12,8 @@ live. The reasoning behind these requirements is in the [assurance case](assuran
    capabilities, shares the host's network or PID namespace, or mounts the Docker socket (which is root on
    the host), unless the exception is written into the service as a reasoned label and reviewed.
 3. **No secrets in the repository.** The apps keep their API keys, logins and provider credentials in
-   their own config under `APPDATA_ROOT`, outside the repository. `.env` holds settings only and is
-   gitignored. Secret scanning with push protection and a gitleaks scan of the whole history in CI back
+   their own config volumes, outside the repository. `.env` holds settings only; the one secret the stack
+   itself needs, webnut's UPS login, is in `webnut.env`. Both are gitignored. Secret scanning with push protection and a gitleaks scan of the whole history in CI back
    this up.
 4. **No host details in the repository.** It is public: no hostnames, IP addresses, internal domains or
    host paths are committed. Examples use placeholders.
@@ -44,10 +44,14 @@ non-empty reason:
 - **Access to the web UIs.** Each app has its own authentication, which the operator must turn on
   ([installing.md](installing.md#running-it-securely)). homelab-atlas doesn't add a reverse proxy, TLS or
   single sign-on.
-- **The host.** Anyone with root, `docker` group membership or write access to `.env`, `APPDATA_ROOT` or
-  `DATA_ROOT` controls the stack; those are trusted.
+- **The host.** Anyone with root, `docker` group membership or write access to `.env`, `webnut.env`, the
+  config volumes, `APPDATA_ROOT`, `RECYCLARR_CONFIG_PATH` or `MEDIA_ROOT` controls the stack; those are trusted.
 - **Media and downloads.** What the apps download is untrusted content from the internet; the apps run as
-  an unprivileged user with access to `/data`, which limits but doesn't remove that risk.
+  an unprivileged user with access to `/media`, which limits but doesn't remove that risk.
+- **Dozzle's access to Docker.** Dozzle needs the Docker socket to read logs; read-only mounting doesn't limit
+  the Docker API, so anyone who can use Dozzle's web UI can see every container's logs. It is an allowed
+  exception (label in `compose.yaml`); keep its port on the LAN.
+- **webnut's age.** The image is unmaintained since 2015 ([dependencies.md](dependencies.md#current-findings)).
 - **Upstream images' internals.** linuxserver.io images start as root and drop to `PUID:PGID`; that is the
   image's design and is accepted.
 
@@ -55,6 +59,8 @@ non-empty reason:
 
 | Secret | Where | Never in |
 | --- | --- | --- |
-| App API keys, UI logins | each app's config under `APPDATA_ROOT` | the repository, `.env`, issues, logs you paste |
-| Usenet provider and indexer credentials | SABnzbd's and the apps' config under `APPDATA_ROOT` | same |
-| Backups of `APPDATA_ROOT` | off the host, mode `600` | anywhere public |
+| App API keys, UI logins | each app's config volume | the repository, `.env`, issues, logs you paste |
+| Usenet provider and indexer credentials | SABnzbd's and the apps' config volumes | same |
+| Radarr and Sonarr API keys for Recyclarr | `RECYCLARR_CONFIG_PATH` (`recyclarr.yml` or its secrets file) | same |
+| UPS login | `webnut.env` (mode `600`, gitignored) | same |
+| Backups of the volumes | off the host, mode `600` | anywhere public |

@@ -1,0 +1,179 @@
+# The Atlas stack. Every setting comes from .env (template: .env.example; reference: docs/interfaces.md).
+# Every image is pinned as name:tag@sha256:<digest>; Dependabot proposes updates and the maintainer merges them
+# by hand. scripts/check_compose.py enforces the policy (docs/security.md#policy).
+
+name: homelab-atlas
+
+x-linuxserver-env: &linuxserver-env
+  PUID: ${PUID:?set PUID in .env}
+  PGID: ${PGID:?set PGID in .env}
+  TZ: ${TZ:?set TZ in .env}
+  UMASK: ${UMASK:-002}
+
+services:
+  # --- Movies ---------------------------------------------------------------------------------------------------
+  radarr:
+    image: lscr.io/linuxserver/radarr:6.4.4.10685-ls319@sha256:7dfd049e79c00b16fbc29c3f5d96a9e7b9e73a23930b4c5b3c4541d60b366814
+    container_name: radarr
+    restart: unless-stopped
+    environment: *linuxserver-env
+    ports:
+      - "7878:7878"
+    volumes:
+      - radarr-config:/config
+      - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
+      - ${APPDATA_ROOT:?set APPDATA_ROOT in .env}/radarr/scripts:/scripts
+
+  radarr4k:
+    image: lscr.io/linuxserver/radarr:6.4.4.10685-ls319@sha256:7dfd049e79c00b16fbc29c3f5d96a9e7b9e73a23930b4c5b3c4541d60b366814
+    container_name: radarr4k
+    restart: unless-stopped
+    environment: *linuxserver-env
+    ports:
+      - "17878:7878"
+    volumes:
+      - radarr4k-config:/config
+      - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
+      - ${APPDATA_ROOT:?set APPDATA_ROOT in .env}/radarr4k/scripts:/scripts
+
+  # --- TV -------------------------------------------------------------------------------------------------------
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:4.0.20.3014-ls326@sha256:f247545d23ba8b233d6604575347e48a623fe6ad75dda02348bf81917f3b5c06
+    container_name: sonarr
+    restart: unless-stopped
+    environment: *linuxserver-env
+    ports:
+      - "8989:8989"
+    volumes:
+      - sonarr-config:/config
+      - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
+
+  sonarr4k:
+    image: lscr.io/linuxserver/sonarr:4.0.20.3014-ls326@sha256:f247545d23ba8b233d6604575347e48a623fe6ad75dda02348bf81917f3b5c06
+    container_name: sonarr4k
+    restart: unless-stopped
+    environment: *linuxserver-env
+    ports:
+      - "8888:8989"
+    volumes:
+      - sonarr4k-config:/config
+      - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
+
+  # --- Music ----------------------------------------------------------------------------------------------------
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:3.1.0.4875-ls42@sha256:044d616beb43c5e7810991242c6a9c42b93ff238c8c0850684939634ea751208
+    container_name: lidarr
+    restart: unless-stopped
+    environment: *linuxserver-env
+    ports:
+      - "8686:8686"
+    volumes:
+      - lidarr-config:/config
+      - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
+
+  # --- Subtitles ------------------------------------------------------------------------------------------------
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:v1.6.2-ls366@sha256:8b30e81c4aec2991f469e78fae8afaa89ecc9b21a80e3897f50427216b55470c
+    container_name: bazarr
+    restart: unless-stopped
+    environment: *linuxserver-env
+    ports:
+      - "6767:6767"
+    volumes:
+      - bazarr-config:/config
+      - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
+
+  bazarr4k:
+    image: lscr.io/linuxserver/bazarr:v1.6.2-ls366@sha256:8b30e81c4aec2991f469e78fae8afaa89ecc9b21a80e3897f50427216b55470c
+    container_name: bazarr4k
+    restart: unless-stopped
+    environment: *linuxserver-env
+    ports:
+      - "6768:6767"
+    volumes:
+      - bazarr4k-config:/config
+      - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
+
+  # --- Downloads ------------------------------------------------------------------------------------------------
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:5.1.3-ls275@sha256:793828eab1722556131d37187115a9d3e3b9703e03a55731a07f2e0fe4edc2c7
+    container_name: sabnzbd
+    restart: unless-stopped
+    environment: *linuxserver-env
+    ports:
+      - "8080:8080"
+    volumes:
+      - sabnzbd-config:/config
+      - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:v3.5.2@sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767
+    container_name: flaresolverr
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:?set TZ in .env}
+      LOG_LEVEL: info
+      LOG_HTML: "false"
+      CAPTCHA_SOLVER: none
+    ports:
+      - "8191:8191"
+
+  # --- Quality profiles (TRaSH Guides) --------------------------------------------------------------------------
+  recyclarr:
+    image: recyclarr/recyclarr:8.3.2@sha256:55afe316d3e4e4e3b9120cef7c79436b1b5311f6a18d4ef4b7653e720499c90a
+    container_name: recyclarr
+    restart: unless-stopped
+    user: ${PUID:?set PUID in .env}:${PGID:?set PGID in .env}
+    environment:
+      TZ: ${TZ:?set TZ in .env}
+      RECYCLARR_CREATE_CONFIG: "true"
+    volumes:
+      - ${RECYCLARR_CONFIG_PATH:?set RECYCLARR_CONFIG_PATH in .env}:/config
+
+  # --- Operations -----------------------------------------------------------------------------------------------
+  dozzle:
+    image: amir20/dozzle:v11.3.0@sha256:a7d69d20891d3dcc82636e24afa4c1c162b41d0673ef798b14f09e6b69accc5a
+    container_name: dozzle
+    restart: unless-stopped
+    labels:
+      org.honeybeartech.atlas.allow.docker-socket: >-
+        Dozzle shows container logs by reading them through the Docker API. The socket is mounted read-only, which
+        protects the socket file but not the API, so the web UI must stay on the LAN.
+    ports:
+      - "4040:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  webnut:
+    image: teknologist/webnut:latest@sha256:12e3e09f7287bb9deddae792d9544d17b55a3bcbb44be95c3d9e663c29723947
+    container_name: webnut
+    restart: unless-stopped
+    labels:
+      org.honeybeartech.atlas.allow.latest: >-
+        The image publishes only "latest" and an older "0.1" (both from 2015); pinned by digest. Unmaintained:
+        replacement tracked in docs/roadmap.md.
+    env_file:
+      - path: webnut.env
+        required: true
+    ports:
+      - "6543:6543"
+
+# Each app's configuration and database. The volume names come from CONFIG_VOLUME_PREFIX, so an existing
+# installation keeps using the volumes it already has.
+volumes:
+  radarr-config:
+    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}radarr
+  radarr4k-config:
+    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}radarr4k
+  sonarr-config:
+    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}sonarr
+  sonarr4k-config:
+    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}sonarr4k
+  lidarr-config:
+    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}lidarr
+  bazarr-config:
+    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}bazarr
+  bazarr4k-config:
+    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}bazarr4k
+  sabnzbd-config:
+    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}sabnzbd

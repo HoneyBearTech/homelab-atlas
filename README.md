@@ -3,9 +3,8 @@
 [![CI](https://github.com/HoneyBearTech/homelab-atlas/actions/workflows/ci.yml/badge.svg)](https://github.com/HoneyBearTech/homelab-atlas/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/HoneyBearTech/homelab-atlas/actions/workflows/codeql.yml/badge.svg)](https://github.com/HoneyBearTech/homelab-atlas/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/HoneyBearTech/homelab-atlas/badge)](https://scorecard.dev/viewer/?uri=github.com/HoneyBearTech/homelab-atlas)
-<!-- TODO: BP_ID -->
-<!-- [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/<BP_ID>/badge)](https://www.bestpractices.dev/projects/<BP_ID>) -->
-<!-- [![OpenSSF Baseline](https://www.bestpractices.dev/projects/<BP_ID>/baseline)](https://www.bestpractices.dev/projects/<BP_ID>) -->
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15265/badge)](https://www.bestpractices.dev/projects/15265)
+[![OpenSSF Baseline](https://www.bestpractices.dev/projects/15265/baseline)](https://www.bestpractices.dev/projects/15265)
 
 Docker Compose stack for Atlas, the homelab media automation server running Recyclarr and the *arr stack. Ubuntu + Docker, version-pinned for easy upgrades and rebuilds.
 

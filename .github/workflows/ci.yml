@@ -62,13 +62,9 @@ jobs:
           coverage report
 
       # The stack itself: the Compose file resolves with the example settings, and every service meets the
-      # policy (pinned by digest, nothing privileged; scripts/check_compose.py). Skipped until compose.yaml exists.
+      # policy (pinned by digest, nothing privileged; scripts/check_compose.py).
       - name: Compose file and policy
         run: |
-          if [ ! -f compose.yaml ]; then
-            echo "::notice::No compose.yaml yet; skipping the stack checks"
-            exit 0
-          fi
-          cp .env.example .env
+          for f in .env.example *.env.example; do cp "$f" "${f%.example}"; done
           docker compose config --quiet
           docker compose config --format json | python scripts/check_compose.py

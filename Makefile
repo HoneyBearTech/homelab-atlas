@@ -20,7 +20,7 @@ lint: $(VENV)/.installed
 	$(VENV)/bin/ruff format --check .
 	$(VENV)/bin/yamllint --strict .
 
-# The stack's policy check: every image pinned by digest, nothing privileged (needs Docker and a .env)
+# The stack's policy check: every image pinned by digest, nothing privileged (needs Docker, .env and webnut.env)
 check: $(VENV)/.installed
 	docker compose config --format json | $(VENV)/bin/python scripts/check_compose.py
 

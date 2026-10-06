@@ -5,15 +5,16 @@ file changes with them, in the same pull request.
 
 ## Now: the stack in git
 
-- Move the services that run on Atlas today into `compose.yaml`, one app group at a time: Radarr and
-  Sonarr (regular and 4K), Lidarr, Bazarr (regular and 4K), SABnzbd, FlareSolverr, Recyclarr.
-- Pin every image by tag and digest and let Dependabot propose updates; retire the auto-updater.
-- A `.env` with every setting, and docs for the ports and folder layout.
-- First release (0.1.0) once Atlas runs the stack from a checkout of this repository.
+- Done: `compose.yaml` with Radarr and Sonarr (regular and 4K), Lidarr, Bazarr (regular and 4K), SABnzbd,
+  FlareSolverr, Recyclarr, Dozzle and webnut, every image pinned by tag and digest, Dependabot proposing updates.
+- Switch Atlas to run the stack from a checkout of this repository, and retire the auto-updater.
+- First release (0.1.0) once Atlas runs from the repository.
+- Replace webnut, whose image is unmaintained since 2015, with a maintained NUT web UI.
 
 ## Next: safe upgrades and rebuilds
 
-- A backup and restore script for `APPDATA_ROOT`, tested by restoring onto a fresh host.
+- A backup and restore script for the config volumes, tested by restoring onto a fresh host.
+- Optionally move the config volumes to bind mounts under `APPDATA_ROOT`, for simpler backups.
 - Health checks for each service, so `docker compose ps` shows a broken app.
 - A scheduled vulnerability scan of the pinned images, reported to code scanning.
 - A documented rebuild of Atlas from nothing: OS, Docker, this repository, a restored backup.

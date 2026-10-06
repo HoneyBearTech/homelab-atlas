@@ -12,10 +12,6 @@ Docker Compose stack for Atlas, the homelab media automation server running Recy
 > The apps in this stack rename, move and delete files in your media library, and an upgrade can migrate
 > their databases irreversibly. Back up the app data before every upgrade ([docs/upgrading.md](docs/upgrading.md)).
 
-> [!NOTE]
-> **Work in progress.** The repository has its tooling, policy and docs; the services themselves
-> (`compose.yaml`) are being moved in next. Anything not built yet is marked **Planned** in the docs.
-
 ## Documentation
 
 - [Quick start](docs/quick-start.md): getting the stack running on a fresh Docker host
@@ -33,9 +29,10 @@ Docker Compose stack for Atlas, the homelab media automation server running Recy
 
 ## What's in the stack
 
-**Planned** ([architecture](docs/architecture.md)): Radarr and Sonarr (regular and 4K instances), Lidarr,
-Bazarr (regular and 4K), SABnzbd, FlareSolverr and Recyclarr, from their upstream images. The indexer
-manager and the media server run on other hosts.
+Radarr and Sonarr (regular and 4K instances), Lidarr, Bazarr (regular and 4K), SABnzbd, FlareSolverr and
+Recyclarr, plus Dozzle (container logs) and webnut (UPS status), all from their upstream images
+([architecture](docs/architecture.md), ports in [interfaces](docs/interfaces.md#services-and-ports)). The
+indexer manager, the torrent client and the media server run on other hosts.
 
 Every image is pinned by tag **and** digest. New versions arrive as Dependabot pull requests that CI checks
 and the maintainer merges; nothing on the host updates itself.
@@ -44,8 +41,9 @@ and the maintainer merges; nothing on the host updates itself.
 
 ```sh
 git clone https://github.com/HoneyBearTech/homelab-atlas.git && cd homelab-atlas
-cp .env.example .env && chmod 600 .env    # then set PUID/PGID, TZ, APPDATA_ROOT, DATA_ROOT
-docker compose up -d                       # Planned: needs compose.yaml
+cp .env.example .env && chmod 600 .env              # then set PUID/PGID, TZ, MEDIA_ROOT, ...
+cp webnut.env.example webnut.env && chmod 600 webnut.env   # your NUT server and login
+docker compose up -d
 ```
 
 The full steps, including creating the directories with the right owner, are in the
@@ -63,15 +61,18 @@ Upgrading to a new release: [docs/upgrading.md](docs/upgrading.md).
 
 ## Configuration
 
-Settings come from `.env` (template [`.env.example`](.env.example)); it holds no secrets.
+Settings come from `.env` (template [`.env.example`](.env.example)), which holds no secrets, and webnut's UPS
+login from `webnut.env` (template [`webnut.env.example`](webnut.env.example)).
 
 | Setting | Default in `.env.example` | Meaning |
 | --- | --- | --- |
-| `PUID`, `PGID` | `1000` | User and group the apps run as; must own both directories below |
+| `PUID`, `PGID` | `1000` | User and group the apps run as; must be able to write `MEDIA_ROOT` and `RECYCLARR_CONFIG_PATH` |
 | `TZ` | `Etc/UTC` | Time zone |
-| `UMASK` | `002` | File creation mask inside the apps |
-| `APPDATA_ROOT` | `/srv/appdata` | Each app's config and database (`/config`). Contains API keys: back it up, keep it private |
-| `DATA_ROOT` | `/srv/data` | Downloads and media on one filesystem (`/data`), so imports are hardlinks or instant moves |
+| `UMASK` | `002` | File creation mask inside the linuxserver.io apps |
+| `MEDIA_ROOT` | `/srv/media` | Downloads and media on one filesystem (`/media`), so imports are hardlinks or instant moves |
+| `APPDATA_ROOT` | `/srv/appdata` | Radarr's custom scripts (`radarr/scripts`, `radarr4k/scripts`) |
+| `CONFIG_VOLUME_PREFIX` | `homelab-atlas_` | Prefix of the Docker volumes holding each app's config and database. Contains API keys: back them up |
+| `RECYCLARR_CONFIG_PATH` | `/srv/appdata/recyclarr` | Recyclarr's config directory |
 
 Ports, volumes and labels: [docs/interfaces.md](docs/interfaces.md).
 
@@ -79,8 +80,9 @@ Ports, volumes and labels: [docs/interfaces.md](docs/interfaces.md).
 
 - Turn on each app's authentication before anything else, and keep the web UIs on your LAN. Docker-published
   ports bypass host firewalls such as `ufw`.
-- Secrets (API keys, logins, provider credentials) live only in each app's data under `APPDATA_ROOT`, never
-  in this repository or `.env`.
+- Secrets (API keys, logins, provider credentials) live only in each app's config volume, never in this
+  repository or `.env`; the UPS login is in `webnut.env` (mode `600`, gitignored).
+- Dozzle reads logs through the Docker socket: keep its port (4040) on the LAN.
 - Don't run an auto-updater such as Watchtower on these containers; upgrade by release instead.
 - The policy check refuses privileged containers, added capabilities, host networking and Docker socket
   mounts unless a service documents why ([docs/security.md](docs/security.md)).

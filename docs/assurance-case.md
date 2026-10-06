@@ -8,8 +8,8 @@ the secure design principles it follows, and how common weaknesses are countered
 | Asset | Threat | Countered by |
 | --- | --- | --- |
 | The host | A compromised or malicious image | Digest pins; versions change only by reviewed pull request; no privileged, capability, host-namespace or socket access without a reasoned label |
-| The host | A container breaking out through the Docker socket | The `docker-socket` rule; no service mounts it |
-| App API keys and credentials | Committed to the public repository | Kept in `APPDATA_ROOT`, never in the repo; `.gitignore`; gitleaks over the history in CI; GitHub push protection |
+| The host | A container breaking out through the Docker socket | The `docker-socket` rule; only Dozzle mounts it, as a labelled exception with its UI kept on the LAN |
+| App API keys and credentials | Committed to the public repository | Kept in the apps' config volumes and `webnut.env`, never in the repo; `.gitignore`; gitleaks over the history in CI; GitHub push protection |
 | App API keys and credentials | Leaked through a backup | Backups documented as secret (mode `600`, off the host) |
 | The media library | A compromised app deleting or encrypting it | Apps run as `PUID:PGID`, not root; storage-level snapshots recommended ([upgrading.md](upgrading.md#backing-up)) |
 | The app databases | An upgrade that migrates and breaks them | Backup before every upgrade; rollback = old tag + restored backup |
@@ -28,8 +28,8 @@ web UI; a malicious pull request; a malicious download. Out of scope: an attacke
    that wasn't merged.
 3. **LAN → apps.** Each web UI is behind the app's own authentication; anything beyond the LAN needs the
    operator's reverse proxy.
-4. **Containers → host.** Only `APPDATA_ROOT/<app>` and `DATA_ROOT` are mounted; no socket, no host
-   namespaces.
+4. **Containers → host.** Only the config volumes, `MEDIA_ROOT`, Radarr's scripts and Recyclarr's config are
+   mounted; no host namespaces. The one socket mount (Dozzle, read-only) is a reviewed, labelled exception.
 5. **Internet → apps.** Indexer results and downloads are untrusted data handled by the apps.
 6. **Pull requests → CI.** Fork pull requests get a read-only token and no secrets.
 

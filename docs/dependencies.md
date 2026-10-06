@@ -37,8 +37,15 @@ Each release carries a CycloneDX SBOM listing every service's image and digest
 - **Dependabot** ([`.github/dependabot.yml`](../.github/dependabot.yml)) checks weekly for new image
   versions in the Compose file, new tool versions and new Action versions, and opens a pull request for
   each. Dependabot alerts and security updates are on.
-- **Every update is merged by hand.** An image bump can migrate an app's database, so the maintainer reads
-  the app's release notes first; none are auto-merged.
+- **Patch and minor updates merge automatically**
+  ([`.github/workflows/dependabot-auto-merge.yml`](../.github/workflows/dependabot-auto-merge.yml)): for the
+  images, the Python tools and the GitHub Actions, they're squash-merged once every required check has passed
+  (CI with the Compose policy check, CodeQL, dependency review). Nothing skips a check, and a failing update
+  stays open for the maintainer.
+- **Major updates are merged by hand**, after reading the app's release notes: a new major version can migrate
+  its database one way. So is any update Dependabot can't classify as patch, minor or major.
+- **A merge doesn't deploy.** The server runs what it last pulled; updates reach it when the operator pulls
+  and redeploys, with a backup first ([upgrading.md](upgrading.md)).
 - **Dependency review** ([`.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml))
   blocks a pull request that adds or changes a Python or Actions dependency with a known vulnerability of
   moderate severity or higher, or a license outside the allowlist.

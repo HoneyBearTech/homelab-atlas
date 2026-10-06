@@ -15,6 +15,8 @@ All notable changes to homelab-atlas are documented here. The format follows
 - Settings `MEDIA_ROOT`, `CONFIG_VOLUME_PREFIX` and `RECYCLARR_CONFIG_PATH`; webnut's UPS login in a gitignored
   `webnut.env` (template `webnut.env.example`).
 - Backup, rollback and restore steps for the config volumes (docs/upgrading.md).
+- Dependabot's patch and minor updates are merged automatically once every required check passes
+  (`dependabot-auto-merge.yml`); major updates still wait for the maintainer.
 
 - `scripts/check_compose.py`: checks the resolved Compose file against the stack's policy (every image
   pinned as `name:tag@sha256:<digest>`, no `latest`, no build, nothing privileged, no added capabilities,

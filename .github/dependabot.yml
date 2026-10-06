@@ -1,0 +1,28 @@
+version: 2
+# Every update is a pull request that the maintainer reviews and merges by hand: an image bump can migrate
+# an app's database, so it is read (release notes) and deployed deliberately, never auto-merged.
+updates:
+  # The stack's images in compose.yaml (version tag and digest).
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    assignees: ["HoneyBearTech"]
+
+  # The check and test tools (requirements-dev.txt), pinned with hashes.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    assignees: ["HoneyBearTech"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    assignees: ["HoneyBearTech"]
+    groups:
+      # init, analyze and upload-sarif must share one version.
+      codeql:
+        patterns:
+          - "github/codeql-action*"

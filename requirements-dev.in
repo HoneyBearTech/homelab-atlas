@@ -1,0 +1,6 @@
+# Tools for the checks and tests (homelab-atlas itself needs none of them). Pinned with hashes in
+# requirements-dev.txt, regenerated with:  pip-compile --generate-hashes --strip-extras requirements-dev.in
+coverage
+pytest
+ruff
+yamllint

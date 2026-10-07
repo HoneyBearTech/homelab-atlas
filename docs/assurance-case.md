@@ -60,5 +60,6 @@ web UI; a malicious pull request; a malicious download. Out of scope: an attacke
 - CI on every change: ruff (with the bandit rules), yamllint, actionlint, gitleaks over the history,
   shellcheck, pytest with a 90 % branch-coverage floor, `docker compose config`, the policy check, and a
   smoke test that starts every pinned image and waits for its health check (a dynamic test of the stack).
+- A weekly Trivy scan of every pinned image, and on every change to `compose.yaml`, into code scanning.
 - CodeQL (Python and Actions) on every pull request and weekly; OpenSSF Scorecard weekly; dependency
   review on every pull request.

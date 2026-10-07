@@ -8,6 +8,12 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ### Added
 
+- `scripts/backup.sh`: stops the stack, archives every service's `/config` and `/scripts` mount and `.env`
+  with a manifest and checksums (readable only by the user who ran it), then starts what was running.
+- `scripts/restore.sh`: verifies a backup, creates missing containers and volumes, and after confirmation
+  replaces the services' `/config` and `/scripts` contents, keeping owners and modes. The smoke test now runs a
+  backup, a change and a restore, and checks that the data and every service's health came back.
+- `docs/rebuilding.md`: bringing the stack back on a new or wiped host from a backup.
 - A weekly vulnerability scan of every pinned image (`scan.yml`: Trivy, HIGH and CRITICAL findings with a fix
   available, for linux/amd64), also run when `compose.yaml` changes on `main`. Findings go to code scanning,
   one category per image.

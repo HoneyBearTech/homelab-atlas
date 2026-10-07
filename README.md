@@ -17,6 +17,7 @@ Docker Compose stack for Atlas, the homelab media automation server running Recy
 - [Quick start](docs/quick-start.md): getting the stack running on a fresh Docker host
 - [Installing](docs/installing.md): host preparation, directory layout, running it securely, uninstalling
 - [Upgrading](docs/upgrading.md): moving to a new release, backup and restore, rolling back
+- [Rebuilding](docs/rebuilding.md): a new or wiped host, from a backup
 - [Architecture](docs/architecture.md): the services, actors, data flow and how updates reach the host
 - [Interfaces](docs/interfaces.md): every setting, port, volume, label and command
 - [Verifying releases](docs/verifying-releases.md): checking signatures, checksums, provenance and the SBOM
@@ -54,6 +55,7 @@ The full steps, including creating the directories with the right owner, are in 
 docker compose ps                 # what's running
 docker compose logs -f <service>  # one app's log
 make check                        # policy check: every image pinned, nothing privileged
+scripts/backup.sh                 # back up every app's config (stops the stack briefly)
 ```
 
 Upgrading to a new release: [docs/upgrading.md](docs/upgrading.md).

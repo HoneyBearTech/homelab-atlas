@@ -8,6 +8,9 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ### Added
 
+- A weekly vulnerability scan of every pinned image (`scan.yml`: Trivy, HIGH and CRITICAL findings with a fix
+  available, for linux/amd64), also run when `compose.yaml` changes on `main`. Findings go to code scanning,
+  one category per image.
 - A health check for every service (each app's own status endpoint; Recyclarr's scheduler; Dozzle's built-in
   check), so `docker compose ps` and `docker compose up --wait` show a broken app. Needs Docker Engine 25 and
   Compose 2.24 or later.

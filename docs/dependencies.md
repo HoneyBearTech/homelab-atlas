@@ -25,7 +25,7 @@ A new image or tool must:
 | --- | --- | --- | --- |
 | The stack's images | `compose.yaml` | version tag and digest | `docker compose pull` |
 | Check and test tools (pytest, coverage, ruff, yamllint, shellcheck) | [`requirements-dev.in`](../requirements-dev.in) → [`requirements-dev.txt`](../requirements-dev.txt) | exact version and SHA-256 hashes (`pip-compile --generate-hashes`) | `pip install --require-hashes --no-deps` |
-| Linters and scanners used only by CI (actionlint, gitleaks) | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | version tag and digest | Docker |
+| Linters and scanners used only by CI (actionlint, gitleaks, Trivy) | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), [`scan.yml`](../.github/workflows/scan.yml) | version tag and digest | Docker |
 | GitHub Actions | [`.github/workflows/`](../.github/workflows/) | full commit SHA (version in a comment) | GitHub Actions |
 
 Each release carries a CycloneDX SBOM listing every service's image and digest
@@ -56,8 +56,9 @@ Each release carries a CycloneDX SBOM listing every service's image and digest
 
 ## Policy for vulnerabilities in dependencies
 
-Known vulnerabilities are found through Dependabot alerts, the apps' and images' own advisories, and
-(planned) a scheduled image scan of the pinned digests. Each finding is triaged within 14 days:
+Known vulnerabilities are found through Dependabot alerts, the apps' and images' own advisories, and a weekly
+scan of the pinned digests ([`scan.yml`](../.github/workflows/scan.yml): Trivy, HIGH and CRITICAL findings that
+have a fix, reported to code scanning with one category per image). Each finding is triaged within 14 days:
 
 1. **If a fixed version exists**, bump to it (a Dependabot pull request usually already does) and release.
    A fix for an exploitable critical or high-severity vulnerability goes out in a patch release within 30

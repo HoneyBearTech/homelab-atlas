@@ -30,8 +30,8 @@ Docker Compose stack for Atlas, the homelab media automation server running Recy
 
 ## What's in the stack
 
-Radarr and Sonarr (regular and 4K instances), Lidarr, Bazarr (regular and 4K), SABnzbd, FlareSolverr and
-Recyclarr, plus Dozzle (container logs), all from their upstream images ([architecture](docs/architecture.md),
+Radarr and Sonarr (regular and 4K instances), Lidarr, Bazarr (regular and 4K), SABnzbd and Recyclarr, plus
+Dozzle (container logs), all from their upstream images ([architecture](docs/architecture.md),
 ports in [interfaces](docs/interfaces.md#services-and-ports)). The indexer manager, the torrent client and the
 media server run on other hosts.
 

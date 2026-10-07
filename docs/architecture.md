@@ -14,7 +14,6 @@ upstream images, pinned by digest.
 | Lidarr | linuxserver.io | Music |
 | Bazarr, Bazarr 4K | linuxserver.io | Subtitles for what Radarr and Sonarr imported |
 | SABnzbd | linuxserver.io | Usenet download client |
-| FlareSolverr | the project's own image | Proxy that solves browser challenges for indexers that need it |
 | Recyclarr | the project's own image | Syncs TRaSH Guides custom formats and quality profiles into Radarr and Sonarr on a schedule |
 | Dozzle | the project's own image | Web UI for the containers' logs (reads them through the Docker socket) |
 

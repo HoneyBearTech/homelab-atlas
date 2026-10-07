@@ -139,25 +139,6 @@ services:
       - sabnzbd-config:/config
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
 
-  flaresolverr:
-    image: ghcr.io/flaresolverr/flaresolverr:v3.5.2@sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767
-    container_name: flaresolverr
-    restart: unless-stopped
-    # Its Chromium renders pages from the internet, so it gets nothing it doesn't need: no capabilities, and no
-    # way to gain privileges (docs/dependencies.md#current-findings).
-    cap_drop: [ALL]
-    security_opt: ["no-new-privileges:true"]
-    healthcheck:
-      <<: *healthcheck
-      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8191/health"]
-    environment:
-      TZ: ${TZ:?set TZ in .env}
-      LOG_LEVEL: info
-      LOG_HTML: "false"
-      CAPTCHA_SOLVER: none
-    ports:
-      - "8191:8191"
-
   # --- Quality profiles (TRaSH Guides) --------------------------------------------------------------------------
   recyclarr:
     image: recyclarr/recyclarr:8.7.3@sha256:9c6c74d52cfc6f740a5a3624aa83867e171bb70b90453ddb7a4048b8c80445f9

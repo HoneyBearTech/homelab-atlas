@@ -32,7 +32,6 @@ setting marked required stops `docker compose` with an error naming it when it's
 | `bazarr` | `lscr.io/linuxserver/bazarr` | 6767 → 6767 | yes |
 | `bazarr4k` | `lscr.io/linuxserver/bazarr` | 6768 → 6767 | yes |
 | `sabnzbd` | `lscr.io/linuxserver/sabnzbd` | 8080 → 8080 | yes |
-| `flaresolverr` | `ghcr.io/flaresolverr/flaresolverr` | 8191 → 8191 | no (API for the apps) |
 | `recyclarr` | `recyclarr/recyclarr` | none | no (runs daily) |
 | `dozzle` | `amir20/dozzle` | 4040 → 8080 | yes (container logs) |
 
@@ -47,8 +46,6 @@ Ports are published on every host interface. Exact versions and digests are in [
 | `/media` | `MEDIA_ROOT` | the *arr apps, Bazarr, SABnzbd |
 | `/scripts` | `APPDATA_ROOT/radarr/scripts`, `APPDATA_ROOT/radarr4k/scripts` | radarr, radarr4k |
 | `/var/run/docker.sock` (read-only) | the Docker socket | dozzle (an allowed exception, see below) |
-
-FlareSolverr keeps nothing worth backing up; Docker gives it an anonymous volume.
 
 ## Labels
 

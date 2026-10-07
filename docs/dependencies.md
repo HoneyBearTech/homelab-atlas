@@ -73,29 +73,25 @@ have a fix, reported to code scanning with one category per image). Each finding
 ### Current findings
 
 Triaged 7 October 2026, after the first image scan (527 alerts, every one HIGH or CRITICAL with a fixed package
-version somewhere upstream). Every image is maintained; the unmaintained webnut image (last published in 2015)
-was removed from the stack the same day.
+version somewhere upstream). Every image is maintained.
+
+**Removed from the stack.** FlareSolverr (348 alerts, most of them in its Chromium, the only findings reachable
+from the internet): no indexer was configured to use it, and its newest release still shipped an old Chromium.
+The unmaintained webnut image (last published in 2015) was removed the same day.
 
 **Fixed by a bump.** Bazarr `v1.6.2-ls367` (13 alerts: Alpine's Python 3.12 and PCRE2) and Recyclarr `8.7.3`
 (all 4: OpenSSL, Expat, PCRE2).
 
-**Dismissed as not reachable** (16 alerts, each with this reason in code scanning):
+**Dismissed as not reachable** (7 alerts, each with this reason in code scanning):
 
 | Image | Package | Why it can't be reached |
 | --- | --- | --- |
-| FlareSolverr | `perl-base` (7) | Part of the Debian base; nothing in FlareSolverr runs Perl |
-| FlareSolverr | `jaraco.context`, `wheel` | Copies vendored inside `setuptools`, used only when installing packages; nothing is installed at run time |
 | Bazarr | `setuptools` (`PackageIndex` path traversal) | Bazarr never uses `PackageIndex` or installs packages |
 | SABnzbd | `PyJWT` (6) | Installed as a requirement, but neither SABnzbd nor any library in the image imports it |
 
-**Open, waiting for upstream** (the rest). No newer image exists yet with the fixed package; each alert closes
-by itself when Dependabot's bump to such an image is merged and the scan runs again.
+**Open, waiting for upstream** (155). No newer image exists yet with the fixed package; each alert closes by
+itself when Dependabot's bump to such an image is merged and the scan runs again.
 
-- **FlareSolverr's Chromium** (109 CVEs, 6 critical, each reported for `chromium`, `chromium-common` and
-  `chromium-driver`), plus Expat, PCRE2 and urllib3 in the same image. Reachable: Chromium renders pages from
-  the internet. The current release (v3.5.2) is the newest; its build is from 12 September 2026. Mitigated: the
-  container has no capabilities and can't gain privileges (`cap_drop: [ALL]`, `no-new-privileges`), mounts no
-  data and holds no secrets.
 - **The .NET runtimes bundled into Radarr (8.0.27, 48), Lidarr (8.0.12, 81, 5 critical in ASP.NET Core) and
   Sonarr (6.0.13, 7).** Reachable through each app's web UI and API. Fixed when the Servarr projects ship a build
   on a newer runtime; Sonarr v4 is on .NET 6, which is out of support, so Sonarr's fixes come with v5.

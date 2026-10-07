@@ -1,8 +1,8 @@
 # homelab-atlas
 
 The Docker Compose stack for Atlas, the owner's homelab media automation server: Recyclarr and the *arr
-apps (Radarr and Sonarr with 4K instances, Lidarr, Bazarr, SABnzbd) plus Dozzle, every image pinned by tag and
-digest so the server can be upgraded and rebuilt from this repository.
+apps (Radarr and Sonarr with 4K instances, Lidarr, Bazarr, SABnzbd) plus Dozzle and autoheal (behind a socket
+proxy), every image pinned by tag and digest so the server can be upgraded and rebuilt from this repository.
 
 ## Before Making Structural Changes
 Read the project's notes first. They live outside this repo, in the owner's Obsidian vault **Chronos** at
@@ -27,8 +27,9 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
 - Commit as `31805425+HoneyBearTech@users.noreply.github.com` (set as this repo's `user.email`), with
   `git commit -s` for the DCO sign-off; commits and tags are SSH-signed.
 - No secrets: the apps' API keys, logins and provider credentials stay in their config volumes on the host,
-  never in `compose.yaml`, `.env` or the `*.example` files. The stack reads no secrets of its own; if a service
-  ever needs one, it goes in a gitignored `<service>.env` (`env_file`). `.gitignore` covers `.env`, keys,
+  never in `compose.yaml`, `.env` or the `*.example` files. The stack's only secret, autoheal's optional webhook
+  URL, comes from the gitignored `autoheal.env` (`env_file`, not required); a new secret gets its own
+  `<service>.env` the same way. `.gitignore` covers `.env`, keys,
   `appdata/`, `data/`; extend it rather than work around it. gitleaks runs over the whole history in CI.
 - Keep the repo on track for OpenSSF Baseline Levels 1 and 2 and the Best Practices Passing and Silver
   badges. If a change would break a met criterion (for example unpinning an image or an Action, adding a
@@ -49,11 +50,14 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
 - **Container paths are load-bearing**: the apps store `/media/...` paths in their databases, so `/media`,
   `/config` and `/scripts` never change. Config volumes are named `${CONFIG_VOLUME_PREFIX}<app>` so atlas keeps
   its existing (Portainer-created) volumes; the prefix lives only in atlas' `.env`.
-- Policy exception in use: `dozzle` (`docker-socket`, read-only mount). Don't add more without the owner
-  agreeing.
+- Policy exceptions in use (each agreed by the owner): `dozzle` (`docker-socket`, read-only mount),
+  `socket-proxy` (`docker-socket`: filters the API down to list/inspect/restart/stop for autoheal, internal network,
+  no port), `autoheal` (`latest`: the image's only maintained tag). Don't add more without the owner agreeing.
+- autoheal restarts every service labelled `autoheal: "true"` that turns unhealthy; every app service carries the
+  label. It must never get the socket itself, only `tcp://socket-proxy:2375`.
 
 ## Stack
-- Docker Compose v2 (`compose.yaml`, 10 services), upstream images (linuxserver.io where available).
+- Docker Compose v2 (`compose.yaml`, 12 services), upstream images (linuxserver.io where available).
 - `scripts/check_compose.py`: Python 3.14, standard library only. Reads `docker compose config --format json`,
   reports policy violations (exit 1), `--sbom FILE` writes a CycloneDX 1.6 SBOM of the images.
 - Tooling: ruff with every rule family (`select = ["ALL"]`, exceptions in `pyproject.toml`; per-line `noqa`

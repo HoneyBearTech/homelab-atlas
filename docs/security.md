@@ -12,7 +12,8 @@ live. The reasoning behind these requirements is in the [assurance case](assuran
    capabilities, shares the host's network or PID namespace, or mounts the Docker socket (which is root on
    the host), unless the exception is written into the service as a reasoned label and reviewed.
 3. **No secrets in the repository.** The apps keep their API keys, logins and provider credentials in
-   their own config volumes, outside the repository. `.env` holds settings only and is gitignored. Secret
+   their own config volumes, outside the repository. `.env` holds settings only; the stack's one secret, autoheal's optional webhook
+   URL, is in `autoheal.env`. Both are gitignored. Secret
    scanning with push protection and a gitleaks scan of the whole history in CI back this up.
 4. **No host details in the repository.** It is public: no hostnames, IP addresses, internal domains or
    host paths are committed. Examples use placeholders.
@@ -44,13 +45,20 @@ non-empty reason:
 - **Access to the web UIs.** Each app has its own authentication, which the operator must turn on
   ([installing.md](installing.md#running-it-securely)). homelab-atlas doesn't add a reverse proxy, TLS or
   single sign-on.
-- **The host.** Anyone with root, `docker` group membership or write access to `.env`, the config volumes,
+- **The host.** Anyone with root, `docker` group membership or write access to `.env`, `autoheal.env`, the config volumes,
   `APPDATA_ROOT`, `RECYCLARR_CONFIG_PATH` or `MEDIA_ROOT` controls the stack; those are trusted.
 - **Media and downloads.** What the apps download is untrusted content from the internet; the apps run as
   an unprivileged user with access to `/media`, which limits but doesn't remove that risk.
 - **Dozzle's access to Docker.** Dozzle needs the Docker socket to read logs; read-only mounting doesn't limit
   the Docker API, so anyone who can use Dozzle's web UI can see every container's logs. It is an allowed
   exception (label in `compose.yaml`); keep its port on the LAN.
+- **autoheal's reach.** autoheal never holds the socket: `socket-proxy` does (the second allowed exception) and
+  passes on only listing, inspecting, restarting and stopping containers, on an internal network with no
+  published port. Whoever controls autoheal or the proxy can still stop any container on the host and read
+  containers' settings, including their environment; this stack keeps no secrets in environment variables.
+- **Restart loops.** autoheal restarts an unhealthy app every few minutes for as long as it stays unhealthy;
+  that keeps a hung app available but can hide a real fault. Restarts are logged (and sent to the webhook if one
+  is set).
 - **Upstream images' internals.** linuxserver.io images start as root and drop to `PUID:PGID`; that is the
   image's design and is accepted.
 
@@ -61,4 +69,5 @@ non-empty reason:
 | App API keys, UI logins | each app's config volume | the repository, `.env`, issues, logs you paste |
 | Usenet provider and indexer credentials | SABnzbd's and the apps' config volumes | same |
 | Radarr and Sonarr API keys for Recyclarr | `RECYCLARR_CONFIG_PATH` (`recyclarr.yml` or its secrets file) | same |
+| autoheal's webhook URL | `autoheal.env` (mode `600`, gitignored) | same |
 | Backups of the volumes | off the host, mode `600` | anywhere public |

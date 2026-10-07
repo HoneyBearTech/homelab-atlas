@@ -10,6 +10,8 @@ file changes with them, in the same pull request.
 - Done: a health check for each service, so `docker compose ps` shows a broken app, and a smoke test in CI that
   starts the whole stack and waits until every service is healthy.
 - Done: a weekly vulnerability scan of every pinned image (Trivy), reported to code scanning.
+- Done: autoheal restarts any app whose health check fails, through a socket proxy that only allows listing,
+  restarting and stopping containers.
 - Done: backup and restore scripts, exercised end to end by the smoke test in CI, and a documented rebuild of
   the host from a backup.
 - First release (0.1.0) before Atlas switches over, so Atlas is first deployed from a signed, verified version.

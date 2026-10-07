@@ -6,6 +6,23 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- autoheal restarts any service whose health check fails (every app, Dozzle, Recyclarr and the proxy carry the
+  `autoheal: "true"` label), and can post each restart to a webhook such as a Discord channel (`WEBHOOK_URL` in
+  the optional, gitignored `autoheal.env`). It reaches Docker only through `socket-proxy`, which allows listing,
+  inspecting, restarting and stopping containers and nothing else, on an internal network with no published
+  port. Both are labelled policy exceptions (`latest` for autoheal, whose only maintained tag it is;
+  `docker-socket` for the proxy).
+- The smoke test makes a container unhealthy and checks that autoheal restarts it, and retries the stack's start
+  once when a service fails for a network reason (Recyclarr's first fetch from GitHub).
+- `scripts/backup.sh` also backs up `autoheal.env`.
+
+### Changed
+
+- The health checks' start period is 10 minutes (was 3), so autoheal can't restart an app in the middle of a
+  slow database migration after an upgrade; a healthy app is still reported within seconds.
+
 ## [0.1.0] - 2026-10-07
 
 The first release: the Atlas stack as a Compose file, every image pinned by version tag and digest, with the

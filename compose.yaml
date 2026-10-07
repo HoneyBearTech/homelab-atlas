@@ -1,4 +1,5 @@
-# The Atlas stack. Every setting comes from .env (template: .env.example; reference: docs/interfaces.md).
+# The Atlas stack. Every setting comes from .env (template: .env.example; reference: docs/interfaces.md); the one
+# secret, autoheal's optional webhook, from autoheal.env (template: autoheal.env.example).
 # Every image is pinned as name:tag@sha256:<digest>; Dependabot proposes updates (patch and minor ones merge
 # automatically once CI passes). scripts/check_compose.py enforces the policy (docs/security.md#policy).
 
@@ -11,12 +12,13 @@ x-linuxserver-env: &linuxserver-env
   UMASK: ${UMASK:-002}
 
 # Health check timing shared by every service; each service adds its own test. During start_period a failing
-# check doesn't count, and Docker checks every start_interval so a healthy app shows up within seconds.
+# check doesn't count, and Docker checks every start_interval so a healthy app shows up within seconds. The long
+# start_period keeps autoheal from restarting an app in the middle of a slow database migration after an upgrade.
 x-healthcheck: &healthcheck
   interval: 1m
   timeout: 10s
   retries: 3
-  start_period: 3m
+  start_period: 10m
   start_interval: 5s
 
 services:
@@ -25,6 +27,8 @@ services:
     image: lscr.io/linuxserver/radarr:6.4.4.10685-ls319@sha256:7dfd049e79c00b16fbc29c3f5d96a9e7b9e73a23930b4c5b3c4541d60b366814
     container_name: radarr
     restart: unless-stopped
+    labels:
+      autoheal: "true"
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:7878/ping"]
@@ -40,6 +44,8 @@ services:
     image: lscr.io/linuxserver/radarr:6.4.4.10685-ls319@sha256:7dfd049e79c00b16fbc29c3f5d96a9e7b9e73a23930b4c5b3c4541d60b366814
     container_name: radarr4k
     restart: unless-stopped
+    labels:
+      autoheal: "true"
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:7878/ping"]
@@ -56,6 +62,8 @@ services:
     image: lscr.io/linuxserver/sonarr:4.0.20.3014-ls326@sha256:f247545d23ba8b233d6604575347e48a623fe6ad75dda02348bf81917f3b5c06
     container_name: sonarr
     restart: unless-stopped
+    labels:
+      autoheal: "true"
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8989/ping"]
@@ -70,6 +78,8 @@ services:
     image: lscr.io/linuxserver/sonarr:4.0.20.3014-ls326@sha256:f247545d23ba8b233d6604575347e48a623fe6ad75dda02348bf81917f3b5c06
     container_name: sonarr4k
     restart: unless-stopped
+    labels:
+      autoheal: "true"
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8989/ping"]
@@ -85,6 +95,8 @@ services:
     image: lscr.io/linuxserver/lidarr:3.1.0.4875-ls42@sha256:044d616beb43c5e7810991242c6a9c42b93ff238c8c0850684939634ea751208
     container_name: lidarr
     restart: unless-stopped
+    labels:
+      autoheal: "true"
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8686/ping"]
@@ -100,6 +112,8 @@ services:
     image: lscr.io/linuxserver/bazarr:v1.6.2-ls367@sha256:c1673816321156b904af9b7e6415ea547ae9622e4acc375358f1e1eb9ed1e904
     container_name: bazarr
     restart: unless-stopped
+    labels:
+      autoheal: "true"
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:6767/api/system/ping"]
@@ -114,6 +128,8 @@ services:
     image: lscr.io/linuxserver/bazarr:v1.6.2-ls367@sha256:c1673816321156b904af9b7e6415ea547ae9622e4acc375358f1e1eb9ed1e904
     container_name: bazarr4k
     restart: unless-stopped
+    labels:
+      autoheal: "true"
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:6767/api/system/ping"]
@@ -129,6 +145,8 @@ services:
     image: lscr.io/linuxserver/sabnzbd:5.1.3-ls275@sha256:793828eab1722556131d37187115a9d3e3b9703e03a55731a07f2e0fe4edc2c7
     container_name: sabnzbd
     restart: unless-stopped
+    labels:
+      autoheal: "true"
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8080/api?mode=version"]
@@ -144,6 +162,8 @@ services:
     image: recyclarr/recyclarr:8.7.3@sha256:9c6c74d52cfc6f740a5a3624aa83867e171bb70b90453ddb7a4048b8c80445f9
     container_name: recyclarr
     restart: unless-stopped
+    labels:
+      autoheal: "true"
     # Recyclarr has no web server; it's healthy while its scheduler (supercronic) runs.
     healthcheck:
       <<: *healthcheck
@@ -164,6 +184,7 @@ services:
       <<: *healthcheck
       test: ["CMD", "/dozzle", "healthcheck"]
     labels:
+      autoheal: "true"
       org.honeybeartech.atlas.allow.docker-socket: >-
         Dozzle shows container logs by reading them through the Docker API. The socket is mounted read-only, which
         protects the socket file but not the API, so the web UI must stay on the LAN.
@@ -171,6 +192,72 @@ services:
       - "4040:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  # Restarts any container labelled autoheal: "true" that Docker reports unhealthy (Docker itself only restarts a
+  # container whose process exits). It reaches Docker only through socket-proxy, which lets it list, inspect,
+  # restart and stop containers and nothing else. Optional restart notices go to a webhook from autoheal.env.
+  autoheal:
+    image: willfarrell/autoheal:latest@sha256:e7f42d5365c7c4490dd0cafc2858bb9fd2d64a274448d2de2bb5c386f1af7a0f
+    container_name: autoheal
+    restart: unless-stopped
+    depends_on:
+      - socket-proxy
+    healthcheck:
+      <<: *healthcheck
+      start_period: 1m
+      test: ["CMD", "pgrep", "-f", "autoheal"]
+    labels:
+      org.honeybeartech.atlas.allow.latest: >-
+        The image publishes "latest" (rebuilt regularly) and versioned tags only up to 1.2.0 from 2021, so the
+        maintained image is "latest", pinned by digest.
+    environment:
+      DOCKER_SOCK: tcp://socket-proxy:2375
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_INTERVAL: 10
+      # Give an app time to shut down cleanly (and finish database writes) before it's restarted.
+      AUTOHEAL_DEFAULT_STOP_TIMEOUT: 30
+      # Discord's webhook API reads the message from "content".
+      WEBHOOK_JSON_KEY: content
+    env_file:
+      - path: autoheal.env
+        required: false
+    networks:
+      - default
+      - docker-proxy
+
+  # The only service with the Docker socket besides Dozzle. It answers on an internal network with no published
+  # port, and passes on only what autoheal needs: listing and inspecting containers, and restarting or stopping
+  # them (CONTAINERS, ALLOW_RESTARTS). Creating, starting or deleting containers, exec, images, volumes and every
+  # other POST are refused.
+  socket-proxy:
+    image: lscr.io/linuxserver/socket-proxy:3.4.6@sha256:362cadf55b3c7920189347d0f4d60b389e2f80e929581bf10793f2371aab41e5
+    container_name: socket-proxy
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /run
+      - /tmp
+    healthcheck:
+      <<: *healthcheck
+      start_period: 1m
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:2375/_ping"]
+    labels:
+      autoheal: "true"
+      org.honeybeartech.atlas.allow.docker-socket: >-
+        A filtering proxy so that autoheal never gets the socket itself: it allows only listing, inspecting,
+        restarting and stopping containers, on an internal network with no published port. The socket mount is
+        read-only, which protects the socket file but not the API; the proxy's filter is what limits it.
+    environment:
+      CONTAINERS: 1
+      ALLOW_RESTARTS: 1
+      POST: 0
+      EVENTS: 0
+      PING: 1
+      VERSION: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-proxy
 
 # Each app's configuration and database. The volume names come from CONFIG_VOLUME_PREFIX, so an existing
 # installation keeps using the volumes it already has.
@@ -191,3 +278,9 @@ volumes:
     name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}bazarr4k
   sabnzbd-config:
     name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}sabnzbd
+
+# socket-proxy's network: internal, so nothing on it can reach the outside world and nothing outside can reach the
+# proxy; only autoheal joins it.
+networks:
+  docker-proxy:
+    internal: true

@@ -1,8 +1,8 @@
 # homelab-atlas
 
 The Docker Compose stack for Atlas, the owner's homelab media automation server: Recyclarr and the *arr
-apps (Radarr and Sonarr with 4K instances, Lidarr, Bazarr, SABnzbd, FlareSolverr) plus Dozzle, every image
-pinned by tag and digest so the server can be upgraded and rebuilt from this repository.
+apps (Radarr and Sonarr with 4K instances, Lidarr, Bazarr, SABnzbd) plus Dozzle, every image pinned by tag and
+digest so the server can be upgraded and rebuilt from this repository.
 
 ## Before Making Structural Changes
 Read the project's notes first. They live outside this repo, in the owner's Obsidian vault **Chronos** at
@@ -53,7 +53,7 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   agreeing.
 
 ## Stack
-- Docker Compose v2 (`compose.yaml`, 11 services), upstream images (linuxserver.io where available).
+- Docker Compose v2 (`compose.yaml`, 10 services), upstream images (linuxserver.io where available).
 - `scripts/check_compose.py`: Python 3.14, standard library only. Reads `docker compose config --format json`,
   reports policy violations (exit 1), `--sbom FILE` writes a CycloneDX 1.6 SBOM of the images.
 - Tooling: ruff with every rule family (`select = ["ALL"]`, exceptions in `pyproject.toml`; per-line `noqa`

@@ -68,7 +68,7 @@ for service in "${services[@]}"; do
   for mount in "${mounts[@]}"; do
     source=$(mount_source "$id" "$mount")
     [ -n "$source" ] || continue
-    # An anonymous volume (one the image declares, such as FlareSolverr's) holds nothing the stack set up.
+    # An anonymous volume (one an image declares itself) holds nothing the stack set up.
     if [[ "$source" =~ ^volume:[0-9a-f]{64}$ ]]; then
       echo "Skipping $service $mount (anonymous volume)"
       continue

@@ -9,9 +9,8 @@ All notable changes to homelab-atlas are documented here. The format follows
 ### Security
 
 - Triaged the first image scan (docs/dependencies.md#current-findings): Bazarr updated to `v1.6.2-ls367` and
-  Recyclarr to `8.7.3`, which fix 17 findings; FlareSolverr, whose Chromium renders pages from the internet,
-  now runs with no capabilities and `no-new-privileges` while its Chromium findings wait for a new upstream
-  build.
+  Recyclarr to `8.7.3`, which fix 17 findings. FlareSolverr was removed from the stack: nothing used it, and
+  its Chromium carried most of the findings (348), the only ones reachable from the internet.
 
 ### Added
 
@@ -33,7 +32,7 @@ All notable changes to homelab-atlas are documented here. The format follows
 - shellcheck for the scripts, in `make lint` and CI.
 
 - `compose.yaml`: the Atlas stack. Radarr and Sonarr (each with a 4K instance), Lidarr, Bazarr (with a 4K
-  instance), SABnzbd, FlareSolverr, Recyclarr and Dozzle, every image pinned by version tag and
+  instance), SABnzbd, Recyclarr and Dozzle, every image pinned by version tag and
   digest. Each app's config lives in a Docker volume named `<CONFIG_VOLUME_PREFIX><app>`, so existing
   volumes can be adopted; media is mounted at `/media`.
 - Settings `MEDIA_ROOT`, `CONFIG_VOLUME_PREFIX` and `RECYCLARR_CONFIG_PATH`.

@@ -35,6 +35,7 @@ non-empty reason:
 | `cap-add` | adds Linux capabilities |
 | `host-network` / `host-pid` | uses the host's network or PID namespace |
 | `docker-socket` | mounts the Docker socket |
+| `healthcheck` | has no health check, or disables it (one defined only in the image isn't visible to the check) |
 
 ## What it doesn't protect
 

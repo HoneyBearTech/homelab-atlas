@@ -49,11 +49,15 @@ def test_every_rule_is_reported_exactly() -> None:
         ("hostnet", "host-network"),
         ("hostpid", "host-pid"),
         ("socket", "docker-socket"),
+        ("no-healthcheck", "healthcheck"),
+        ("healthcheck-disabled", "healthcheck"),
+        ("healthcheck-none", "healthcheck"),
+        ("healthcheck-timing-only", "healthcheck"),
     }
 
 
 def test_allow_label_needs_a_reason() -> None:
-    service = {"image": "app:latest", "labels": {cc.ALLOW_LABEL + "digest": "  "}}
+    service = {"image": "app:latest", "labels": {cc.ALLOW_LABEL + "digest": "  "}, "healthcheck": {"test": ["CMD"]}}
     assert rules({"services": {"s": service}}) == {("s", "digest"), ("s", "latest")}
     service["labels"] = {cc.ALLOW_LABEL + "digest": "local test image", cc.ALLOW_LABEL + "latest": "same"}
     assert cc.check({"services": {"s": service}}) == []

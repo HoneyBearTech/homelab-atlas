@@ -8,6 +8,14 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ### Added
 
+- A health check for every service (each app's own status endpoint; Recyclarr's scheduler; Dozzle's built-in
+  check), so `docker compose ps` and `docker compose up --wait` show a broken app. Needs Docker Engine 25 and
+  Compose 2.24 or later.
+- The policy check's `healthcheck` rule: every service must define a health check.
+- `scripts/smoke-test.sh` (`make smoke`), run in CI as "Stack smoke test": starts every service with throwaway
+  settings, isolated from any existing installation, and fails unless each one is healthy within five minutes.
+- shellcheck for the scripts, in `make lint` and CI.
+
 - `compose.yaml`: the Atlas stack. Radarr and Sonarr (each with a 4K instance), Lidarr, Bazarr (with a 4K
   instance), SABnzbd, FlareSolverr, Recyclarr and Dozzle, every image pinned by version tag and
   digest. Each app's config lives in a Docker volume named `<CONFIG_VOLUME_PREFIX><app>`, so existing

@@ -5,7 +5,7 @@ The [quick start](quick-start.md) is the short version of this page.
 ## Requirements
 
 - Linux on amd64 (the reference is Ubuntu 24.04 LTS) with Docker Engine and the Compose v2 plugin
-  (2.24 or later, for `env_file` with `required`).
+  (Docker Engine 25 or later and Compose 2.24 or later, for the health checks' `start_interval`).
 - A user in the `docker` group to run `docker compose`. Membership is equivalent to root on the host, so keep
   that group small.
 - One directory for `MEDIA_ROOT` that holds **both downloads and the library on the same filesystem**, so the

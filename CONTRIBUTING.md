@@ -23,23 +23,25 @@ You need git, Python 3.14, and Docker with Compose v2.
 ```sh
 git clone https://github.com/HoneyBearTech/homelab-atlas.git && cd homelab-atlas
 make test     # creates .venv with the hash-pinned tools, runs the checker's tests with coverage
-make lint     # ruff, ruff format, yamllint
+make lint     # ruff, ruff format, yamllint, shellcheck
 cp .env.example .env && make check   # the policy check over the resolved Compose file
+make smoke    # starts the whole stack with throwaway settings and waits until every service is healthy
 ```
 
 How the stack fits together is in [docs/architecture.md](docs/architecture.md).
 
 ## When and how tests run
 
-Every push and pull request runs one CI job, "Checks + tests"
-([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), which is the required check on `main`. It runs
-the linters below, a gitleaks scan of the whole history, the checker's unit tests with a coverage floor,
-and, once `compose.yaml` exists, `docker compose config` and the policy check
-([`scripts/check_compose.py`](scripts/check_compose.py)). CodeQL, dependency review, a DCO check and OpenSSF
+Every push and pull request runs two CI jobs ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+"Checks + tests", the required check on `main`, runs the linters below, a gitleaks scan of the whole history,
+the checker's unit tests with a coverage floor, `docker compose config` and the policy check
+([`scripts/check_compose.py`](scripts/check_compose.py)). "Stack smoke test"
+([`scripts/smoke-test.sh`](scripts/smoke-test.sh)) starts every service with throwaway directories and
+volumes and fails unless each one reports healthy within five minutes. CodeQL, dependency review, a DCO check and OpenSSF
 Scorecard also run on the repository.
 
-The tests are offline: they feed the checker JSON fixtures in [`tests/fixtures/`](tests/fixtures/), with no
-Docker and no network.
+The checker's tests are offline: they feed it JSON fixtures in [`tests/fixtures/`](tests/fixtures/), with no
+Docker and no network. The smoke test needs both: it pulls the pinned images.
 
 ## Before you open a pull request
 
@@ -49,6 +51,7 @@ Run what CI runs and make sure it passes:
 make lint
 make test
 make check
+make smoke    # when the pull request changes compose.yaml
 ```
 
 The workflow and secret scanners run in containers; the exact commands are in
@@ -59,13 +62,15 @@ The workflow and secret scanners run in containers; the exact commands are in
 - **Compose** (`compose.yaml`): every image pinned as `name:tag@sha256:<digest>` (Dependabot updates both);
   settings from `.env` through `${VAR}`; no `privileged`, added capabilities, host network or PID namespace,
   or Docker socket mount unless the service has an `org.honeybeartech.atlas.allow.<rule>` label giving the
-  reason. `scripts/check_compose.py` enforces this.
+  reason; every service has a health check. `scripts/check_compose.py` enforces this.
 - **Python** (`scripts/`, `tests/`): [PEP 8](https://peps.python.org/pep-0008/) and
   [PEP 257](https://peps.python.org/pep-0257/), enforced by [ruff](https://docs.astral.sh/ruff/) with every rule
   family enabled, including type annotations, docstrings and the bandit security rules, and `ruff format`; the
   few rules left out, and why, are in [`pyproject.toml`](pyproject.toml). Standard library only.
 - **YAML** (compose file, workflows, templates): [yamllint](https://yamllint.readthedocs.io/) with
   [`.yamllint.yml`](.yamllint.yml), warnings treated as errors.
+- **Shell scripts** (`scripts/*.sh`): bash with `set -euo pipefail`, checked by
+  [shellcheck](https://www.shellcheck.net/).
 - **GitHub Actions workflows**: [actionlint](https://github.com/rhysd/actionlint), which also runs
   [shellcheck](https://www.shellcheck.net/) on every `run:` script. Actions are pinned by commit SHA, jobs
   ask for the fewest permissions they need, and untrusted values reach scripts through `env:`, never
@@ -80,8 +85,8 @@ The workflow and secret scanners run in containers; the exact commands are in
 - **Bug fixes come with a regression test** that fails before the fix, where the bug can be tested at all.
 - Unit tests must keep statement and branch coverage of `scripts/` at or above the floor in
   `pyproject.toml` (90 %); CI fails below it.
-- A change to `compose.yaml` is tested by the policy check in CI and by `docker compose up -d` on a host
-  before it is released; the pull request says how it was tried.
+- A change to `compose.yaml` is tested by the policy check and the smoke test in CI, and by
+  `docker compose up -d` on a host before it is released; the pull request says how it was tried.
 
 ## Developer Certificate of Origin
 

@@ -7,6 +7,8 @@ file changes with them, in the same pull request.
 
 - Done: `compose.yaml` with Radarr and Sonarr (regular and 4K), Lidarr, Bazarr (regular and 4K), SABnzbd,
   FlareSolverr, Recyclarr and Dozzle, every image pinned by tag and digest, Dependabot proposing updates.
+- Done: a health check for each service, so `docker compose ps` shows a broken app, and a smoke test in CI that
+  starts the whole stack and waits until every service is healthy.
 - Switch Atlas to run the stack from a checkout of this repository, and retire the auto-updater.
 - First release (0.1.0) once Atlas runs from the repository.
 
@@ -14,7 +16,6 @@ file changes with them, in the same pull request.
 
 - A backup and restore script for the config volumes, tested by restoring onto a fresh host.
 - Optionally move the config volumes to bind mounts under `APPDATA_ROOT`, for simpler backups.
-- Health checks for each service, so `docker compose ps` shows a broken app.
 - A scheduled vulnerability scan of the pinned images, reported to code scanning.
 - A documented rebuild of Atlas from nothing: OS, Docker, this repository, a restored backup.
 

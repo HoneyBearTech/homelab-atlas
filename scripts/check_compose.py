@@ -12,6 +12,7 @@ service that breaks a rule. A service may break a rule on purpose only when it c
 - ``cap-add``: no added Linux capabilities.
 - ``host-network`` / ``host-pid``: no host network or PID namespace.
 - ``docker-socket``: no Docker socket mount (it is root on the host).
+- ``healthcheck``: the service defines a health check (a check only the image defines isn't visible here).
 
 With ``--sbom FILE`` it also writes a CycloneDX 1.6 JSON SBOM listing each service's image, for releases.
 Exit codes: 0 = no violations, 1 = violations, 2 = unreadable input.
@@ -103,6 +104,10 @@ def runtime_violations(service: Service) -> list[tuple[str, str]]:
         source = str(volume.get("source", ""))
         if source.endswith("docker.sock"):
             found.append(("docker-socket", f"mounts the Docker socket ({source})"))
+    healthcheck = service.get("healthcheck") or {}
+    test = healthcheck.get("test") or []
+    if healthcheck.get("disable") or not test or test[0] == "NONE":
+        found.append(("healthcheck", "has no health check"))
     return found
 
 

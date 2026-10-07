@@ -24,7 +24,7 @@ A new image or tool must:
 | Dependency | Declared in | Pinned by | Fetched by |
 | --- | --- | --- | --- |
 | The stack's images | `compose.yaml` | version tag and digest | `docker compose pull` |
-| Check and test tools (pytest, coverage, ruff, yamllint) | [`requirements-dev.in`](../requirements-dev.in) → [`requirements-dev.txt`](../requirements-dev.txt) | exact version and SHA-256 hashes (`pip-compile --generate-hashes`) | `pip install --require-hashes --no-deps` |
+| Check and test tools (pytest, coverage, ruff, yamllint, shellcheck) | [`requirements-dev.in`](../requirements-dev.in) → [`requirements-dev.txt`](../requirements-dev.txt) | exact version and SHA-256 hashes (`pip-compile --generate-hashes`) | `pip install --require-hashes --no-deps` |
 | Linters and scanners used only by CI (actionlint, gitleaks) | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | version tag and digest | Docker |
 | GitHub Actions | [`.github/workflows/`](../.github/workflows/) | full commit SHA (version in a comment) | GitHub Actions |
 

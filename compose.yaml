@@ -10,12 +10,24 @@ x-linuxserver-env: &linuxserver-env
   TZ: ${TZ:?set TZ in .env}
   UMASK: ${UMASK:-002}
 
+# Health check timing shared by every service; each service adds its own test. During start_period a failing
+# check doesn't count, and Docker checks every start_interval so a healthy app shows up within seconds.
+x-healthcheck: &healthcheck
+  interval: 1m
+  timeout: 10s
+  retries: 3
+  start_period: 3m
+  start_interval: 5s
+
 services:
   # --- Movies ---------------------------------------------------------------------------------------------------
   radarr:
     image: lscr.io/linuxserver/radarr:6.4.4.10685-ls319@sha256:7dfd049e79c00b16fbc29c3f5d96a9e7b9e73a23930b4c5b3c4541d60b366814
     container_name: radarr
     restart: unless-stopped
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:7878/ping"]
     environment: *linuxserver-env
     ports:
       - "7878:7878"
@@ -28,6 +40,9 @@ services:
     image: lscr.io/linuxserver/radarr:6.4.4.10685-ls319@sha256:7dfd049e79c00b16fbc29c3f5d96a9e7b9e73a23930b4c5b3c4541d60b366814
     container_name: radarr4k
     restart: unless-stopped
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:7878/ping"]
     environment: *linuxserver-env
     ports:
       - "17878:7878"
@@ -41,6 +56,9 @@ services:
     image: lscr.io/linuxserver/sonarr:4.0.20.3014-ls326@sha256:f247545d23ba8b233d6604575347e48a623fe6ad75dda02348bf81917f3b5c06
     container_name: sonarr
     restart: unless-stopped
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8989/ping"]
     environment: *linuxserver-env
     ports:
       - "8989:8989"
@@ -52,6 +70,9 @@ services:
     image: lscr.io/linuxserver/sonarr:4.0.20.3014-ls326@sha256:f247545d23ba8b233d6604575347e48a623fe6ad75dda02348bf81917f3b5c06
     container_name: sonarr4k
     restart: unless-stopped
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8989/ping"]
     environment: *linuxserver-env
     ports:
       - "8888:8989"
@@ -64,6 +85,9 @@ services:
     image: lscr.io/linuxserver/lidarr:3.1.0.4875-ls42@sha256:044d616beb43c5e7810991242c6a9c42b93ff238c8c0850684939634ea751208
     container_name: lidarr
     restart: unless-stopped
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8686/ping"]
     environment: *linuxserver-env
     ports:
       - "8686:8686"
@@ -76,6 +100,9 @@ services:
     image: lscr.io/linuxserver/bazarr:v1.6.2-ls366@sha256:8b30e81c4aec2991f469e78fae8afaa89ecc9b21a80e3897f50427216b55470c
     container_name: bazarr
     restart: unless-stopped
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:6767/api/system/ping"]
     environment: *linuxserver-env
     ports:
       - "6767:6767"
@@ -87,6 +114,9 @@ services:
     image: lscr.io/linuxserver/bazarr:v1.6.2-ls366@sha256:8b30e81c4aec2991f469e78fae8afaa89ecc9b21a80e3897f50427216b55470c
     container_name: bazarr4k
     restart: unless-stopped
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:6767/api/system/ping"]
     environment: *linuxserver-env
     ports:
       - "6768:6767"
@@ -99,6 +129,9 @@ services:
     image: lscr.io/linuxserver/sabnzbd:5.1.3-ls275@sha256:793828eab1722556131d37187115a9d3e3b9703e03a55731a07f2e0fe4edc2c7
     container_name: sabnzbd
     restart: unless-stopped
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8080/api?mode=version"]
     environment: *linuxserver-env
     ports:
       - "8080:8080"
@@ -110,6 +143,9 @@ services:
     image: ghcr.io/flaresolverr/flaresolverr:v3.5.2@sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767
     container_name: flaresolverr
     restart: unless-stopped
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8191/health"]
     environment:
       TZ: ${TZ:?set TZ in .env}
       LOG_LEVEL: info
@@ -123,6 +159,10 @@ services:
     image: recyclarr/recyclarr:8.7.2@sha256:6e69e009e1cd7493ff6093e8e187b5d3788c75b4a2c0c5127b6a1beda1c19728
     container_name: recyclarr
     restart: unless-stopped
+    # Recyclarr has no web server; it's healthy while its scheduler (supercronic) runs.
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "pgrep", "-x", "supercronic"]
     user: ${PUID:?set PUID in .env}:${PGID:?set PGID in .env}
     environment:
       TZ: ${TZ:?set TZ in .env}
@@ -135,6 +175,9 @@ services:
     image: amir20/dozzle:v11.3.0@sha256:a7d69d20891d3dcc82636e24afa4c1c162b41d0673ef798b14f09e6b69accc5a
     container_name: dozzle
     restart: unless-stopped
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "/dozzle", "healthcheck"]
     labels:
       org.honeybeartech.atlas.allow.docker-socket: >-
         Dozzle shows container logs by reading them through the Docker API. The socket is mounted read-only, which
@@ -143,7 +186,6 @@ services:
       - "4040:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-
 
 # Each app's configuration and database. The volume names come from CONFIG_VOLUME_PREFIX, so an existing
 # installation keeps using the volumes it already has.

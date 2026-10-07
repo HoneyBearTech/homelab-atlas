@@ -54,7 +54,7 @@ FlareSolverr keeps nothing worth backing up; Docker gives it an anonymous volume
 
 | Label | Meaning |
 | --- | --- |
-| `org.honeybeartech.atlas.allow.<rule>` | Lets one service break one policy rule; the value is the reason, and must not be empty. Rules: `image`, `digest`, `latest`, `build`, `privileged`, `cap-add`, `host-network`, `host-pid`, `docker-socket` ([security.md](security.md#policy)). In use: `dozzle` (`docker-socket`). |
+| `org.honeybeartech.atlas.allow.<rule>` | Lets one service break one policy rule; the value is the reason, and must not be empty. Rules: `image`, `digest`, `latest`, `build`, `privileged`, `cap-add`, `host-network`, `host-pid`, `docker-socket`, `healthcheck` ([security.md](security.md#policy)). In use: `dozzle` (`docker-socket`). |
 
 ## Commands
 
@@ -64,6 +64,7 @@ FlareSolverr keeps nothing worth backing up; Docker gives it an anonymous volume
 | `make check` | `docker compose config --format json \| python scripts/check_compose.py`: the policy check |
 | `python scripts/check_compose.py [FILE] [--sbom OUT]` | Checks a resolved Compose config (from `FILE` or stdin); `--sbom` also writes a CycloneDX 1.6 SBOM of the images. Exit 0 = no violations, 1 = violations (one line each), 2 = unreadable input |
 | `make test`, `make lint` | The checker's tests and the linters |
+| `make smoke` | `scripts/smoke-test.sh`: starts every service under a separate Compose project with throwaway directories and volumes, no fixed container names and no published ports, waits until all are healthy, then removes what it created. Exit 0 = all healthy |
 
 ## Outbound connections
 

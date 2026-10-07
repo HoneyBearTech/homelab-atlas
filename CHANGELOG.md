@@ -6,6 +6,18 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-07
+
+autoheal: a service whose health check fails is restarted automatically, through a socket proxy that can only
+list, restart and stop containers.
+
+### Upgrading
+
+- Two new services, `autoheal` and `socket-proxy`, start with the rest (`docker compose up -d`); they need no
+  settings. For restart notices, create `autoheal.env` from `autoheal.env.example` (mode `600`) with a webhook
+  URL; without it, restarts are only logged.
+- Take a backup first as usual ([docs/upgrading.md](docs/upgrading.md)); no app version changes in this release.
+
 ### Added
 
 - autoheal restarts any service whose health check fails (every app, Dozzle, Recyclarr and the proxy carry the
@@ -65,5 +77,6 @@ checks, backups and release signing around it.
   Bazarr), none reachable from the internet. Triage and mitigations:
   [docs/dependencies.md](docs/dependencies.md#current-findings).
 
-[Unreleased]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/HoneyBearTech/homelab-atlas/releases/tag/v0.1.0

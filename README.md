@@ -31,7 +31,7 @@ Docker Compose stack for Atlas, the homelab media automation server running Recy
 ## What's in the stack
 
 Radarr and Sonarr (regular and 4K instances), Lidarr, Bazarr (regular and 4K), SABnzbd and Recyclarr, plus
-Dozzle (container logs), all from their upstream images ([architecture](docs/architecture.md),
+Dozzle (container logs) and autoheal (restarts an app that turns unhealthy), all from their upstream images ([architecture](docs/architecture.md),
 ports in [interfaces](docs/interfaces.md#services-and-ports)). The indexer manager, the torrent client and the
 media server run on other hosts.
 
@@ -82,7 +82,10 @@ Ports, volumes and labels: [docs/interfaces.md](docs/interfaces.md).
   ports bypass host firewalls such as `ufw`.
 - Secrets (API keys, logins, provider credentials) live only in each app's config volume, never in this
   repository or `.env`.
-- Dozzle reads logs through the Docker socket: keep its port (4040) on the LAN.
+- Dozzle reads logs through the Docker socket: keep its port (4040) on the LAN. autoheal never gets the socket:
+  it goes through a proxy that only lets it list, restart and stop containers.
+- autoheal's optional webhook URL (restart notices, for example to Discord) goes in `autoheal.env` (template
+  [`autoheal.env.example`](autoheal.env.example), mode `600`, gitignored).
 - Don't run an auto-updater such as Watchtower on these containers; upgrade by release instead.
 - The policy check refuses privileged containers, added capabilities, host networking and Docker socket
   mounts unless a service documents why ([docs/security.md](docs/security.md)).

@@ -15,7 +15,7 @@ anything you depend on.
 
 The state worth keeping is what each service mounts at `/config` and `/scripts`: the apps' config volumes
 (settings, API keys, databases), Recyclarr's config directory and Radarr's custom scripts. `scripts/backup.sh`
-stops the stack so the databases are consistent, archives each of those mounts, copies `.env`, and starts
+stops the stack so the databases are consistent, archives each of those mounts, copies `.env` and `autoheal.env`, and starts
 again whatever was running:
 
 ```sh
@@ -23,7 +23,7 @@ scripts/backup.sh                       # into backups/<date>-<time>/ in the che
 scripts/backup.sh /path/to/backup-dir   # or a directory of your choice (new or empty)
 ```
 
-The directory holds one `<service>-config.tar.gz` (and `<service>-scripts.tar.gz`) per mount, `env/.env`, a
+The directory holds one `<service>-config.tar.gz` (and `<service>-scripts.tar.gz`) per mount, `env/.env` (and `env/autoheal.env`), a
 `MANIFEST` naming each archive's volume or host path and image, and `SHA256SUMS`. Everything in it is readable
 only by the user who ran the backup. **Copy it off the host**: it contains every app's API key and logins.
 `MEDIA_ROOT` (the media) is too large for this and is better covered by your storage's own snapshots or

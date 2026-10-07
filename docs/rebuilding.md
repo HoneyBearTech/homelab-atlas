@@ -51,6 +51,7 @@ a file there.
 git clone https://github.com/HoneyBearTech/homelab-atlas.git && cd homelab-atlas
 git checkout vX.Y.Z      # the release the backup was taken with, or newer; verify it (verifying-releases.md)
 cp /path/to/backup/env/.env .env && chmod 600 .env
+cp /path/to/backup/env/autoheal.env autoheal.env && chmod 600 autoheal.env   # if the backup has one
 ```
 
 Edit `.env` if the new host's paths differ (`MEDIA_ROOT`, `APPDATA_ROOT`, `RECYCLARR_CONFIG_PATH`). Keep

@@ -5,7 +5,8 @@
 #
 #   scripts/backup.sh [DIR]      DIR defaults to backups/<date>-<time> in the checkout (gitignored)
 #
-# DIR gets one <service>-<mount>.tar.gz per mount, the settings under env/, a MANIFEST and SHA256SUMS, all
+# DIR gets one <service>-<mount>.tar.gz per mount, the settings (.env, autoheal.env) under env/, a MANIFEST and
+# SHA256SUMS, all
 # readable only by the user who ran it: the archives hold every app's API keys and logins. Copy it off the
 # host. Restore with scripts/restore.sh. It runs `docker compose` from the checkout, so the standard Compose
 # variables (COMPOSE_PROJECT_NAME, COMPOSE_FILE, COMPOSE_ENV_FILES) select another project, as the smoke test
@@ -82,8 +83,13 @@ for service in "${services[@]}"; do
   done
 done
 
-# The settings: .env, or the files in COMPOSE_ENV_FILES when that's set.
-IFS=, read -r -a env_files <<<"${COMPOSE_ENV_FILES:-.env}"
+# The settings: .env and any service's env file (autoheal.env), or only the files in COMPOSE_ENV_FILES when that's
+# set (the smoke test, which must never copy the real ones).
+if [ -n "${COMPOSE_ENV_FILES:-}" ]; then
+  IFS=, read -r -a env_files <<<"$COMPOSE_ENV_FILES"
+else
+  env_files=(.env *.env)
+fi
 for file in "${env_files[@]}"; do
   if [ -f "$file" ]; then cp "$file" "$dest/env/$(basename "$file")"; fi
 done

@@ -20,6 +20,15 @@ setting marked required stops `docker compose` with an error naming it when it's
 | `CONFIG_VOLUME_PREFIX` | yes | `homelab-atlas_` | Prefix of the Docker volumes with each app's config and database: `<prefix>radarr`, `<prefix>radarr4k`, `<prefix>sonarr`, `<prefix>sonarr4k`, `<prefix>lidarr`, `<prefix>bazarr`, `<prefix>bazarr4k`, `<prefix>sabnzbd`. |
 | `RECYCLARR_CONFIG_PATH` | yes | `/srv/appdata/recyclarr` | Host directory with Recyclarr's config, mounted at `/config`. |
 
+### `autoheal.env`
+
+Read by the `autoheal` service (template: [`autoheal.env.example`](../autoheal.env.example)); optional, mode
+`600`, gitignored.
+
+| Setting | Meaning |
+| --- | --- |
+| `WEBHOOK_URL` | Where autoheal posts a notice each time it restarts a container (a secret). A Discord channel webhook works as is; empty or missing = log only |
+
 ## Services and ports
 
 | Service | Image | Host port → container | Web UI |
@@ -34,6 +43,8 @@ setting marked required stops `docker compose` with an error naming it when it's
 | `sabnzbd` | `lscr.io/linuxserver/sabnzbd` | 8080 → 8080 | yes |
 | `recyclarr` | `recyclarr/recyclarr` | none | no (runs daily) |
 | `dozzle` | `amir20/dozzle` | 4040 → 8080 | yes (container logs) |
+| `autoheal` | `willfarrell/autoheal` | none | no (restarts unhealthy services) |
+| `socket-proxy` | `lscr.io/linuxserver/socket-proxy` | none (internal network `docker-proxy`) | no |
 
 Ports are published on every host interface. Exact versions and digests are in [`compose.yaml`](../compose.yaml).
 
@@ -45,13 +56,17 @@ Ports are published on every host interface. Exact versions and digests are in [
 | `/config` | `RECYCLARR_CONFIG_PATH` | recyclarr |
 | `/media` | `MEDIA_ROOT` | the *arr apps, Bazarr, SABnzbd |
 | `/scripts` | `APPDATA_ROOT/radarr/scripts`, `APPDATA_ROOT/radarr4k/scripts` | radarr, radarr4k |
-| `/var/run/docker.sock` (read-only) | the Docker socket | dozzle (an allowed exception, see below) |
+| `/var/run/docker.sock` (read-only) | the Docker socket | dozzle, socket-proxy (allowed exceptions, see below) |
+
+`socket-proxy` and `autoheal` share the internal network `docker-proxy`, which has no route out and nothing
+published; autoheal also joins the default network, to reach its webhook.
 
 ## Labels
 
 | Label | Meaning |
 | --- | --- |
-| `org.honeybeartech.atlas.allow.<rule>` | Lets one service break one policy rule; the value is the reason, and must not be empty. Rules: `image`, `digest`, `latest`, `build`, `privileged`, `cap-add`, `host-network`, `host-pid`, `docker-socket`, `healthcheck` ([security.md](security.md#policy)). In use: `dozzle` (`docker-socket`). |
+| `org.honeybeartech.atlas.allow.<rule>` | Lets one service break one policy rule; the value is the reason, and must not be empty. Rules: `image`, `digest`, `latest`, `build`, `privileged`, `cap-add`, `host-network`, `host-pid`, `docker-socket`, `healthcheck` ([security.md](security.md#policy)). In use: `dozzle` and `socket-proxy` (`docker-socket`), `autoheal` (`latest`). |
+| `autoheal` | `"true"` on every service autoheal may restart when its health check fails (every app service and socket-proxy). |
 
 ## Commands
 
@@ -61,7 +76,7 @@ Ports are published on every host interface. Exact versions and digests are in [
 | `make check` | `docker compose config --format json \| python scripts/check_compose.py`: the policy check |
 | `python scripts/check_compose.py [FILE] [--sbom OUT]` | Checks a resolved Compose config (from `FILE` or stdin); `--sbom` also writes a CycloneDX 1.6 SBOM of the images. Exit 0 = no violations, 1 = violations (one line each), 2 = unreadable input |
 | `make test`, `make lint` | The checker's tests and the linters |
-| `scripts/backup.sh [DIR]` | Stops the stack, archives every service's `/config` and `/scripts` mount and `.env` into `DIR` (default `backups/<date>-<time>`, gitignored) with a `MANIFEST` and `SHA256SUMS`, then starts what was running. Exit 0 = backup complete |
+| `scripts/backup.sh [DIR]` | Stops the stack, archives every service's `/config` and `/scripts` mount, `.env` and `autoheal.env` into `DIR` (default `backups/<date>-<time>`, gitignored) with a `MANIFEST` and `SHA256SUMS`, then starts what was running. Exit 0 = backup complete |
 | `scripts/restore.sh [--yes] DIR [SERVICE...]` | Verifies `DIR/SHA256SUMS`, creates missing containers and volumes, asks for confirmation (unless `--yes`), stops the services, replaces their `/config` and `/scripts` contents with the archives, and starts what was running. Never writes other mounts |
 | `make smoke` | `scripts/smoke-test.sh`: starts every service under a separate Compose project with throwaway directories and volumes, no fixed container names and no published ports, waits until all are healthy, then removes what it created. Exit 0 = all healthy |
 

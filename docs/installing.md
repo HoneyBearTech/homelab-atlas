@@ -36,7 +36,8 @@ The apps save `/media/...` paths in their databases, so keep the container path 
 
 1. Clone the repository (or download a release's source archive and verify it,
    [verifying-releases.md](verifying-releases.md)).
-2. Create `.env` from `.env.example` (mode `600`) and set every value
+2. Create `.env` from `.env.example` (mode `600`) and set every value. Optionally create `autoheal.env` from
+   `autoheal.env.example` (mode `600`) with a webhook URL for restart notices
    ([interfaces.md](interfaces.md)).
 3. Create the host directories, then `docker compose up -d`.
 
@@ -55,7 +56,8 @@ Running `main` instead of a release is possible but unsupported for anything you
   Docker-published ports bypass host firewalls such as `ufw`.
 - **Dozzle can read every container's logs and, through the Docker socket, control Docker.** Keep its port on
   the LAN only, or turn on its own authentication.
-- Keep `.env` at mode `600`. It holds no secrets by design, but it does describe your host.
+- Keep `.env` and `autoheal.env` at mode `600`. `.env` holds no secrets by design, but it does describe your
+  host; `autoheal.env` holds the webhook URL.
 - Back up the config volumes and `RECYCLARR_CONFIG_PATH`: they hold every app's API key and database
   ([upgrading.md](upgrading.md#backing-up)).
 - Keep `UMASK` at `002`: `000` makes every new file on your media share world-writable.

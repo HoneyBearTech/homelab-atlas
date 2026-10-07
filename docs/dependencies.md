@@ -75,6 +75,11 @@ have a fix, reported to code scanning with one category per image). Each finding
 Triaged 7 October 2026, after the first image scan (527 alerts, every one HIGH or CRITICAL with a fixed package
 version somewhere upstream). Every image is maintained.
 
+**Added after the scan.** autoheal (`willfarrell/autoheal`) and socket-proxy (`linuxserver/socket-proxy`).
+autoheal's only maintained tag is `latest` (its versioned tags stop at 1.2.0 from 2021), so it is pinned as
+`latest@sha256:…` with a policy exception; if Dependabot doesn't propose new digests for it, it's bumped by hand
+with the other hand-pinned images.
+
 **Removed from the stack.** FlareSolverr (348 alerts, most of them in its Chromium, the only findings reachable
 from the internet): no indexer was configured to use it, and its newest release still shipped an old Chromium.
 The unmaintained webnut image (last published in 2015) was removed the same day.

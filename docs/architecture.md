@@ -16,6 +16,8 @@ upstream images, pinned by digest.
 | SABnzbd | linuxserver.io | Usenet download client |
 | Recyclarr | the project's own image | Syncs TRaSH Guides custom formats and quality profiles into Radarr and Sonarr on a schedule |
 | Dozzle | the project's own image | Web UI for the containers' logs (reads them through the Docker socket) |
+| autoheal | the project's own image | Restarts any app whose health check fails, and can post a notice to a webhook (Docker on its own only restarts a container that exits) |
+| socket-proxy | linuxserver.io | Gives autoheal a filtered view of the Docker API (list, inspect, restart and stop containers only) on an internal network |
 
 The 4K instances are separate containers with their own config and library folders, so 4K and regular
 releases are managed independently.
@@ -62,7 +64,7 @@ Nothing on the host updates itself: a version that runs is always a version that
 | Path | What |
 | --- | --- |
 | `compose.yaml` | The stack |
-| `.env.example` | Template for the settings |
+| `.env.example`, `autoheal.env.example` | Templates for the settings and autoheal's optional webhook |
 | `scripts/check_compose.py` | The policy check and SBOM generator (standard-library Python) |
 | `tests/` | Its tests, with JSON fixtures |
 | `docs/` | This documentation |

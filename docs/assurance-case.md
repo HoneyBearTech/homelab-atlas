@@ -8,7 +8,7 @@ the secure design principles it follows, and how common weaknesses are countered
 | Asset | Threat | Countered by |
 | --- | --- | --- |
 | The host | A compromised or malicious image | Digest pins; versions change only by reviewed pull request; no privileged, capability, host-namespace or socket access without a reasoned label |
-| The host | A container breaking out through the Docker socket | The `docker-socket` rule; only Dozzle mounts it, as a labelled exception with its UI kept on the LAN |
+| The host | A container breaking out through the Docker socket | The `docker-socket` rule; only Dozzle and socket-proxy mount it (socket-proxy filters the API for autoheal down to list, inspect, restart and stop), as labelled exceptions with its UI kept on the LAN |
 | App API keys and credentials | Committed to the public repository | Kept in the apps' config volumes, never in the repo; `.gitignore`; gitleaks over the history in CI; GitHub push protection |
 | App API keys and credentials | Leaked through a backup | `scripts/backup.sh` writes backups readable only by the user who ran it; documented as secret, to be kept off the host |
 | The media library | A compromised app deleting or encrypting it | Apps run as `PUID:PGID`, not root; storage-level snapshots recommended ([upgrading.md](upgrading.md#backing-up)) |
@@ -29,7 +29,7 @@ web UI; a malicious pull request; a malicious download. Out of scope: an attacke
 3. **LAN → apps.** Each web UI is behind the app's own authentication; anything beyond the LAN needs the
    operator's reverse proxy.
 4. **Containers → host.** Only the config volumes, `MEDIA_ROOT`, Radarr's scripts and Recyclarr's config are
-   mounted; no host namespaces. The one socket mount (Dozzle, read-only) is a reviewed, labelled exception.
+   mounted; no host namespaces. The two socket mounts (Dozzle; socket-proxy, which autoheal reaches only on an internal network) are reviewed, labelled exceptions.
 5. **Internet → apps.** Indexer results and downloads are untrusted data handled by the apps.
 6. **Pull requests → CI.** Fork pull requests get a read-only token and no secrets.
 

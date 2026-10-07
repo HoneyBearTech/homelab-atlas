@@ -6,51 +6,47 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ## [Unreleased]
 
-### Security
+## [0.1.0] - 2026-10-07
 
-- Triaged the first image scan (docs/dependencies.md#current-findings): Bazarr updated to `v1.6.2-ls367` and
-  Recyclarr to `8.7.3`, which fix 17 findings. FlareSolverr was removed from the stack: nothing used it, and
-  its Chromium carried most of the findings (348), the only ones reachable from the internet.
+The first release: the Atlas stack as a Compose file, every image pinned by version tag and digest, with the
+checks, backups and release signing around it.
 
 ### Added
 
-- `scripts/backup.sh`: stops the stack, archives every service's `/config` and `/scripts` mount and `.env`
-  with a manifest and checksums (readable only by the user who ran it), then starts what was running.
-- `scripts/restore.sh`: verifies a backup, creates missing containers and volumes, and after confirmation
-  replaces the services' `/config` and `/scripts` contents, keeping owners and modes. The smoke test now runs a
-  backup, a change and a restore, and checks that the data and every service's health came back.
-- `docs/rebuilding.md`: bringing the stack back on a new or wiped host from a backup.
-- A weekly vulnerability scan of every pinned image (`scan.yml`: Trivy, HIGH and CRITICAL findings with a fix
-  available, for linux/amd64), also run when `compose.yaml` changes on `main`. Findings go to code scanning,
-  one category per image.
-- A health check for every service (each app's own status endpoint; Recyclarr's scheduler; Dozzle's built-in
-  check), so `docker compose ps` and `docker compose up --wait` show a broken app. Needs Docker Engine 25 and
-  Compose 2.24 or later.
-- The policy check's `healthcheck` rule: every service must define a health check.
-- `scripts/smoke-test.sh` (`make smoke`), run in CI as "Stack smoke test": starts every service with throwaway
-  settings, isolated from any existing installation, and fails unless each one is healthy within five minutes.
-- shellcheck for the scripts, in `make lint` and CI.
-
-- `compose.yaml`: the Atlas stack. Radarr and Sonarr (each with a 4K instance), Lidarr, Bazarr (with a 4K
-  instance), SABnzbd, Recyclarr and Dozzle, every image pinned by version tag and
-  digest. Each app's config lives in a Docker volume named `<CONFIG_VOLUME_PREFIX><app>`, so existing
-  volumes can be adopted; media is mounted at `/media`.
-- Settings `MEDIA_ROOT`, `CONFIG_VOLUME_PREFIX` and `RECYCLARR_CONFIG_PATH`.
-- Backup, rollback and restore steps for the config volumes (docs/upgrading.md).
-- Dependabot's patch and minor updates are merged automatically once every required check passes
-  (`dependabot-auto-merge.yml`); major updates still wait for the maintainer.
-
-- `scripts/check_compose.py`: checks the resolved Compose file against the stack's policy (every image
-  pinned as `name:tag@sha256:<digest>`, no `latest`, no build, nothing privileged, no added capabilities,
-  host network or PID namespace, no Docker socket mount, unless a service's
-  `org.honeybeartech.atlas.allow.<rule>` label gives the reason) and writes a CycloneDX SBOM of the images
-  for releases. Tests with a 90 % branch-coverage floor.
-- `.env.example` listing every setting the stack reads.
+- `compose.yaml` with 10 services: Radarr 6.4.4 and Sonarr 4.0.20 (each with a 4K instance), Lidarr 3.1.0,
+  Bazarr 1.6.2 (with a 4K instance), SABnzbd 5.1.3, Recyclarr 8.7.3 and Dozzle 11.3.0. Each app's config
+  lives in a Docker volume named `<CONFIG_VOLUME_PREFIX><app>`, so an existing installation's volumes can be
+  adopted; media is mounted at `/media` from `MEDIA_ROOT`.
+- A health check for every service, so `docker compose ps` and `docker compose up --wait` show a broken app.
+  Needs Docker Engine 25 and Compose 2.24 or later.
+- `.env.example` listing every setting the stack reads; no secrets go in it.
+- `scripts/backup.sh` and `scripts/restore.sh`: back up every service's `/config` and `/scripts` mount and
+  `.env` with a manifest and checksums (readable only by the user who ran it), and restore them after
+  verifying the checksums and asking first. [docs/rebuilding.md](docs/rebuilding.md) brings the stack back on
+  a new host from a backup.
+- `scripts/check_compose.py`: the stack's policy check (every image pinned as `name:tag@sha256:<digest>`, no
+  `latest`, no build, nothing privileged, no added capabilities, host network or PID namespace, no Docker
+  socket mount, a health check on every service, unless a service's `org.honeybeartech.atlas.allow.<rule>`
+  label gives the reason), and the CycloneDX SBOM of the images attached to each release.
+- CI on every change: ruff, yamllint, shellcheck, actionlint, gitleaks over the whole history, the checker's
+  tests (90 % branch-coverage floor), the policy check, and a smoke test that starts the whole stack, waits
+  until every service is healthy, then backs it up, changes it, restores it and checks the result. CodeQL,
+  OpenSSF Scorecard, dependency review and a DCO check also run.
+- Dependabot for the images, the Python tools and the Actions; patch and minor updates merge automatically
+  once every required check passes, major updates wait for the maintainer.
+- A weekly vulnerability scan of every pinned image (Trivy), reported to code scanning.
+- Releases (this one first) carry a source archive, the SBOM, `SHA256SUMS` signed keylessly with cosign, and
+  SLSA build provenance ([docs/verifying-releases.md](docs/verifying-releases.md)).
 - Project policies (`SECURITY.md`, `CONTRIBUTING.md`, `GOVERNANCE.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md`)
-  and docs: quick start, installing, upgrading, architecture, interfaces, security requirements, assurance
-  case, dependencies, roadmap and verifying releases. What isn't built yet is marked "Planned".
-- CI (ruff, yamllint, actionlint, gitleaks over the history, tests with coverage, the Compose policy check),
-  CodeQL, OpenSSF Scorecard, dependency review, a DCO check, Dependabot, and a release workflow that signs
-  checksums keylessly and attaches the SBOM and SLSA provenance.
+  and docs: quick start, installing, upgrading, rebuilding, architecture, interfaces, security requirements,
+  assurance case, dependencies and roadmap.
 
-[Unreleased]: https://github.com/HoneyBearTech/homelab-atlas/commits/main
+### Security
+
+- Known vulnerabilities at release: 155 open findings from the image scan, all in upstream images with no
+  fixed build yet (the .NET runtimes bundled into Radarr, Lidarr and Sonarr; Python packages in SABnzbd and
+  Bazarr), none reachable from the internet. Triage and mitigations:
+  [docs/dependencies.md](docs/dependencies.md#current-findings).
+
+[Unreleased]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/HoneyBearTech/homelab-atlas/releases/tag/v0.1.0

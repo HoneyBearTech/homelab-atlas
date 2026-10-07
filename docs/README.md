@@ -7,6 +7,7 @@ Start with the [README](../README.md) for what homelab-atlas is and how to run i
 | [Quick start](quick-start.md) | Getting the stack running on a fresh Docker host |
 | [Installing](installing.md) | Host preparation, directory layout, running it securely, uninstalling |
 | [Upgrading](upgrading.md) | Moving to a new release, backing up app data first, and rolling back |
+| [Rebuilding](rebuilding.md) | Bringing the stack back on a new or wiped host from a backup |
 | [Architecture](architecture.md) | The services, who talks to whom, and how updates flow from Dependabot to the host |
 | [Interfaces](interfaces.md) | Every setting, port, volume, label and command |
 | [Verifying releases](verifying-releases.md) | Checking that release files came from this repository, unchanged |

@@ -10,9 +10,9 @@ the secure design principles it follows, and how common weaknesses are countered
 | The host | A compromised or malicious image | Digest pins; versions change only by reviewed pull request; no privileged, capability, host-namespace or socket access without a reasoned label |
 | The host | A container breaking out through the Docker socket | The `docker-socket` rule; only Dozzle mounts it, as a labelled exception with its UI kept on the LAN |
 | App API keys and credentials | Committed to the public repository | Kept in the apps' config volumes, never in the repo; `.gitignore`; gitleaks over the history in CI; GitHub push protection |
-| App API keys and credentials | Leaked through a backup | Backups documented as secret (mode `600`, off the host) |
+| App API keys and credentials | Leaked through a backup | `scripts/backup.sh` writes backups readable only by the user who ran it; documented as secret, to be kept off the host |
 | The media library | A compromised app deleting or encrypting it | Apps run as `PUID:PGID`, not root; storage-level snapshots recommended ([upgrading.md](upgrading.md#backing-up)) |
-| The app databases | An upgrade that migrates and breaks them | Backup before every upgrade; rollback = old tag + restored backup |
+| The app databases | An upgrade that migrates and breaks them | `scripts/backup.sh` before every upgrade; rollback = old tag + `scripts/restore.sh`, both exercised by the CI smoke test |
 | The release | Tampered release files | Keyless-signed `SHA256SUMS`, SLSA provenance, signed tags |
 | The CI pipeline | Untrusted pull request input running with credentials | `pull_request` only, read-only token by default, untrusted values only via `env:`, actions pinned by SHA |
 | Operator privacy | Hostnames, addresses or paths in the public repo | Placeholders only; reviewed in every pull request |

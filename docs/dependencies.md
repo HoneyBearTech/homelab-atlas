@@ -25,6 +25,7 @@ A new image or tool must:
 | --- | --- | --- | --- |
 | The stack's images | `compose.yaml` | version tag and digest | `docker compose pull` |
 | Check and test tools (pytest, coverage, ruff, yamllint, shellcheck) | [`requirements-dev.in`](../requirements-dev.in) → [`requirements-dev.txt`](../requirements-dev.txt) | exact version and SHA-256 hashes (`pip-compile --generate-hashes`) | `pip install --require-hashes --no-deps` |
+| Helper image for backups (busybox) | [`scripts/backup.sh`](../scripts/backup.sh), [`scripts/restore.sh`](../scripts/restore.sh) | version tag and digest | Docker |
 | Linters and scanners used only by CI (actionlint, gitleaks, Trivy) | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), [`scan.yml`](../.github/workflows/scan.yml) | version tag and digest | Docker |
 | GitHub Actions | [`.github/workflows/`](../.github/workflows/) | full commit SHA (version in a comment) | GitHub Actions |
 
@@ -49,8 +50,8 @@ Each release carries a CycloneDX SBOM listing every service's image and digest
 - **Dependency review** ([`.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml))
   blocks a pull request that adds or changes a Python or Actions dependency with a known vulnerability of
   moderate severity or higher, or a license outside the allowlist.
-- The CI-only images in `run:` steps aren't seen by Dependabot; they're bumped by hand at least every
-  quarter.
+- The CI-only images in `run:` steps and the backup scripts' busybox image aren't seen by Dependabot; they're
+  bumped by hand at least every quarter.
 - **Nothing updates itself on the host.** Auto-updaters such as Watchtower are not used: they would run
   versions nobody reviewed.
 

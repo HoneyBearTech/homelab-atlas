@@ -10,14 +10,15 @@ file changes with them, in the same pull request.
 - Done: a health check for each service, so `docker compose ps` shows a broken app, and a smoke test in CI that
   starts the whole stack and waits until every service is healthy.
 - Done: a weekly vulnerability scan of every pinned image (Trivy), reported to code scanning.
+- Done: backup and restore scripts, exercised end to end by the smoke test in CI, and a documented rebuild of
+  the host from a backup.
 - Switch Atlas to run the stack from a checkout of this repository, and retire the auto-updater.
 - First release (0.1.0) once Atlas runs from the repository.
 
 ## Next: safe upgrades and rebuilds
 
-- A backup and restore script for the config volumes, tested by restoring onto a fresh host.
 - Optionally move the config volumes to bind mounts under `APPDATA_ROOT`, for simpler backups.
-- A documented rebuild of Atlas from nothing: OS, Docker, this repository, a restored backup.
+- Rehearse the documented rebuild ([rebuilding.md](rebuilding.md)) on a scratch host.
 
 ## Later
 

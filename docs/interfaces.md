@@ -64,6 +64,8 @@ FlareSolverr keeps nothing worth backing up; Docker gives it an anonymous volume
 | `make check` | `docker compose config --format json \| python scripts/check_compose.py`: the policy check |
 | `python scripts/check_compose.py [FILE] [--sbom OUT]` | Checks a resolved Compose config (from `FILE` or stdin); `--sbom` also writes a CycloneDX 1.6 SBOM of the images. Exit 0 = no violations, 1 = violations (one line each), 2 = unreadable input |
 | `make test`, `make lint` | The checker's tests and the linters |
+| `scripts/backup.sh [DIR]` | Stops the stack, archives every service's `/config` and `/scripts` mount and `.env` into `DIR` (default `backups/<date>-<time>`, gitignored) with a `MANIFEST` and `SHA256SUMS`, then starts what was running. Exit 0 = backup complete |
+| `scripts/restore.sh [--yes] DIR [SERVICE...]` | Verifies `DIR/SHA256SUMS`, creates missing containers and volumes, asks for confirmation (unless `--yes`), stops the services, replaces their `/config` and `/scripts` contents with the archives, and starts what was running. Never writes other mounts |
 | `make smoke` | `scripts/smoke-test.sh`: starts every service under a separate Compose project with throwaway directories and volumes, no fixed container names and no published ports, waits until all are healthy, then removes what it created. Exit 0 = all healthy |
 
 ## Outbound connections

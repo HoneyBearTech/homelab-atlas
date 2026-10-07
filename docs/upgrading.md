@@ -13,23 +13,21 @@ of `main`.
 
 ## Backing up
 
-The state worth keeping is each app's config volume and Recyclarr's config directory. Stop the stack so the
-databases are consistent, then archive each one:
+The state worth keeping is what each service mounts at `/config` and `/scripts`: the apps' config volumes
+(settings, API keys, databases), Recyclarr's config directory and Radarr's custom scripts. `scripts/backup.sh`
+stops the stack so the databases are consistent, archives each of those mounts, copies `.env`, and starts
+again whatever was running:
 
 ```sh
-docker compose stop
-. ./.env
-mkdir -p backup-$(date +%F) && cd backup-$(date +%F)
-for app in radarr radarr4k sonarr sonarr4k lidarr bazarr bazarr4k sabnzbd; do
-  docker run --rm -v "${CONFIG_VOLUME_PREFIX}${app}:/v:ro" -v "$PWD:/b" busybox tar -czf "/b/${app}.tar.gz" -C /v .
-done
-tar -czf recyclarr.tar.gz -C "$RECYCLARR_CONFIG_PATH" .
-cd .. && chmod -R go-rwx backup-*
-docker compose start
+scripts/backup.sh                       # into backups/<date>-<time>/ in the checkout (gitignored)
+scripts/backup.sh /path/to/backup-dir   # or a directory of your choice (new or empty)
 ```
 
-Keep the archives off the host: they contain every app's API key and logins. `MEDIA_ROOT` (the media) is too
-large for this and is better covered by your storage's own snapshots or backups.
+The directory holds one `<service>-config.tar.gz` (and `<service>-scripts.tar.gz`) per mount, `env/.env`, a
+`MANIFEST` naming each archive's volume or host path and image, and `SHA256SUMS`. Everything in it is readable
+only by the user who ran the backup. **Copy it off the host**: it contains every app's API key and logins.
+`MEDIA_ROOT` (the media) is too large for this and is better covered by your storage's own snapshots or
+backups. Every service needs a container for the backup to read from, so run it on an installed stack.
 
 ## Upgrading
 
@@ -45,21 +43,20 @@ Then check each app's **System → Status** and logs (`docker compose logs <serv
 
 ## Rolling back
 
-If an app fails after the upgrade, go back to the previous version **and** restore its volume; an app whose
+If an app fails after the upgrade, go back to the previous version **and** restore its data; an app whose
 database was migrated forward won't start with the older image. For one app (Radarr here):
 
 ```sh
 git checkout vPREVIOUS
-docker compose stop radarr
-. ./.env
-docker run --rm -v "${CONFIG_VOLUME_PREFIX}radarr:/v" -v "$PWD/backup-YYYY-MM-DD:/b:ro" busybox \
-  sh -c 'rm -rf /v/* /v/.[!.]* 2>/dev/null; tar -xzf /b/radarr.tar.gz -C /v'
+scripts/restore.sh backups/YYYYMMDD-HHMMSS radarr   # checks SHA256SUMS, lists what it replaces, asks first
 docker compose up -d radarr
 ```
 
+`scripts/restore.sh` replaces everything in the service's `/config` and `/scripts` mounts with the archives,
+keeping the files' owners and modes. Without service names it restores every service in the backup. It stops
+those services while it works and starts again the ones that were running; `--yes` skips the question.
+
 ## Restoring on a new host
 
-Install as in [installing.md](installing.md) without starting the stack, create each volume and restore it
-(`docker volume create "${CONFIG_VOLUME_PREFIX}radarr"`, then the `busybox` restore command above), restore
-`recyclarr.tar.gz` into `RECYCLARR_CONFIG_PATH`, and make sure `MEDIA_ROOT` has the same layout, since the apps
-store `/media` paths. Then `docker compose up -d`.
+See [rebuilding.md](rebuilding.md): install the host, restore `.env`, then `scripts/restore.sh` creates the
+volumes and containers and fills them from the backup.

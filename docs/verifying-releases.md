@@ -1,8 +1,5 @@
 # Verifying releases
 
-> **Planned.** No release has been published yet; the first will be 0.1.0. This is how every release,
-> starting with that one, can be verified.
-
 Every homelab-atlas release is published by the [`release.yml`](../.github/workflows/release.yml) workflow
 when a version tag is pushed. homelab-atlas builds no images: a release is a version of the Compose file
 with every image pinned by digest. You can check that what you run came from that workflow, unchanged:

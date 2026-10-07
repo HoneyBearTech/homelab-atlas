@@ -2,8 +2,8 @@
 
 A homelab-atlas release changes which image versions run, and sometimes the services or settings. Apps often
 migrate their database when they start a new version and can't go back afterwards, so **every upgrade starts
-with a backup**. No release has been published yet; until then, the same steps apply to updating a checkout
-of `main`.
+with a backup**. The same steps apply to updating a checkout of `main`, which is possible but unsupported for
+anything you depend on.
 
 ## Before you upgrade
 

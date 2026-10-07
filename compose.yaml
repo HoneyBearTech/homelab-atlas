@@ -200,8 +200,11 @@ services:
     image: willfarrell/autoheal:latest@sha256:e7f42d5365c7c4490dd0cafc2858bb9fd2d64a274448d2de2bb5c386f1af7a0f
     container_name: autoheal
     restart: unless-stopped
+    # autoheal exits if it can't reach the proxy, so it starts only once the proxy answers. (After a host reboot
+    # Docker starts both at once; autoheal then restarts until the proxy is up, a few seconds.)
     depends_on:
-      - socket-proxy
+      socket-proxy:
+        condition: service_healthy
     healthcheck:
       <<: *healthcheck
       start_period: 1m

@@ -73,7 +73,7 @@ jobs:
           docker compose config --format json | python scripts/check_compose.py
 
   smoke:
-    # Not a required check by itself: add it to the main ruleset so a broken image can't be auto-merged.
+    # A required check on main, like "Checks + tests", so an image that doesn't start can't be auto-merged.
     name: Stack smoke test
     runs-on: ubuntu-latest
     timeout-minutes: 20

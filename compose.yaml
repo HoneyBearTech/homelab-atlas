@@ -97,7 +97,7 @@ services:
 
   # --- Subtitles ------------------------------------------------------------------------------------------------
   bazarr:
-    image: lscr.io/linuxserver/bazarr:v1.6.2-ls366@sha256:8b30e81c4aec2991f469e78fae8afaa89ecc9b21a80e3897f50427216b55470c
+    image: lscr.io/linuxserver/bazarr:v1.6.2-ls367@sha256:c1673816321156b904af9b7e6415ea547ae9622e4acc375358f1e1eb9ed1e904
     container_name: bazarr
     restart: unless-stopped
     healthcheck:
@@ -111,7 +111,7 @@ services:
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
 
   bazarr4k:
-    image: lscr.io/linuxserver/bazarr:v1.6.2-ls366@sha256:8b30e81c4aec2991f469e78fae8afaa89ecc9b21a80e3897f50427216b55470c
+    image: lscr.io/linuxserver/bazarr:v1.6.2-ls367@sha256:c1673816321156b904af9b7e6415ea547ae9622e4acc375358f1e1eb9ed1e904
     container_name: bazarr4k
     restart: unless-stopped
     healthcheck:
@@ -143,6 +143,10 @@ services:
     image: ghcr.io/flaresolverr/flaresolverr:v3.5.2@sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767
     container_name: flaresolverr
     restart: unless-stopped
+    # Its Chromium renders pages from the internet, so it gets nothing it doesn't need: no capabilities, and no
+    # way to gain privileges (docs/dependencies.md#current-findings).
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8191/health"]
@@ -156,7 +160,7 @@ services:
 
   # --- Quality profiles (TRaSH Guides) --------------------------------------------------------------------------
   recyclarr:
-    image: recyclarr/recyclarr:8.7.2@sha256:6e69e009e1cd7493ff6093e8e187b5d3788c75b4a2c0c5127b6a1beda1c19728
+    image: recyclarr/recyclarr:8.7.3@sha256:9c6c74d52cfc6f740a5a3624aa83867e171bb70b90453ddb7a4048b8c80445f9
     container_name: recyclarr
     restart: unless-stopped
     # Recyclarr has no web server; it's healthy while its scheduler (supercronic) runs.

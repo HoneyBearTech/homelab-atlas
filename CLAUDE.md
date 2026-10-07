@@ -83,5 +83,10 @@ make config   # docker compose config (resolved file)
 Regenerate the dev tools: `pip-compile --generate-hashes --strip-extras requirements-dev.in`, then put the
 one-line `# Generated from …` header back.
 
-Release (the owner does this): add a `## [x.y.z] - date` section to `CHANGELOG.md`, then
-`git tag -s vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z`; `release.yml` does the rest.
+Release (Claude tags it, owner's decision 2026-10-07): move "Unreleased" into a `## [x.y.z] - date` section of
+`CHANGELOG.md` (SemVer; date = the day of tagging) in a PR and merge it once green. Then, with `main` clean and
+equal to `origin/main` and CI on that commit green: `git tag -s vX.Y.Z -m vX.Y.Z` (the Mac's SSH signing key),
+check it with `git -c gpg.ssh.allowedSignersFile=.github/allowed_signers tag -v vX.Y.Z`, and
+`git push origin vX.Y.Z`; `release.yml` does the rest. Tags can't be moved or deleted (ruleset), so tag only
+what the owner asked to release. Afterwards verify the release from outside as `docs/verifying-releases.md`
+describes (cosign, `SHA256SUMS`, `gh attestation verify`, tag signature, SBOM vs `compose.yaml`).

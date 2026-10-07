@@ -32,8 +32,8 @@ How the stack fits together is in [docs/architecture.md](docs/architecture.md).
 
 ## When and how tests run
 
-Every push and pull request runs two CI jobs ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
-"Checks + tests", the required check on `main`, runs the linters below, a gitleaks scan of the whole history,
+Every push and pull request runs two CI jobs ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), both
+required checks on `main`. "Checks + tests" runs the linters below, a gitleaks scan of the whole history,
 the checker's unit tests with a coverage floor, `docker compose config` and the policy check
 ([`scripts/check_compose.py`](scripts/check_compose.py)). "Stack smoke test"
 ([`scripts/smoke-test.sh`](scripts/smoke-test.sh)) starts every service with throwaway directories and

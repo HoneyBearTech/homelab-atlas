@@ -6,6 +6,13 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- Triaged the first image scan (docs/dependencies.md#current-findings): Bazarr updated to `v1.6.2-ls367` and
+  Recyclarr to `8.7.3`, which fix 17 findings; FlareSolverr, whose Chromium renders pages from the internet,
+  now runs with no capabilities and `no-new-privileges` while its Chromium findings wait for a new upstream
+  build.
+
 ### Added
 
 - `scripts/backup.sh`: stops the stack, archives every service's `/config` and `/scripts` mount and `.env`

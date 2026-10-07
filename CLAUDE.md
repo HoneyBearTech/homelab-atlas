@@ -70,7 +70,8 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
 - New checker rule → fixture case that triggers it + `test_every_rule_is_reported_exactly` stays exact.
 - Workflows: top-level `permissions: contents: read`, raise per job; actions pinned by full SHA with a
   version comment; untrusted `${{ github.event.* }}` only through `env:`.
-- `CI / Checks + tests` is the required check name; don't rename the job.
+- `CI / Checks + tests` and `CI / Stack smoke test` are required checks (with DCO, dependency review and
+  CodeQL's two analyses); don't rename those jobs.
 
 ## Commands
 ```sh

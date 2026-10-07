@@ -70,9 +70,8 @@ Known vulnerabilities are found through Dependabot alerts, the apps' and images'
 
 ### Current findings
 
-As of 6 October 2026: no known vulnerability is open. One image is **unmaintained**: `teknologist/webnut`
-was last published in 2015 and has no version tags besides `latest` and `0.1`. It is pinned by digest and
-listed as a policy exception in `compose.yaml`; replacing it is on the [roadmap](roadmap.md).
+As of 7 October 2026: no known vulnerability is open, and every image is maintained. The unmaintained webnut
+image (last published in 2015) was removed from the stack on that date.
 
 ## Licenses
 

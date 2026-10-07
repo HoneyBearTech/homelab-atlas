@@ -9,11 +9,10 @@ All notable changes to homelab-atlas are documented here. The format follows
 ### Added
 
 - `compose.yaml`: the Atlas stack. Radarr and Sonarr (each with a 4K instance), Lidarr, Bazarr (with a 4K
-  instance), SABnzbd, FlareSolverr, Recyclarr, Dozzle and webnut, every image pinned by version tag and
+  instance), SABnzbd, FlareSolverr, Recyclarr and Dozzle, every image pinned by version tag and
   digest. Each app's config lives in a Docker volume named `<CONFIG_VOLUME_PREFIX><app>`, so existing
   volumes can be adopted; media is mounted at `/media`.
-- Settings `MEDIA_ROOT`, `CONFIG_VOLUME_PREFIX` and `RECYCLARR_CONFIG_PATH`; webnut's UPS login in a gitignored
-  `webnut.env` (template `webnut.env.example`).
+- Settings `MEDIA_ROOT`, `CONFIG_VOLUME_PREFIX` and `RECYCLARR_CONFIG_PATH`.
 - Backup, rollback and restore steps for the config volumes (docs/upgrading.md).
 - Dependabot's patch and minor updates are merged automatically once every required check passes
   (`dependabot-auto-merge.yml`); major updates still wait for the maintainer.

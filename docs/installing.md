@@ -11,7 +11,6 @@ The [quick start](quick-start.md) is the short version of this page.
 - One directory for `MEDIA_ROOT` that holds **both downloads and the library on the same filesystem**, so the
   apps can hardlink and move files instead of copying them. A network share works if the whole tree is one
   export.
-- A NUT (Network UPS Tools) server, if you keep webnut.
 
 ## Where data lives
 
@@ -21,7 +20,6 @@ The [quick start](quick-start.md) is the short version of this page.
 | Downloads and media | `MEDIA_ROOT` | `/media` |
 | Radarr's custom scripts | `APPDATA_ROOT/radarr/scripts`, `APPDATA_ROOT/radarr4k/scripts` | `/scripts` |
 | Recyclarr's config | `RECYCLARR_CONFIG_PATH` | `/config` |
-| webnut's UPS login | `webnut.env` next to `compose.yaml` | environment |
 
 An example layout under `MEDIA_ROOT`, following the TRaSH Guides:
 
@@ -38,7 +36,7 @@ The apps save `/media/...` paths in their databases, so keep the container path 
 
 1. Clone the repository (or download a release's source archive and verify it,
    [verifying-releases.md](verifying-releases.md)).
-2. Create `.env` and `webnut.env` from their `.example` files (mode `600`) and set every value
+2. Create `.env` from `.env.example` (mode `600`) and set every value
    ([interfaces.md](interfaces.md)).
 3. Create the host directories, then `docker compose up -d`.
 
@@ -57,8 +55,7 @@ Running `main` instead of a release is possible but unsupported for anything you
   Docker-published ports bypass host firewalls such as `ufw`.
 - **Dozzle can read every container's logs and, through the Docker socket, control Docker.** Keep its port on
   the LAN only, or turn on its own authentication.
-- Keep `.env` and `webnut.env` at mode `600`. `.env` holds no secrets by design; `webnut.env` holds the UPS
-  login.
+- Keep `.env` at mode `600`. It holds no secrets by design, but it does describe your host.
 - Back up the config volumes and `RECYCLARR_CONFIG_PATH`: they hold every app's API key and database
   ([upgrading.md](upgrading.md#backing-up)).
 - Keep `UMASK` at `002`: `000` makes every new file on your media share world-writable.

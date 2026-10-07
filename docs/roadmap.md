@@ -6,10 +6,9 @@ file changes with them, in the same pull request.
 ## Now: the stack in git
 
 - Done: `compose.yaml` with Radarr and Sonarr (regular and 4K), Lidarr, Bazarr (regular and 4K), SABnzbd,
-  FlareSolverr, Recyclarr, Dozzle and webnut, every image pinned by tag and digest, Dependabot proposing updates.
+  FlareSolverr, Recyclarr and Dozzle, every image pinned by tag and digest, Dependabot proposing updates.
 - Switch Atlas to run the stack from a checkout of this repository, and retire the auto-updater.
 - First release (0.1.0) once Atlas runs from the repository.
-- Replace webnut, whose image is unmaintained since 2015, with a maintained NUT web UI.
 
 ## Next: safe upgrades and rebuilds
 

@@ -20,16 +20,6 @@ setting marked required stops `docker compose` with an error naming it when it's
 | `CONFIG_VOLUME_PREFIX` | yes | `homelab-atlas_` | Prefix of the Docker volumes with each app's config and database: `<prefix>radarr`, `<prefix>radarr4k`, `<prefix>sonarr`, `<prefix>sonarr4k`, `<prefix>lidarr`, `<prefix>bazarr`, `<prefix>bazarr4k`, `<prefix>sabnzbd`. |
 | `RECYCLARR_CONFIG_PATH` | yes | `/srv/appdata/recyclarr` | Host directory with Recyclarr's config, mounted at `/config`. |
 
-### `webnut.env`
-
-Read by the `webnut` service (template: [`webnut.env.example`](../webnut.env.example)); required, mode `600`,
-gitignored.
-
-| Setting | Meaning |
-| --- | --- |
-| `UPS_HOST`, `UPS_PORT` | The NUT server (`upsd`) to read, usually port 3493 |
-| `UPS_USER`, `UPS_PASSWORD` | A NUT user with read access (a secret) |
-
 ## Services and ports
 
 | Service | Image | Host port → container | Web UI |
@@ -45,7 +35,6 @@ gitignored.
 | `flaresolverr` | `ghcr.io/flaresolverr/flaresolverr` | 8191 → 8191 | no (API for the apps) |
 | `recyclarr` | `recyclarr/recyclarr` | none | no (runs daily) |
 | `dozzle` | `amir20/dozzle` | 4040 → 8080 | yes (container logs) |
-| `webnut` | `teknologist/webnut` | 6543 → 6543 | yes (UPS status) |
 
 Ports are published on every host interface. Exact versions and digests are in [`compose.yaml`](../compose.yaml).
 
@@ -65,7 +54,7 @@ FlareSolverr keeps nothing worth backing up; Docker gives it an anonymous volume
 
 | Label | Meaning |
 | --- | --- |
-| `org.honeybeartech.atlas.allow.<rule>` | Lets one service break one policy rule; the value is the reason, and must not be empty. Rules: `image`, `digest`, `latest`, `build`, `privileged`, `cap-add`, `host-network`, `host-pid`, `docker-socket` ([security.md](security.md#policy)). In use: `dozzle` (`docker-socket`), `webnut` (`latest`). |
+| `org.honeybeartech.atlas.allow.<rule>` | Lets one service break one policy rule; the value is the reason, and must not be empty. Rules: `image`, `digest`, `latest`, `build`, `privileged`, `cap-add`, `host-network`, `host-pid`, `docker-socket` ([security.md](security.md#policy)). In use: `dozzle` (`docker-socket`). |
 
 ## Commands
 
@@ -80,7 +69,7 @@ FlareSolverr keeps nothing worth backing up; Docker gives it an anonymous volume
 
 From the host: the image registries (`lscr.io`, `ghcr.io`, Docker Hub) on `docker compose pull`. From the apps:
 the indexers, the Usenet provider and metadata services they're configured for; Recyclarr fetches the TRaSH
-Guides from GitHub and calls the Radarr and Sonarr APIs; webnut connects to the NUT server.
+Guides from GitHub and calls the Radarr and Sonarr APIs.
 
 ## Release files
 

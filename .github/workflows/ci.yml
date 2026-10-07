@@ -65,6 +65,6 @@ jobs:
       # policy (pinned by digest, nothing privileged; scripts/check_compose.py).
       - name: Compose file and policy
         run: |
-          for f in .env.example *.env.example; do cp "$f" "${f%.example}"; done
+          cp .env.example .env
           docker compose config --quiet
           docker compose config --format json | python scripts/check_compose.py

@@ -41,7 +41,7 @@ jobs:
             echo "::error::There is no compose.yaml to release"
             exit 1
           fi
-          for f in .env.example *.env.example; do cp "$f" "${f%.example}"; done
+          cp .env.example .env
           docker compose config --format json > compose.json
           python scripts/check_compose.py compose.json --sbom "homelab-atlas-${version}.cdx.json"
 

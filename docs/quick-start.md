@@ -16,13 +16,12 @@ the `docker` group, and one directory (or mounted share) that holds both downloa
 
    ```sh
    cp .env.example .env && chmod 600 .env
-   cp webnut.env.example webnut.env && chmod 600 webnut.env
    ```
 
    In `.env`, set `PUID`/`PGID` to the user that owns your media, `TZ`, `MEDIA_ROOT` (downloads and media),
    `APPDATA_ROOT` and `RECYCLARR_CONFIG_PATH`. `CONFIG_VOLUME_PREFIX` names the Docker volumes that hold each
-   app's settings; keep the default for a new installation. In `webnut.env`, set your NUT server's address and
-   login. Every setting is described in [interfaces.md](interfaces.md#settings).
+   app's settings; keep the default for a new installation. Every setting is described in
+   [interfaces.md](interfaces.md#settings).
 
 3. **Create the host directories** as that user, so Docker doesn't create them owned by root:
 

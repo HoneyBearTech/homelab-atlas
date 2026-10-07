@@ -17,7 +17,6 @@ upstream images, pinned by digest.
 | FlareSolverr | the project's own image | Proxy that solves browser challenges for indexers that need it |
 | Recyclarr | the project's own image | Syncs TRaSH Guides custom formats and quality profiles into Radarr and Sonarr on a schedule |
 | Dozzle | the project's own image | Web UI for the containers' logs (reads them through the Docker socket) |
-| webnut | the project's own image | Web UI for the UPS status from a NUT server |
 
 The 4K instances are separate containers with their own config and library folders, so 4K and regular
 releases are managed independently.
@@ -64,7 +63,7 @@ Nothing on the host updates itself: a version that runs is always a version that
 | Path | What |
 | --- | --- |
 | `compose.yaml` | The stack |
-| `.env.example`, `webnut.env.example` | Templates for the settings and webnut's UPS login |
+| `.env.example` | Template for the settings |
 | `scripts/check_compose.py` | The policy check and SBOM generator (standard-library Python) |
 | `tests/` | Its tests, with JSON fixtures |
 | `docs/` | This documentation |

@@ -30,9 +30,9 @@ Docker Compose stack for Atlas, the homelab media automation server running Recy
 ## What's in the stack
 
 Radarr and Sonarr (regular and 4K instances), Lidarr, Bazarr (regular and 4K), SABnzbd, FlareSolverr and
-Recyclarr, plus Dozzle (container logs) and webnut (UPS status), all from their upstream images
-([architecture](docs/architecture.md), ports in [interfaces](docs/interfaces.md#services-and-ports)). The
-indexer manager, the torrent client and the media server run on other hosts.
+Recyclarr, plus Dozzle (container logs), all from their upstream images ([architecture](docs/architecture.md),
+ports in [interfaces](docs/interfaces.md#services-and-ports)). The indexer manager, the torrent client and the
+media server run on other hosts.
 
 Every image is pinned by tag **and** digest. New versions arrive as Dependabot pull requests that CI checks
 and the maintainer merges; nothing on the host updates itself.
@@ -42,7 +42,6 @@ and the maintainer merges; nothing on the host updates itself.
 ```sh
 git clone https://github.com/HoneyBearTech/homelab-atlas.git && cd homelab-atlas
 cp .env.example .env && chmod 600 .env              # then set PUID/PGID, TZ, MEDIA_ROOT, ...
-cp webnut.env.example webnut.env && chmod 600 webnut.env   # your NUT server and login
 docker compose up -d
 ```
 
@@ -61,8 +60,7 @@ Upgrading to a new release: [docs/upgrading.md](docs/upgrading.md).
 
 ## Configuration
 
-Settings come from `.env` (template [`.env.example`](.env.example)), which holds no secrets, and webnut's UPS
-login from `webnut.env` (template [`webnut.env.example`](webnut.env.example)).
+Settings come from `.env` (template [`.env.example`](.env.example)), which holds no secrets.
 
 | Setting | Default in `.env.example` | Meaning |
 | --- | --- | --- |
@@ -81,7 +79,7 @@ Ports, volumes and labels: [docs/interfaces.md](docs/interfaces.md).
 - Turn on each app's authentication before anything else, and keep the web UIs on your LAN. Docker-published
   ports bypass host firewalls such as `ufw`.
 - Secrets (API keys, logins, provider credentials) live only in each app's config volume, never in this
-  repository or `.env`; the UPS login is in `webnut.env` (mode `600`, gitignored).
+  repository or `.env`.
 - Dozzle reads logs through the Docker socket: keep its port (4040) on the LAN.
 - Don't run an auto-updater such as Watchtower on these containers; upgrade by release instead.
 - The policy check refuses privileged containers, added capabilities, host networking and Docker socket

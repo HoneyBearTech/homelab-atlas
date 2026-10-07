@@ -1,6 +1,6 @@
 # The Atlas stack. Every setting comes from .env (template: .env.example; reference: docs/interfaces.md).
-# Every image is pinned as name:tag@sha256:<digest>; Dependabot proposes updates and the maintainer merges them
-# by hand. scripts/check_compose.py enforces the policy (docs/security.md#policy).
+# Every image is pinned as name:tag@sha256:<digest>; Dependabot proposes updates (patch and minor ones merge
+# automatically once CI passes). scripts/check_compose.py enforces the policy (docs/security.md#policy).
 
 name: homelab-atlas
 
@@ -144,19 +144,6 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
-  webnut:
-    image: teknologist/webnut:latest@sha256:12e3e09f7287bb9deddae792d9544d17b55a3bcbb44be95c3d9e663c29723947
-    container_name: webnut
-    restart: unless-stopped
-    labels:
-      org.honeybeartech.atlas.allow.latest: >-
-        The image publishes only "latest" and an older "0.1" (both from 2015); pinned by digest. Unmaintained:
-        replacement tracked in docs/roadmap.md.
-    env_file:
-      - path: webnut.env
-        required: true
-    ports:
-      - "6543:6543"
 
 # Each app's configuration and database. The volume names come from CONFIG_VOLUME_PREFIX, so an existing
 # installation keeps using the volumes it already has.

@@ -49,9 +49,10 @@ non-empty reason:
   `APPDATA_ROOT`, `RECYCLARR_CONFIG_PATH` or `MEDIA_ROOT` controls the stack; those are trusted.
 - **Media and downloads.** What the apps download is untrusted content from the internet; the apps run as
   an unprivileged user with access to `/media`, which limits but doesn't remove that risk.
-- **Dozzle's access to Docker.** Dozzle needs the Docker socket to read logs; read-only mounting doesn't limit
-  the Docker API, so anyone who can use Dozzle's web UI can see every container's logs. It is an allowed
-  exception (label in `compose.yaml`); keep its port on the LAN.
+- **Dozzle's access to Docker.** The Dozzle agent needs the Docker socket to read logs; read-only mounting
+  doesn't limit the Docker API, so any Dozzle that can reach the agent's port, and anyone who can use that
+  Dozzle's web UI, can see every container's logs. It is an allowed exception (label in `compose.yaml`); keep its
+  port on the LAN.
 - **autoheal's reach.** autoheal never holds the socket: `socket-proxy` does (the second allowed exception) and
   passes on only listing, inspecting, restarting and stopping containers, on an internal network with no
   published port. Whoever controls autoheal or the proxy can still stop any container on the host and read

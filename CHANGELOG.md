@@ -21,7 +21,9 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 - `scripts/backup.sh` stops each service only while its own data is copied, and compresses after it has started
   again (with pigz when it's installed), instead of stopping the whole stack for the whole backup.
-
+- Dozzle runs as an agent (`dozzle agent`, port 7007) for the homelab's Dozzle hub on another host, which shows
+  every host's logs in one web UI, and moves to 11.3.2, the hub's version. Atlas no longer has a Dozzle web UI of
+  its own on port 4040.
 - Radarr and Radarr 4K, Sonarr and Sonarr 4K, Lidarr, SABnzbd and socket-proxy move to linuxserver.io's newest
   builds of the same app versions: rebuilt base packages, no database migration.
 - linuxserver.io images are pinned by their `version-<app version>` tag (socket-proxy by its bare version)

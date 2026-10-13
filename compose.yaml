@@ -187,20 +187,23 @@ services:
       - ${RECYCLARR_CONFIG_PATH:?set RECYCLARR_CONFIG_PATH in .env}:/config
 
   # --- Operations -----------------------------------------------------------------------------------------------
+  # A Dozzle agent: it serves this host's container logs to the homelab's Dozzle on another host, which shows the
+  # logs of every host in one web UI. It has no web UI of its own. Keep it on the hub's version.
   dozzle:
-    image: amir20/dozzle:v11.3.0@sha256:a7d69d20891d3dcc82636e24afa4c1c162b41d0673ef798b14f09e6b69accc5a
+    image: amir20/dozzle:v11.3.2@sha256:0d8cf9702f422d65a7e8ad238785dc6b05b2b9c43c945f6bbdf3358ad5da5f6c
     container_name: dozzle
     restart: unless-stopped
+    command: agent
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "/dozzle", "healthcheck"]
     labels:
       autoheal: "true"
       org.honeybeartech.atlas.allow.docker-socket: >-
-        Dozzle shows container logs by reading them through the Docker API. The socket is mounted read-only, which
-        protects the socket file but not the API, so the web UI must stay on the LAN.
+        The Dozzle agent reads container logs through the Docker API for the Dozzle hub. The socket is mounted
+        read-only, which protects the socket file but not the API, so the agent's port must stay on the LAN.
     ports:
-      - "4040:8080"
+      - "7007:7007"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 

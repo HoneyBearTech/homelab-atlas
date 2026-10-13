@@ -8,11 +8,13 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ### Changed
 
-- socket-proxy is pinned to its full linuxserver.io build tag, `3.4.6-r0-ls102`: the same proxy version, rebuilt
-  with current base packages. The bare `3.4.6` tag is rebuilt in place, which Dependabot never proposes.
+- Radarr and Radarr 4K, Sonarr and Sonarr 4K, Lidarr, SABnzbd and socket-proxy move to linuxserver.io's newest
+  builds of the same app versions: rebuilt base packages, no database migration.
+- linuxserver.io images are pinned by their `version-<app version>` tag (socket-proxy by its bare version)
+  instead of the `-lsNNN` build tag, which Dependabot can't follow. Dependabot now proposes their new versions
+  and rebuilds; a rebuild (same tag, new digest, nothing else changed) is merged automatically once the checks
+  pass, like patch and minor updates.
 - Dependabot checks for updates every Monday at 06:00 UTC.
-- Radarr and Radarr 4K, Sonarr and Sonarr 4K, Lidarr and SABnzbd move to linuxserver.io's newer builds of the
-  same app versions (`ls320`, `ls328`, `ls43`, `ls276`): rebuilt base packages, no database migration.
 
 ## [0.2.0] - 2026-10-07
 

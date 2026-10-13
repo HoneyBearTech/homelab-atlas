@@ -43,6 +43,14 @@ Each release carries a CycloneDX SBOM listing every service's image and digest
   images, the Python tools and the GitHub Actions, they're squash-merged once every required check has passed
   (CI with the Compose policy check, CodeQL, dependency review). Nothing skips a check, and a failing update
   stays open for the maintainer.
+- **Image rebuilds merge automatically too**: a pull request that only moves an image to a new digest under the
+  same tag (a rebuild of the same app version, with newer base packages) and changes nothing else in
+  `compose.yaml`.
+- **linuxserver.io images are pinned by their `version-<app version>` tag** (`radarr:version-6.4.4.10685@sha256:…`),
+  which always points at the newest build of that app version. Dependabot can't follow the build tags
+  (`6.4.4.10685-ls320`): it reads `-ls320` as a suffix that must match exactly, so it never proposes another
+  build. With the `version-` tag it proposes both new app versions and rebuilds (a new digest under the same
+  tag). socket-proxy uses its bare version tag (`3.4.6`) for the same reason.
 - **Major updates are merged by hand**, after reading the app's release notes: a new major version can migrate
   its database one way. So is any update Dependabot can't classify as patch, minor or major.
 - **A merge doesn't deploy.** The server runs what it last pulled; updates reach it when the operator pulls
@@ -79,8 +87,6 @@ version somewhere upstream). Every image is maintained.
 autoheal's only maintained tag is `latest` (its versioned tags stop at 1.2.0 from 2021), so it is pinned as
 `latest@sha256:…` with a policy exception; if Dependabot doesn't propose new digests for it, it's bumped by hand
 with the other hand-pinned images.
-socket-proxy is pinned by its full build tag (`3.4.6-r0-ls102`), not the bare version (`3.4.6`), which
-linuxserver.io rebuilds in place: Dependabot only proposes a newer tag, so it would never see those rebuilds.
 
 **Removed from the stack.** FlareSolverr (348 alerts, most of them in its Chromium, the only findings reachable
 from the internet): no indexer was configured to use it, and its newest release still shipped an old Chromium.

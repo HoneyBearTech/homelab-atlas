@@ -6,6 +6,18 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-13
+
+Two settings the stack needs to take over Atlas as it runs today.
+
+### Upgrading
+
+- **Set `SABNZBD_INCOMPLETE_PATH`** in `.env` (required): the host directory SABnzbd uses as its temporary download
+  folder, mounted at `/incomplete`. Point it at wherever SABnzbd assembles downloads now (its *Temporary Download
+  Folder* setting).
+- **Sonarr 4K moves to port 8988**: point Recyclarr, the indexer manager and anything else using 8888 at 8988. If
+  its config volume doesn't follow `CONFIG_VOLUME_PREFIX`, name it with `SONARR4K_CONFIG_VOLUME`.
+
 ### Changed
 
 - SABnzbd mounts `SABNZBD_INCOMPLETE_PATH` (a new, required setting) at `/incomplete`, its temporary download folder,
@@ -126,7 +138,8 @@ checks, backups and release signing around it.
   Bazarr), none reachable from the internet. Triage and mitigations:
   [docs/dependencies.md](docs/dependencies.md#current-findings).
 
-[Unreleased]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/HoneyBearTech/homelab-atlas/releases/tag/v0.1.0

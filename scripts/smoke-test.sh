@@ -80,12 +80,24 @@ YAML
 } >"$work/override.yaml"
 
 compose config --quiet
+# The images first, a few at a time and with retries: pulling every layer of every image at once can run into the
+# registries' rate limits (lscr.io and ghcr.io answer "toomanyrequests"), which is the registry, not the stack.
+echo "Pulling the images"
+for attempt in 1 2 3 4; do
+  if COMPOSE_PARALLEL_LIMIT=4 compose pull --quiet; then break; fi
+  if [ "$attempt" -eq 4 ]; then
+    echo "error: couldn't pull the images after $attempt attempts" >&2
+    exit 1
+  fi
+  echo "Pull failed (attempt $attempt); retrying in $((attempt * 20))s"
+  sleep $((attempt * 20))
+done
 echo "Starting $(compose config --services | wc -l | tr -d ' ') services, waiting up to ${timeout}s for them to be healthy"
 # One retry: Recyclarr fetches the TRaSH Guides from GitHub as it starts and exits if that fetch breaks off, which
 # is the network, not the stack. A service that is really broken fails both attempts.
-if ! compose up --detach --quiet-pull --wait --wait-timeout "$timeout"; then
+if ! compose up --detach --pull never --wait --wait-timeout "$timeout"; then
   echo "Not every service became healthy; retrying once"
-  compose up --detach --wait --wait-timeout "$timeout"
+  compose up --detach --pull never --wait --wait-timeout "$timeout"
 fi
 compose ps --format 'table {{.Service}}\t{{.Status}}'
 

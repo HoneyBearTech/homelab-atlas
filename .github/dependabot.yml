@@ -8,6 +8,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "06:00"
     assignees: ["HoneyBearTech"]
 
   # The check and test tools (requirements-dev.txt), pinned with hashes.
@@ -15,12 +17,16 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "06:00"
     assignees: ["HoneyBearTech"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "06:00"
     assignees: ["HoneyBearTech"]
     groups:
       # init, analyze and upload-sarif must share one version.

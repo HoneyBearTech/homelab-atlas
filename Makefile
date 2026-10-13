@@ -19,7 +19,7 @@ lint: $(VENV)/.installed
 	$(VENV)/bin/ruff check .
 	$(VENV)/bin/ruff format --check .
 	$(VENV)/bin/yamllint --strict .
-	$(VENV)/bin/shellcheck scripts/*.sh
+	$(VENV)/bin/shellcheck -x scripts/*.sh
 
 # The stack's policy check: every image pinned by digest, nothing privileged (needs Docker and .env)
 check: $(VENV)/.installed

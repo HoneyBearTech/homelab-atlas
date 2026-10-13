@@ -31,7 +31,9 @@ web UI; a malicious pull request; a malicious download. Out of scope: an attacke
 4. **Containers → host.** Only the config volumes, `MEDIA_ROOT`, Radarr's scripts and Recyclarr's config are
    mounted; no host namespaces. The two socket mounts (Dozzle; socket-proxy, which autoheal reaches only on an internal network) are reviewed, labelled exceptions.
 5. **Internet → apps.** Indexer results and downloads are untrusted data handled by the apps.
-6. **Pull requests → CI.** Fork pull requests get a read-only token and no secrets.
+6. **Pull requests → CI.** Fork pull requests get a read-only token and no secrets. The project's one
+   secret, a Docker Hub token that can only read public images (once the maintainer adds it), is logged out
+   before the smoke test starts any container.
 
 ## Secure design principles
 

@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
-# Smoke test of the stack: start every service in compose.yaml with throwaway settings, wait until each one
-# reports healthy, take a backup, change the data, restore the backup and check that the data and health came
-# back (and that what the backup.exclude labels list was left out and kept), run the scheduled backup against a
-# stand-in for the backup server, make a test container unhealthy and check that autoheal restarts it, then remove
-# everything it created.
-# CI runs it on every change; `make smoke` runs it locally.
+# Smoke test of the stack: start every service in compose.yaml with throwaway settings, wait until each one reports
+# healthy, then mark every data mount, take a backup, change the data, restore the backup and check that the data
+# and health came back (with Radarr's config.xml keeping its owner and mode, and the mounts and paths excluded from
+# backups, such as /media and the apps' MediaCover posters, neither archived nor overwritten), run the scheduled
+# backup against a stand-in backup server, make a test container unhealthy and check that autoheal restarts it (when
+# the stack has autoheal), and remove everything it created. CI runs it on every change; `make smoke` runs it locally.
+# Without a compose.yaml there is nothing to test, and it says so and passes.
 #
-# It stays away from any real installation on the same Docker host: its own Compose project, temporary
-# directories for MEDIA_ROOT, APPDATA_ROOT, RECYCLARR_CONFIG_PATH and SABNZBD_INCOMPLETE_PATH, config volumes
-# under their own prefix (never SONARR4K_CONFIG_VOLUME), no fixed container names and no published ports. It never reads .env or autoheal.env (so no webhook is called),
-# ignores the stack's settings in the environment, and on exit removes only the volumes Compose labelled with its
-# own project.
+# It stays away from any real installation on the same Docker host: its own Compose project, settings from
+# .env.example with every directory (*_ROOT, *_PATH) moved into a temporary directory, every volume and network
+# name (*_VOLUME, *_NETWORK) and name prefix (*_PREFIX) replaced by one of its own (so never the real
+# SONARR4K_CONFIG_VOLUME), no fixed container names, no published ports and no service env files. It never reads
+# .env or autoheal.env (so no webhook is called), ignores the stack's settings in the environment, and on exit
+# removes only the volumes Compose labelled with its own project and the networks it created.
 set -euo pipefail
 
 project=homelab-atlas-smoke
@@ -18,12 +20,21 @@ timeout=${SMOKE_TIMEOUT:-300}
 root=$(cd "$(dirname "$0")/.." && pwd)
 # shellcheck source=scripts/lib.sh
 . "$root/scripts/lib.sh"
+
+if [ ! -f "$root/compose.yaml" ]; then
+  message="No compose.yaml yet; nothing to smoke-test"
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::notice::$message"; else echo "$message"; fi
+  exit 0
+fi
 work=$(mktemp -d)
 
-# The settings come from the generated env file only, never from the caller's environment. The Compose
-# variables also point scripts/backup.sh and scripts/restore.sh at this project.
-unset PUID PGID TZ UMASK MEDIA_ROOT APPDATA_ROOT CONFIG_VOLUME_PREFIX SONARR4K_CONFIG_VOLUME RECYCLARR_CONFIG_PATH \
-  SABNZBD_INCOMPLETE_PATH COMPOSE_PROFILES
+# The settings come from the generated env file only, never from the caller's environment. The Compose variables
+# also point scripts/backup.sh and scripts/restore.sh at this project.
+settings=$(grep -E '^[A-Z][A-Z0-9_]*=' "$root/.env.example" || true)
+while IFS='=' read -r key _; do
+  if [ -n "$key" ]; then unset "$key"; fi
+done <<<"$settings"
+unset COMPOSE_PROFILES
 export COMPOSE_PROJECT_NAME=$project
 export COMPOSE_FILE=$root/compose.yaml:$work/override.yaml
 export COMPOSE_ENV_FILES=$work/env
@@ -39,37 +50,57 @@ cleanup() {
   compose down --remove-orphans --timeout 30 || true
   docker volume ls -q --filter "label=com.docker.compose.project=$project" |
     xargs -r docker volume rm >/dev/null || true
+  for network in "${networks[@]+"${networks[@]}"}"; do docker network rm "$network" >/dev/null || true; done
+  # Services that run as root leave root-owned files in the throwaway directories; remove them as root too.
+  docker run --rm --network none -v "$work:/work" "$busybox" find /work -mindepth 1 -delete </dev/null || true
   rm -rf "$work"
   exit "$status"
 }
+networks=()
 trap cleanup EXIT
 
-mkdir -p "$work/media" "$work/appdata/radarr/scripts" "$work/appdata/radarr4k/scripts" "$work/recyclarr" \
-  "$work/incomplete"
-cat >"$work/env" <<EOF
-PUID=$(id -u)
-PGID=$(id -g)
-TZ=Etc/UTC
-UMASK=002
-MEDIA_ROOT=$work/media
-APPDATA_ROOT=$work/appdata
-CONFIG_VOLUME_PREFIX=${project}_
-RECYCLARR_CONFIG_PATH=$work/recyclarr
-SABNZBD_INCOMPLETE_PATH=$work/incomplete
-EOF
+while IFS= read -r line; do
+  [ -n "$line" ] || continue
+  key=${line%%=*}
+  case $key in
+    *_ROOT | *_PATH)
+      value=$work/$(echo "$key" | tr 'A-Z_' 'a-z-')
+      # Writable by any user: Recyclarr runs as PUID (1000 in .env.example), which may not be the caller's uid.
+      mkdir -p "$value" && chmod 0777 "$value"
+      ;;
+    *_PREFIX) value=${project}_ ;;
+    *_VOLUME) value=${project}_$(echo "$key" | tr 'A-Z_' 'a-z-') ;;
+    *_NETWORK) value=${project}_$(echo "$key" | tr 'A-Z_' 'a-z-') ;;
+    *) value=${line#*=} ;;
+  esac
+  printf '%s=%s\n' "$key" "$value"
+done <<<"$settings" >"$work/env"
 
-# Project-scoped container names and no published ports, so the test can't collide with anything already
-# running on the host; the health checks run inside the containers and need neither.
+# Networks the stack expects to exist (external ones, named by *_NETWORK settings) are created for the test only.
+while IFS='=' read -r key value; do
+  case $key in
+    *_NETWORK)
+      docker network create "$value" >/dev/null
+      networks+=("$value")
+      ;;
+  esac
+done <"$work/env"
+
+# Project-scoped container names, no published ports and no env files, so the test can't collide with anything
+# already running on the host or read a real secret; the health checks run inside the containers and need neither.
+stack_services=$(COMPOSE_FILE=$root/compose.yaml docker compose config --no-interpolate --services)
+has_autoheal=false
 {
   echo "services:"
-  for service in $(COMPOSE_FILE=$root/compose.yaml docker compose config --no-interpolate --services); do
-    printf '  %s:\n    container_name: !reset null\n    ports: !reset []\n' "$service"
-    if [ "$service" = autoheal ]; then printf '    env_file: !reset []\n'; fi
+  for service in $stack_services; do
+    printf '  %s:\n    container_name: !reset null\n    ports: !reset []\n    env_file: !reset []\n' "$service"
+    if [ "$service" = autoheal ]; then has_autoheal=true; fi
   done
   # A container that turns unhealthy on demand (a file in its tmpfs), for autoheal to restart.
-  cat <<'YAML'
+  if $has_autoheal; then
+    cat <<YAML
   autoheal-test:
-    image: busybox:1.38.0@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
+    image: $busybox
     command: ["sleep", "infinity"]
     init: true
     tmpfs: [/tmp]
@@ -80,6 +111,7 @@ EOF
       interval: 2s
       retries: 2
 YAML
+  fi
 } >"$work/override.yaml"
 
 compose config --quiet
@@ -109,82 +141,143 @@ fail() {
   exit 1
 }
 
-echo "Backup and restore round trip"
-compose exec -T radarr sh -c 'echo backed-up >/config/smoke-marker'
-echo backed-up >"$work/appdata/radarr/scripts/smoke-marker"
-owner=$(compose exec -T radarr stat -c '%u:%g %a' /config/config.xml)
-# Entries a service leaves out of its backups (its backup.exclude label) get a file of their own, which must be
-# missing from the archive and still there after the restore.
+# A marker file in a data mount, written and read in a throwaway container (the service's image may have no shell).
+put_marker() {
+  docker run --rm --network none --volumes-from "$1" "$busybox" \
+    sh -c 'echo "$2" >"$1/.smoke-marker" && if [ "$2" = changed ]; then touch "$1/.smoke-stray"; fi' \
+    marker "$2" "$3" </dev/null
+}
+check_marker() {
+  docker run --rm --network none --volumes-from "$1:ro" "$busybox" \
+    sh -c 'test "$(cat "$1/.smoke-marker")" = backed-up && test ! -e "$1/.smoke-stray"' check "$2" </dev/null
+}
+
+# Every directory a backup would archive, as "<service><TAB><mount>".
+targets=()
+for service in $(compose config --services); do
+  id=$(compose ps --all --quiet "$service")
+  while IFS=$'\t' read -r mount _; do
+    if is_dir "$id" "$mount"; then targets+=("$service	$mount"); fi
+  done < <(data_mounts "$id")
+done
+# Every directory a service excludes from backups (its backup.skip label): never archived, never overwritten.
+skipped=()
+for service in $(compose config --services); do
+  id=$(compose ps --all --quiet "$service")
+  while IFS= read -r mount; do
+    if is_dir "$id" "$mount"; then skipped+=("$service	$mount"); fi
+  done < <(skipped_mounts "$id")
+done
+# Every path a service leaves out of a mount's archive (its backup.exclude label): not archived, not deleted.
 excluded=()
 for service in $(compose config --services); do
-  while IFS=$'\t' read -r mount name; do
-    if [ -n "$name" ]; then excluded+=("$service"$'\t'"$mount"$'\t'"$name"); fi
-  done <<<"$(backup_excludes "$(compose ps --all --quiet "$service")")"
+  id=$(compose ps --all --quiet "$service")
+  while IFS= read -r path; do excluded+=("$service	$path"); done < <(label_paths "$id" "$exclude_label")
 done
-[ ${#excluded[@]} -gt 0 ] || fail "no service has a backup.exclude label"
-for entry in "${excluded[@]}"; do
-  IFS=$'\t' read -r service mount name <<<"$entry"
-  docker run --rm --network none --volumes-from "$(compose ps --quiet "$service")" "$busybox" \
-    sh -c 'mkdir -p "$1" && echo excluded >"$1/.smoke-excluded"' excluded "$mount/$name" </dev/null
-done
-"$root/scripts/backup.sh" "$work/backup"
-for entry in "${excluded[@]}"; do
-  IFS=$'\t' read -r service mount name <<<"$entry"
-  if tar -tzf "$work/backup/$service-${mount#/}.tar.gz" | grep -Eq "^\./$name(/|$)"; then
-    fail "the backup of $service $mount includes $name, which its label leaves out"
-  fi
-done
-[ "$(compose ps --services --status running | wc -l)" -eq "$(compose config --services | wc -l)" ] ||
-  fail "backup.sh didn't start every service again"
+if [ ${#targets[@]} -eq 0 ]; then
+  echo "No service has a data mount; skipping the backup and restore round trip"
+else
+  for target in "${skipped[@]+"${skipped[@]}"}"; do
+    IFS=$'\t' read -r service mount <<<"$target"
+    docker run --rm --network none --volumes-from "$(compose ps --quiet "$service")" "$busybox" \
+      sh -c 'echo kept >"$1/.smoke-skipped"' mark "$mount" </dev/null
+  done
+  for entry in "${excluded[@]+"${excluded[@]}"}"; do
+    IFS=$'\t' read -r service path <<<"$entry"
+    docker run --rm --network none --volumes-from "$(compose ps --quiet "$service")" "$busybox" \
+      sh -c 'mkdir -p "$1" && echo kept >"$1/.smoke-excluded"' mark "$path" </dev/null
+  done
+  echo "Backup and restore round trip over ${#targets[@]} data mount(s)"
+  # A restore must give files back their owners and modes; Radarr's config.xml stands in for every app's settings.
+  owner=$(compose exec -T radarr stat -c '%u:%g %a' /config/config.xml)
+  for target in "${targets[@]}"; do
+    IFS=$'\t' read -r service mount <<<"$target"
+    put_marker "$(compose ps --quiet "$service")" "$mount" backed-up
+  done
+  "$root/scripts/backup.sh" "$work/backup"
+  for network in "${networks[@]+"${networks[@]}"}"; do
+    grep -Eq "^$network"$'\t'"[0-9a-f.:]+/[0-9]+"$'\t' "$work/backup/NETWORKS" ||
+      fail "the backup's NETWORKS doesn't record the address range of $network"
+  done
+  [ -s "$work/backup/VERSION" ] || fail "the backup has no VERSION"
+  [ "$(compose ps --services --status running | wc -l)" -eq "$(compose config --services | wc -l)" ] ||
+    fail "backup.sh didn't start every service again"
 
-compose exec -T radarr sh -c 'echo changed >/config/smoke-marker && touch /config/smoke-stray'
-echo changed >"$work/appdata/radarr/scripts/smoke-marker"
-"$root/scripts/restore.sh" --yes "$work/backup"
+  for target in "${targets[@]}"; do
+    IFS=$'\t' read -r service mount <<<"$target"
+    put_marker "$(compose ps --quiet "$service")" "$mount" changed
+  done
+  "$root/scripts/restore.sh" --yes "$work/backup"
+  for target in "${skipped[@]+"${skipped[@]}"}"; do
+    IFS=$'\t' read -r service mount <<<"$target"
+    if awk -F '\t' -v s="$service" -v m="$mount" '$2 == s && $3 == m { found = 1 } END { exit !found }' \
+      "$work/backup/MANIFEST"; then
+      fail "$service $mount is excluded from backups but was archived"
+    fi
+    docker run --rm --network none --volumes-from "$(compose ps --all --quiet "$service"):ro" "$busybox" \
+      sh -c 'test "$(cat "$1/.smoke-skipped")" = kept' check "$mount" </dev/null ||
+      fail "$service $mount is excluded from backups but restore.sh touched it"
+  done
+  if [ ${#skipped[@]} -gt 0 ]; then echo "${#skipped[@]} excluded mount(s) were neither archived nor overwritten"; fi
+  for entry in "${excluded[@]+"${excluded[@]}"}"; do
+    IFS=$'\t' read -r service path <<<"$entry"
+    while IFS=$'\t' read -r archive s mount _; do
+      if [ "$s" = "$service" ] && [[ "$path" == "$mount"/* ]] &&
+        grep -qF -- "./${path#"$mount"/}/" <(tar -tzf "$work/backup/$archive"); then
+        fail "$service $path is left out of backups but is in $archive"
+      fi
+    done <"$work/backup/MANIFEST"
+    docker run --rm --network none --volumes-from "$(compose ps --all --quiet "$service"):ro" "$busybox" \
+      sh -c 'test "$(cat "$1/.smoke-excluded")" = kept' check "$path" </dev/null ||
+      fail "$service $path is left out of backups but restore.sh deleted it"
+  done
+  if [ ${#excluded[@]} -gt 0 ]; then echo "${#excluded[@]} left-out path(s) were neither archived nor deleted"; fi
 
-[ "$(compose exec -T radarr cat /config/smoke-marker)" = backed-up ] || fail "radarr /config wasn't restored"
-compose exec -T radarr test ! -e /config/smoke-stray || fail "restore left a file that wasn't in the backup"
-[ "$(cat "$work/appdata/radarr/scripts/smoke-marker")" = backed-up ] || fail "radarr /scripts wasn't restored"
-[ "$(compose exec -T radarr stat -c '%u:%g %a' /config/config.xml)" = "$owner" ] ||
-  fail "restore changed the owner or mode of config.xml"
-for entry in "${excluded[@]}"; do
-  IFS=$'\t' read -r service mount name <<<"$entry"
-  docker run --rm --network none --volumes-from "$(compose ps --all --quiet "$service"):ro" "$busybox" \
-    test -f "$mount/$name/.smoke-excluded" </dev/null || fail "restore.sh deleted $service $mount/$name"
-done
-echo "${#excluded[@]} excluded path(s) left out of the backup and kept by the restore"
-compose up --detach --wait --wait-timeout "$timeout"
-echo "Every service is healthy again after the restore"
+  for target in "${targets[@]}"; do
+    IFS=$'\t' read -r service mount <<<"$target"
+    check_marker "$(compose ps --all --quiet "$service")" "$mount" ||
+      fail "$service $mount wasn't restored exactly (marker changed, or a file not in the backup was left)"
+  done
+  [ "$(compose exec -T radarr stat -c '%u:%g %a' /config/config.xml)" = "$owner" ] ||
+    fail "restore changed the owner or mode of radarr's config.xml"
+  compose up --detach --wait --wait-timeout "$timeout"
+  echo "Every data mount was restored, and every service is healthy again"
+fi
 
 # The unattended backup, copying to a stand-in for the backup server (a local directory, which rsync treats the same
 # way) that already holds two old backups and a directory that isn't one; keeping two there and one here must leave
 # the newer old one and the new one there, only the new one here, and the other directory alone.
-echo "Scheduled backup: copy off the host and prune old backups"
-mkdir -p "$work/scheduled/20200101-000000" "$work/remote/20200101-000000" "$work/remote/20200102-000000" \
-  "$work/remote/keep-me"
-printf 'BACKUP_DIR=%s\nBACKUP_KEEP=1\nBACKUP_REMOTE=%s\nBACKUP_REMOTE_KEEP=2\n' "$work/scheduled" "$work/remote" \
-  >"$work/backup.env"
-BACKUP_ENV_FILE=$work/backup.env "$root/scripts/scheduled-backup.sh"
-entries() { find "$1" -mindepth 1 -maxdepth 1 -exec basename {} \; | sort | tr '\n' ' '; }
-new=$(entries "$work/scheduled" | tr -d ' ')
-[[ $new =~ ^[0-9]{8}-[0-9]{6}$ ]] || fail "expected only the new backup in BACKUP_DIR, found: $new"
-[ "$(entries "$work/remote")" = "20200102-000000 $new keep-me " ] ||
-  fail "wrong backups kept at the remote: $(entries "$work/remote")"
-(cd "$work/remote/$new" && sha256 -c --quiet SHA256SUMS) || fail "the copy off the host doesn't match its SHA256SUMS"
-[ -z "$(find "$work/remote/$new" -perm -004)" ] || fail "the copy off the host is readable by other users"
-[ "$(compose ps --services --status running | wc -l)" -eq "$(compose config --services | wc -l)" ] ||
-  fail "scheduled-backup.sh didn't leave every service running"
-echo "The scheduled backup was copied intact, and only the newest backups were kept"
+if [ ${#targets[@]} -gt 0 ]; then
+  echo "Scheduled backup: copy off the host and prune old backups"
+  mkdir -p "$work/scheduled/20200101-000000" "$work/remote/20200101-000000" "$work/remote/20200102-000000" \
+    "$work/remote/keep-me"
+  printf 'BACKUP_DIR=%s\nBACKUP_KEEP=1\nBACKUP_REMOTE=%s\nBACKUP_REMOTE_KEEP=2\n' "$work/scheduled" "$work/remote" \
+    >"$work/backup.env"
+  BACKUP_ENV_FILE=$work/backup.env "$root/scripts/scheduled-backup.sh"
+  entries() { find "$1" -mindepth 1 -maxdepth 1 -exec basename {} \; | sort | tr '\n' ' '; }
+  new=$(entries "$work/scheduled" | tr -d ' ')
+  [[ $new =~ ^[0-9]{8}-[0-9]{6}$ ]] || fail "expected only the new backup in BACKUP_DIR, found: $new"
+  [ "$(entries "$work/remote")" = "20200102-000000 $new keep-me " ] ||
+    fail "wrong backups kept at the remote: $(entries "$work/remote")"
+  (cd "$work/remote/$new" && sha256 -c --quiet SHA256SUMS) || fail "the copy off the host doesn't match its SHA256SUMS"
+  [ -z "$(find "$work/remote/$new" -perm -004)" ] || fail "the copy off the host is readable by other users"
+  [ "$(compose ps --services --status running | wc -l)" -eq "$(compose config --services | wc -l)" ] ||
+    fail "scheduled-backup.sh didn't leave every service running"
+  echo "The scheduled backup was copied intact, and only the newest backups were kept"
+fi
 
-echo "autoheal: making a test container unhealthy"
-test_id=$(compose ps --quiet autoheal-test)
-started=$(docker inspect --format '{{.State.StartedAt}}' "$test_id")
-compose exec -T autoheal-test touch /tmp/unhealthy
-for _ in $(seq 1 40); do
-  sleep 3
-  [ "$(docker inspect --format '{{.State.StartedAt}}' "$test_id")" = "$started" ] || break
-done
-[ "$(docker inspect --format '{{.State.StartedAt}}' "$test_id")" != "$started" ] ||
-  fail "autoheal didn't restart the unhealthy container within 2 minutes"
-compose logs --no-color autoheal | grep -q "found to be unhealthy" || fail "autoheal didn't log the restart"
-compose up --detach --wait --wait-timeout 60 autoheal-test
-echo "autoheal restarted the unhealthy container through socket-proxy, and it's healthy again"
+if $has_autoheal; then
+  echo "autoheal: making a test container unhealthy"
+  test_id=$(compose ps --quiet autoheal-test)
+  started=$(docker inspect --format '{{.State.StartedAt}}' "$test_id")
+  compose exec -T autoheal-test touch /tmp/unhealthy
+  for _ in $(seq 1 40); do
+    sleep 3
+    [ "$(docker inspect --format '{{.State.StartedAt}}' "$test_id")" = "$started" ] || break
+  done
+  [ "$(docker inspect --format '{{.State.StartedAt}}' "$test_id")" != "$started" ] ||
+    fail "autoheal didn't restart the unhealthy container within 2 minutes"
+  compose logs --no-color autoheal | grep -q "found to be unhealthy" || fail "autoheal didn't log the restart"
+  compose up --detach --wait --wait-timeout 60 autoheal-test
+  echo "autoheal restarted the unhealthy container through socket-proxy, and it's healthy again"
+fi

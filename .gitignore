@@ -18,10 +18,12 @@ compose.json
 sbom.cdx.json
 SHA256SUMS*
 *.tar.gz
+trivy.sarif
 
 # Keys and certificates
 *.pem
 *.key
+*.crt
 *.p12
 *.pfx
 id_rsa*

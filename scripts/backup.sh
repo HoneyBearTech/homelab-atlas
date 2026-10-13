@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
-# Back up the stack's state: every service's /config and /scripts mount (the apps' config volumes, Recyclarr's
-# config directory, Radarr's custom scripts) and the settings files. Each service is stopped only while its own data
-# is copied, so its database is consistent, and started again before the copy is compressed; services with nothing
-# to archive keep running. Entries a service's org.honeybeartech.atlas.backup.exclude label lists (the apps'
-# MediaCover posters) are left out.
+# Back up the stack's state: every service's data mounts (each read-write volume or directory it mounts: the apps'
+# config volumes, Recyclarr's config directory and Radarr's custom scripts; never the Docker socket, and never a path
+# the service's org.honeybeartech.atlas.backup.skip label excludes, such as /media) and the settings files. Paths a
+# service's org.honeybeartech.atlas.backup.exclude label lists inside a mount (the apps' MediaCover posters) are left
+# out of that mount's archive. Each service is stopped only while its own data is copied, so its database is
+# consistent, and started again before the copy is compressed; services with nothing to archive keep running.
 #
 #   scripts/backup.sh [DIR]      DIR defaults to backups/<date>-<time> in the checkout (gitignored)
 #
-# DIR gets one <service>-<mount>.tar.gz per mount, the settings (.env, autoheal.env, backup.env) under env/, a
-# MANIFEST and SHA256SUMS, all readable only by the user who ran it: the archives hold every app's API keys and
-# logins. Copy it off the host (scripts/scheduled-backup.sh does). Restore with scripts/restore.sh. It runs
+# DIR gets one <service>--<path>.tar.gz per mount, the settings (.env and any <service>.env) under env/, a MANIFEST
+# naming each archive's service, container path, source and image, NETWORKS with the address range of each network
+# the stack uses but doesn't create (so a rebuilt host can recreate it the same), VERSION (the checkout's
+# `git describe`), and SHA256SUMS, all readable only by the user who ran it: the archives hold every app's API keys
+# and logins. Copy it off the host (scripts/scheduled-backup.sh does). Restore with scripts/restore.sh. It runs
 # `docker compose` from the checkout, so the standard Compose variables (COMPOSE_PROJECT_NAME, COMPOSE_FILE,
 # COMPOSE_ENV_FILES) select another project, as the smoke test does.
 set -euo pipefail
@@ -37,11 +40,13 @@ for service in $(docker compose config --services); do
     echo "error: $service has no container; run 'docker compose create' or 'docker compose up -d' first" >&2
     exit 1
   fi
+  # Checked before anything stops, so a wrong label fails the backup with every service still running.
+  check_excludes "$(docker compose ps --all --quiet "$service")"
   services+=("$service")
 done
 
 # Starts again whatever was running and is stopped now: the service stopped for its backup, and any service Compose
-# stopped along with it.
+# stopped along with it (one that depends on it).
 running=$(docker compose ps --services --status running)
 start_again() {
   if [ -n "$running" ]; then
@@ -56,49 +61,46 @@ finish() {
 }
 trap finish EXIT
 
-echo "# service mount source image" >"$dest/MANIFEST"
+printf '# archive\tservice\tmount\tsource\timage\n' >"$dest/MANIFEST"
 for service in "${services[@]}"; do
   id=$(docker compose ps --all --quiet "$service")
   image=$(docker inspect --format '{{.Config.Image}}' "$id")
-  # Checked before anything stops, so a wrong label fails the backup with every service still running.
-  backup_excludes "$id" >/dev/null
-  todo=()
-  for mount in "${mounts[@]}"; do
-    source=$(mount_source "$id" "$mount")
-    [ -n "$source" ] || continue
-    # An anonymous volume (one an image declares itself) holds nothing the stack set up.
-    if [[ "$source" =~ ^volume:[0-9a-f]{64}$ ]]; then
-      echo "Skipping $service $mount (anonymous volume)"
-      continue
+  while IFS= read -r mount; do
+    echo "Skipping $service $mount (excluded from backups by its $skip_label label)"
+  done < <(skipped_mounts "$id")
+  mounts=()
+  while IFS=$'\t' read -r mount source; do
+    if is_dir "$id" "$mount"; then
+      mounts+=("$mount"$'\t'"$source")
+    else
+      echo "Skipping $service $mount (not a directory)"
     fi
-    todo+=("$mount"$'\t'"$source")
-  done
-  if [ ${#todo[@]} -eq 0 ]; then continue; fi
+  done < <(data_mounts "$id")
+  if [ ${#mounts[@]} -eq 0 ]; then continue; fi
 
   if [[ $'\n'"$running"$'\n' == *$'\n'"$service"$'\n'* ]]; then
     echo "Stopping $service"
     docker compose stop "$service"
   fi
   archives=()
-  for entry in "${todo[@]}"; do
+  for entry in "${mounts[@]}"; do
     IFS=$'\t' read -r mount source <<<"$entry"
-    archive="$service-${mount#/}.tar.gz"
+    archive=$(archive_name "$service" "$mount")
+    echo "Archiving $service $mount ($source)"
+    # A mount inside this one (such as a cache mounted inside a service's data directory) is archived or skipped on
+    # its own, and the paths the service's exclude label lists are left out.
     excludes=()
-    left_out=""
-    while IFS= read -r name; do
-      if [ -n "$name" ]; then
-        excludes+=(--exclude "./$name")
-        left_out="$left_out $name"
-      fi
-    done < <(excluded_names "$id" "$mount")
-    echo "Archiving $service $mount ($source)${left_out:+, leaving out$left_out}"
+    while IFS= read -r path; do
+      echo "  leaving out $path"
+      excludes+=("--exclude=./${path#"$mount"/}")
+    done < <(left_out "$id" "$mount")
     # tar runs as root in the container so it can read every file; the archive itself is written by this shell,
     # so it belongs to the user running the backup. Uncompressed here: compressing takes far longer than copying,
-    # and the service stays stopped only for the copy. No log driver: Docker's default one would also write the
-    # whole archive, which arrives on stdout, into the container's log.
+    # and the service stays stopped only for the copy. No log driver: Docker's default one would also write the whole
+    # archive, which arrives on stdout, into the container's log, and the copy would take several times as long.
     docker run --rm --log-driver none --network none --volumes-from "$id:ro" "$busybox" \
       tar -cf - "${excludes[@]+"${excludes[@]}"}" -C "$mount" . </dev/null >"$dest/${archive%.gz}"
-    echo "$service $mount $source $image" >>"$dest/MANIFEST"
+    printf '%s\t%s\t%s\t%s\t%s\n' "$archive" "$service" "$mount" "$source" "$image" >>"$dest/MANIFEST"
     archives+=("$archive")
   done
   start_again
@@ -107,6 +109,24 @@ for service in "${services[@]}"; do
     rm "$dest/${archive%.gz}"
   done
 done
+
+# The networks the stack joins but doesn't create (external ones, even if another Compose project once created
+# them; Atlas' stack has none today): their address range, which access lists may depend on, is lost with the host
+# unless it's written down.
+project_label='{{index .Labels "com.docker.compose.project"}}'
+ranges='{{range .IPAM.Config}}{{$.Name}}{{"\t"}}{{.Subnet}}{{"\t"}}{{.Gateway}}{{"\n"}}{{end}}'
+project=$(docker inspect --format "{{index .Config.Labels \"com.docker.compose.project\"}}" \
+  "$(docker compose ps --all --quiet "${services[0]}")")
+networks=$(for service in "${services[@]}"; do
+  docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}{{"\n"}}{{end}}' \
+    "$(docker compose ps --all --quiet "$service")"
+done | sort -u)
+printf '# network\tsubnet\tgateway\n' >"$dest/NETWORKS"
+for network in $networks; do
+  if [ "$(docker network inspect --format "$project_label" "$network")" = "$project" ]; then continue; fi
+  docker network inspect --format "$ranges" "$network" | grep . >>"$dest/NETWORKS" || true
+done
+git -C "$root" describe --tags --always --dirty >"$dest/VERSION" 2>/dev/null || echo unknown >"$dest/VERSION"
 
 # The settings: .env and any service's env file, or only the files in COMPOSE_ENV_FILES when that's set (the smoke
 # test, which must never copy the real ones).

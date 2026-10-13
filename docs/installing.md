@@ -65,8 +65,9 @@ app's API keys and logins: copy them only to a machine you trust as much as this
    copy of it made on the server after the nightly backup (on a Synology without Btrfs, a Hyper Backup task with
    rotation, into a folder the backup user has no access to). A recycle bin isn't enough: Synology's doesn't keep
    files deleted over rsync.
-2. **On this host**, as the user who runs the stack, install rsync and curl (and pigz, which compresses faster),
-   and create a key used only for the backups, with an alias for it in `~/.ssh/config`:
+2. **On this host**, as the user who runs the stack, install rsync and curl (and pigz, which compresses the
+   archives on every core instead of one), and create a key used only for the backups, with an alias for it in
+   `~/.ssh/config`:
 
    ```sh
    sudo apt install -y rsync curl pigz
@@ -91,7 +92,8 @@ app's API keys and logins: copy them only to a machine you trust as much as this
    minute or two per app), and is compressed after it has started again.
 5. **Schedule it**, with the systemd user units in [`deploy/systemd/`](../deploy/systemd/) (they expect the
    checkout at `~/homelab-atlas`; edit both paths in the `.service` file if it's elsewhere). Lingering lets the
-   timer run while you're logged out:
+   timer run while you're logged out. Copy the units again after an upgrade that changes them (the release notes
+   say so):
 
    ```sh
    mkdir -p ~/.config/systemd/user

@@ -35,8 +35,8 @@ Each release carries a CycloneDX SBOM listing every service's image and digest
 
 ## Tracking dependencies
 
-- **Dependabot** ([`.github/dependabot.yml`](../.github/dependabot.yml)) checks weekly for new image
-  versions in the Compose file, new tool versions and new Action versions, and opens a pull request for
+- **Dependabot** ([`.github/dependabot.yml`](../.github/dependabot.yml)) checks weekly (Mondays, 06:00 UTC) for
+  new image versions in the Compose file, new tool versions and new Action versions, and opens a pull request for
   each. Dependabot alerts and security updates are on.
 - **Patch and minor updates merge automatically**
   ([`.github/workflows/dependabot-auto-merge.yml`](../.github/workflows/dependabot-auto-merge.yml)): for the
@@ -79,6 +79,8 @@ version somewhere upstream). Every image is maintained.
 autoheal's only maintained tag is `latest` (its versioned tags stop at 1.2.0 from 2021), so it is pinned as
 `latest@sha256:…` with a policy exception; if Dependabot doesn't propose new digests for it, it's bumped by hand
 with the other hand-pinned images.
+socket-proxy is pinned by its full build tag (`3.4.6-r0-ls102`), not the bare version (`3.4.6`), which
+linuxserver.io rebuilds in place: Dependabot only proposes a newer tag, so it would never see those rebuilds.
 
 **Removed from the stack.** FlareSolverr (348 alerts, most of them in its Chromium, the only findings reachable
 from the internet): no indexer was configured to use it, and its newest release still shipped an old Chromium.

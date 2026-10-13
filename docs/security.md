@@ -70,4 +70,6 @@ non-empty reason:
 | Usenet provider and indexer credentials | SABnzbd's and the apps' config volumes | same |
 | Radarr and Sonarr API keys for Recyclarr | `RECYCLARR_CONFIG_PATH` (`recyclarr.yml` or its secrets file) | same |
 | autoheal's webhook URL | `autoheal.env` (mode `600`, gitignored) | same |
+| The backup's push-monitor URL | `backup.env` (mode `600`, gitignored) | same |
+| The backup server's SSH key | `~/.ssh/` on the host, used only for the backup user (`restrict,from=` on the server) | the repository, `.env` |
 | Backups of the volumes | off the host, mode `600` | anywhere public |

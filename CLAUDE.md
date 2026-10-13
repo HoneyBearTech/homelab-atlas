@@ -57,6 +57,11 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   no port), `autoheal` (`latest`: the image's only maintained tag). Don't add more without the owner agreeing.
 - autoheal restarts every service labelled `autoheal: "true"` that turns unhealthy; every app service carries the
   label. It must never get the socket itself, only `tcp://socket-proxy:2375`.
+- Backups (`scripts/backup.sh`, `restore.sh`, `scheduled-backup.sh`, helpers in `scripts/lib.sh`) only ever touch
+  `/config` and `/scripts`, never `/media`. `org.honeybeartech.atlas.backup.exclude` lists entries inside them to
+  leave out (the apps' `/config/MediaCover`). The nightly run (systemd user timer, 03:00) copies to the backup server
+  with rsync and keeps 3 here / 30 there (owner's choices 2026-10-13); its settings, including the Uptime Kuma push
+  URL, are in the gitignored `backup.env`.
 
 ## Stack
 - Docker Compose v2 (`compose.yaml`, 12 services), upstream images (linuxserver.io where available).

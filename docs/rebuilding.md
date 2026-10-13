@@ -52,6 +52,7 @@ git clone https://github.com/HoneyBearTech/homelab-atlas.git && cd homelab-atlas
 git checkout vX.Y.Z      # the release the backup was taken with, or newer; verify it (verifying-releases.md)
 cp /path/to/backup/env/.env .env && chmod 600 .env
 cp /path/to/backup/env/autoheal.env autoheal.env && chmod 600 autoheal.env   # if the backup has one
+cp /path/to/backup/env/backup.env backup.env && chmod 600 backup.env         # if the backup has one
 ```
 
 Edit `.env` if the new host's paths differ (`MEDIA_ROOT`, `APPDATA_ROOT`, `RECYCLARR_CONFIG_PATH`). Keep
@@ -77,6 +78,9 @@ should be found. Check Recyclarr's log after its next run (`docker compose logs 
 ## What the backup doesn't bring back
 
 - **The media itself**: restore it from your storage's snapshots or backups, if it was lost too.
-- **Host settings**: firewall rules, `/etc/fstab`, a reverse proxy, monitoring agents.
+- **Host settings**: firewall rules, `/etc/fstab`, a reverse proxy, monitoring agents, and the scheduled
+  backup's SSH key and systemd units: set those up again as [installing.md](installing.md#scheduled-backups)
+  describes, with a new key (remove the old one from the backup server).
+- **The apps' posters** (`/config/MediaCover`): left out of backups; the apps download them again.
 - **Other machines' view of this one**: if the host's address changed, update whatever calls these apps by
   address (the indexer manager, the media server, a reverse proxy, dashboards).

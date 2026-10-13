@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Smoke test of the stack: start every service in compose.yaml with throwaway settings, wait until each one
 # reports healthy, take a backup, change the data, restore the backup and check that the data and health came
-# back, make a test container unhealthy and check that autoheal restarts it, then remove everything it created.
+# back (and that what the backup.exclude labels list was left out and kept), run the scheduled backup against a
+# stand-in for the backup server, make a test container unhealthy and check that autoheal restarts it, then remove
+# everything it created.
 # CI runs it on every change; `make smoke` runs it locally.
 #
 # It stays away from any real installation on the same Docker host: its own Compose project, temporary
@@ -14,6 +16,8 @@ set -euo pipefail
 project=homelab-atlas-smoke
 timeout=${SMOKE_TIMEOUT:-300}
 root=$(cd "$(dirname "$0")/.." && pwd)
+# shellcheck source=scripts/lib.sh
+. "$root/scripts/lib.sh"
 work=$(mktemp -d)
 
 # The settings come from the generated env file only, never from the caller's environment. The Compose
@@ -94,7 +98,27 @@ echo "Backup and restore round trip"
 compose exec -T radarr sh -c 'echo backed-up >/config/smoke-marker'
 echo backed-up >"$work/appdata/radarr/scripts/smoke-marker"
 owner=$(compose exec -T radarr stat -c '%u:%g %a' /config/config.xml)
+# Entries a service leaves out of its backups (its backup.exclude label) get a file of their own, which must be
+# missing from the archive and still there after the restore.
+excluded=()
+for service in $(compose config --services); do
+  while IFS=$'\t' read -r mount name; do
+    if [ -n "$name" ]; then excluded+=("$service"$'\t'"$mount"$'\t'"$name"); fi
+  done <<<"$(backup_excludes "$(compose ps --all --quiet "$service")")"
+done
+[ ${#excluded[@]} -gt 0 ] || fail "no service has a backup.exclude label"
+for entry in "${excluded[@]}"; do
+  IFS=$'\t' read -r service mount name <<<"$entry"
+  docker run --rm --network none --volumes-from "$(compose ps --quiet "$service")" "$busybox" \
+    sh -c 'mkdir -p "$1" && echo excluded >"$1/.smoke-excluded"' excluded "$mount/$name" </dev/null
+done
 "$root/scripts/backup.sh" "$work/backup"
+for entry in "${excluded[@]}"; do
+  IFS=$'\t' read -r service mount name <<<"$entry"
+  if tar -tzf "$work/backup/$service-${mount#/}.tar.gz" | grep -Eq "^\./$name(/|$)"; then
+    fail "the backup of $service $mount includes $name, which its label leaves out"
+  fi
+done
 [ "$(compose ps --services --status running | wc -l)" -eq "$(compose config --services | wc -l)" ] ||
   fail "backup.sh didn't start every service again"
 
@@ -107,8 +131,34 @@ compose exec -T radarr test ! -e /config/smoke-stray || fail "restore left a fil
 [ "$(cat "$work/appdata/radarr/scripts/smoke-marker")" = backed-up ] || fail "radarr /scripts wasn't restored"
 [ "$(compose exec -T radarr stat -c '%u:%g %a' /config/config.xml)" = "$owner" ] ||
   fail "restore changed the owner or mode of config.xml"
+for entry in "${excluded[@]}"; do
+  IFS=$'\t' read -r service mount name <<<"$entry"
+  docker run --rm --network none --volumes-from "$(compose ps --all --quiet "$service"):ro" "$busybox" \
+    test -f "$mount/$name/.smoke-excluded" </dev/null || fail "restore.sh deleted $service $mount/$name"
+done
+echo "${#excluded[@]} excluded path(s) left out of the backup and kept by the restore"
 compose up --detach --wait --wait-timeout "$timeout"
 echo "Every service is healthy again after the restore"
+
+# The unattended backup, copying to a stand-in for the backup server (a local directory, which rsync treats the same
+# way) that already holds two old backups and a directory that isn't one; keeping two there and one here must leave
+# the newer old one and the new one there, only the new one here, and the other directory alone.
+echo "Scheduled backup: copy off the host and prune old backups"
+mkdir -p "$work/scheduled/20200101-000000" "$work/remote/20200101-000000" "$work/remote/20200102-000000" \
+  "$work/remote/keep-me"
+printf 'BACKUP_DIR=%s\nBACKUP_KEEP=1\nBACKUP_REMOTE=%s\nBACKUP_REMOTE_KEEP=2\n' "$work/scheduled" "$work/remote" \
+  >"$work/backup.env"
+BACKUP_ENV_FILE=$work/backup.env "$root/scripts/scheduled-backup.sh"
+entries() { find "$1" -mindepth 1 -maxdepth 1 -exec basename {} \; | sort | tr '\n' ' '; }
+new=$(entries "$work/scheduled" | tr -d ' ')
+[[ $new =~ ^[0-9]{8}-[0-9]{6}$ ]] || fail "expected only the new backup in BACKUP_DIR, found: $new"
+[ "$(entries "$work/remote")" = "20200102-000000 $new keep-me " ] ||
+  fail "wrong backups kept at the remote: $(entries "$work/remote")"
+(cd "$work/remote/$new" && sha256 -c --quiet SHA256SUMS) || fail "the copy off the host doesn't match its SHA256SUMS"
+[ -z "$(find "$work/remote/$new" -perm -004)" ] || fail "the copy off the host is readable by other users"
+[ "$(compose ps --services --status running | wc -l)" -eq "$(compose config --services | wc -l)" ] ||
+  fail "scheduled-backup.sh didn't leave every service running"
+echo "The scheduled backup was copied intact, and only the newest backups were kept"
 
 echo "autoheal: making a test container unhealthy"
 test_id=$(compose ps --quiet autoheal-test)

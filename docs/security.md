@@ -43,6 +43,24 @@ non-empty reason:
 | `devices` | maps a host device into the container (a GPU reservation under `deploy.resources` is allowed) |
 | `healthcheck` | has no health check, or disables it (one defined only in the image isn't visible to the check) |
 
+## Hardening
+
+What each service runs with, beyond the policy. Every service has `cap_drop: [ALL]` and
+`no-new-privileges:true`; the smoke test proves each one still starts healthy, survives a backup and restore, and
+that autoheal can still restart a container through socket-proxy with these settings.
+
+| Service | Capabilities added back | Why |
+| --- | --- | --- |
+| radarr, radarr4k, sonarr, sonarr4k, lidarr, bazarr, bazarr4k, sabnzbd | `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID`, `KILL` | The linuxserver.io init (s6) runs as root: it takes ownership of `/config` and the app's own directories for `PUID:PGID` (`CHOWN`; it must enter directories it doesn't own to do so, `DAC_OVERRIDE`), starts the app as that user (`SETUID`, `SETGID`) and signals it to stop (`KILL`; without it every stop waits for Docker's timeout and kills the app) |
+| recyclarr | none | Runs as `PUID:PGID` and writes only its config directory |
+| dozzle | none | Reads the Docker socket, which belongs to root |
+| autoheal | none | Only talks to socket-proxy |
+| socket-proxy | none | Only reads the socket; read-only root filesystem (`/run`, `/tmp` in memory) |
+
+Each capability was found by starting the image without it: the app then fails to start, can't write its
+database, can't repair a `/config` with files owned by another user, or takes 30 seconds to stop and is killed.
+Without `CHOWN` and `DAC_OVERRIDE` the apps' root can only reach what it owns.
+
 ## What it doesn't protect
 
 - **The apps themselves.** A vulnerability in Radarr, Sonarr or another app is that project's to fix;

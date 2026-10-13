@@ -6,6 +6,22 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-13
+
+Nightly backups copied off the host, Dependabot updates for the linuxserver.io images, and Dozzle as an agent of a
+central Dozzle hub.
+
+### Upgrading
+
+- **Dozzle has no web UI on this host any more.** It runs as an agent on port 7007 for a Dozzle hub on another host
+  (the hub lists this host as `<address>:7007`). Point anything that linked to port 4040 at the hub instead.
+- **Scheduled backups are optional** and need setting up once: a backup server, an SSH key, `backup.env` and the
+  systemd units, as [docs/installing.md](docs/installing.md#scheduled-backups) describes. Without them nothing
+  changes: `scripts/backup.sh` still works by hand.
+- The app images are the same app versions as 0.2.0 (rebuilt base packages only), so no database migrates. Take a
+  backup first as usual ([docs/upgrading.md](docs/upgrading.md)); it now stops each app only while its own data is
+  copied.
+
 ### Added
 
 - Scheduled backups: `scripts/scheduled-backup.sh` takes a backup, copies it to another machine with rsync
@@ -103,6 +119,7 @@ checks, backups and release signing around it.
   Bazarr), none reachable from the internet. Triage and mitigations:
   [docs/dependencies.md](docs/dependencies.md#current-findings).
 
-[Unreleased]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/HoneyBearTech/homelab-atlas/releases/tag/v0.1.0

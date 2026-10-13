@@ -94,7 +94,7 @@ services:
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8989/ping"]
     environment: *linuxserver-env
     ports:
-      - "8888:8989"
+      - "8988:8989"
     volumes:
       - sonarr4k-config:/config
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
@@ -167,6 +167,9 @@ services:
     volumes:
       - sabnzbd-config:/config
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
+      # Where downloads are assembled before they're complete (SABnzbd's "Temporary Download Folder"); it stores this
+      # path, so /incomplete never changes. Not backed up.
+      - ${SABNZBD_INCOMPLETE_PATH:?set SABNZBD_INCOMPLETE_PATH in .env}:/incomplete
 
   # --- Quality profiles (TRaSH Guides) --------------------------------------------------------------------------
   recyclarr:
@@ -285,8 +288,10 @@ volumes:
     name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}radarr4k
   sonarr-config:
     name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}sonarr
+  # Sonarr 4K's volume can have a name of its own (SONARR4K_CONFIG_VOLUME), for an instance that didn't start under
+  # the prefix.
   sonarr4k-config:
-    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}sonarr4k
+    name: ${SONARR4K_CONFIG_VOLUME:-${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}sonarr4k}
   lidarr-config:
     name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}lidarr
   bazarr-config:

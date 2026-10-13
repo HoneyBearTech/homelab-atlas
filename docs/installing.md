@@ -19,6 +19,7 @@ The [quick start](quick-start.md) is the short version of this page.
 | Each app's settings, API key and database | Docker volume `<CONFIG_VOLUME_PREFIX><app>` (radarr, radarr4k, sonarr, sonarr4k, lidarr, bazarr, bazarr4k, sabnzbd) | `/config` |
 | Downloads and media | `MEDIA_ROOT` | `/media` |
 | Radarr's custom scripts | `APPDATA_ROOT/radarr/scripts`, `APPDATA_ROOT/radarr4k/scripts` | `/scripts` |
+| SABnzbd's unfinished downloads (not backed up) | `SABNZBD_INCOMPLETE_PATH` | `/incomplete` |
 | Recyclarr's config | `RECYCLARR_CONFIG_PATH` | `/config` |
 
 An example layout under `MEDIA_ROOT`, following the TRaSH Guides:

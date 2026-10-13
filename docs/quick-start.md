@@ -19,14 +19,16 @@ the `docker` group, and one directory (or mounted share) that holds both downloa
    ```
 
    In `.env`, set `PUID`/`PGID` to the user that owns your media, `TZ`, `MEDIA_ROOT` (downloads and media),
-   `APPDATA_ROOT` and `RECYCLARR_CONFIG_PATH`. `CONFIG_VOLUME_PREFIX` names the Docker volumes that hold each
-   app's settings; keep the default for a new installation. Every setting is described in
+   `APPDATA_ROOT`, `RECYCLARR_CONFIG_PATH` and `SABNZBD_INCOMPLETE_PATH` (SABnzbd's unfinished downloads).
+   `CONFIG_VOLUME_PREFIX` names the Docker volumes that hold each app's settings; keep the default for a new
+   installation. Every setting is described in
    [interfaces.md](interfaces.md#settings).
 
 3. **Create the host directories** as that user, so Docker doesn't create them owned by root:
 
    ```sh
-   . ./.env && mkdir -p "$MEDIA_ROOT" "$RECYCLARR_CONFIG_PATH" "$APPDATA_ROOT"/radarr/scripts "$APPDATA_ROOT"/radarr4k/scripts
+   . ./.env && mkdir -p "$MEDIA_ROOT" "$RECYCLARR_CONFIG_PATH" "$SABNZBD_INCOMPLETE_PATH" \
+     "$APPDATA_ROOT"/radarr/scripts "$APPDATA_ROOT"/radarr4k/scripts
    ```
 
 4. **Check and start.**

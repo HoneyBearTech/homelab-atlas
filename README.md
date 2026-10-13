@@ -72,6 +72,8 @@ Settings come from `.env` (template [`.env.example`](.env.example)), which holds
 | `MEDIA_ROOT` | `/srv/media` | Downloads and media on one filesystem (`/media`), so imports are hardlinks or instant moves |
 | `APPDATA_ROOT` | `/srv/appdata` | Radarr's custom scripts (`radarr/scripts`, `radarr4k/scripts`) |
 | `CONFIG_VOLUME_PREFIX` | `homelab-atlas_` | Prefix of the Docker volumes holding each app's config and database. Contains API keys: back them up |
+| `SONARR4K_CONFIG_VOLUME` | empty | Optional: Sonarr 4K's volume name, when it doesn't follow the prefix |
+| `SABNZBD_INCOMPLETE_PATH` | `/srv/downloads/incomplete` | SABnzbd's temporary download folder (`/incomplete`); may be another disk |
 | `RECYCLARR_CONFIG_PATH` | `/srv/appdata/recyclarr` | Recyclarr's config directory |
 
 Ports, volumes and labels: [docs/interfaces.md](docs/interfaces.md).

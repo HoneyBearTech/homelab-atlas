@@ -49,9 +49,12 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   app data or Portainer stacks. Read-only inspection (`docker ps`, `docker inspect`) only when asked.
 - Every setting goes through `.env` (`${VAR:?…}` in compose when required) and is listed in `.env.example`
   and `docs/interfaces.md`.
-- **Container paths are load-bearing**: the apps store `/media/...` paths in their databases, so `/media`,
-  `/config` and `/scripts` never change. Config volumes are named `${CONFIG_VOLUME_PREFIX}<app>` so atlas keeps
-  its existing (Portainer-created) volumes; the prefix lives only in atlas' `.env`.
+- **Container paths are load-bearing**: the apps store `/media/...` paths in their databases (SABnzbd also
+  `/incomplete`), so `/media`, `/incomplete`, `/config` and `/scripts` never change. Config volumes are named
+  `${CONFIG_VOLUME_PREFIX}<app>` so atlas keeps its existing (Portainer-created) volumes; Sonarr 4K's can be named
+  outright (`SONARR4K_CONFIG_VOLUME`: atlas' Sonarr 4K is the former test instance, port 8988). The prefix and
+  names live only in atlas' `.env`. Before a cutover or redeploy, compare the live containers' mounts and ports
+  with `docker compose config`: atlas has been changed by hand before.
 - Policy exceptions in use (each agreed by the owner): `dozzle` (`docker-socket`, read-only mount; an agent for
   the homelab's Dozzle hub on another host, port 7007, owner 2026-10-13),
   `socket-proxy` (`docker-socket`: filters the API down to list/inspect/restart/stop for autoheal, internal network,

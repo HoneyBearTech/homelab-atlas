@@ -55,12 +55,14 @@ cp /path/to/backup/env/autoheal.env autoheal.env && chmod 600 autoheal.env   # i
 cp /path/to/backup/env/backup.env backup.env && chmod 600 backup.env         # if the backup has one
 ```
 
-Edit `.env` if the new host's paths differ (`MEDIA_ROOT`, `APPDATA_ROOT`, `RECYCLARR_CONFIG_PATH`). Keep
+Edit `.env` if the new host's paths differ (`MEDIA_ROOT`, `APPDATA_ROOT`, `RECYCLARR_CONFIG_PATH`,
+`SABNZBD_INCOMPLETE_PATH`). Keep
 `CONFIG_VOLUME_PREFIX`: the restore creates volumes under that prefix. Create the host directories as the
 `PUID` user, so Docker doesn't create them owned by root:
 
 ```sh
-. ./.env && mkdir -p "$RECYCLARR_CONFIG_PATH" "$APPDATA_ROOT"/radarr/scripts "$APPDATA_ROOT"/radarr4k/scripts
+. ./.env && mkdir -p "$RECYCLARR_CONFIG_PATH" "$SABNZBD_INCOMPLETE_PATH" "$APPDATA_ROOT"/radarr/scripts \
+  "$APPDATA_ROOT"/radarr4k/scripts
 docker compose config --quiet && docker compose pull
 ```
 

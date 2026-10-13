@@ -15,7 +15,7 @@ upstream images, pinned by digest.
 | Bazarr, Bazarr 4K | linuxserver.io | Subtitles for what Radarr and Sonarr imported |
 | SABnzbd | linuxserver.io | Usenet download client |
 | Recyclarr | the project's own image | Syncs TRaSH Guides custom formats and quality profiles into Radarr and Sonarr on a schedule |
-| Dozzle | the project's own image | Web UI for the containers' logs (reads them through the Docker socket) |
+| Dozzle | the project's own image | Agent that serves the containers' logs (read through the Docker socket) to the homelab's Dozzle on another host, which shows every host's logs in one web UI |
 | autoheal | the project's own image | Restarts any app whose health check fails, and can post a notice to a webhook (Docker on its own only restarts a container that exits) |
 | socket-proxy | linuxserver.io | Gives autoheal a filtered view of the Docker API (list, inspect, restart and stop containers only) on an internal network |
 

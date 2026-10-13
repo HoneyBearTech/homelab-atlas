@@ -56,7 +56,7 @@ names another file.
 | `bazarr4k` | `lscr.io/linuxserver/bazarr` | 6768 → 6767 | yes |
 | `sabnzbd` | `lscr.io/linuxserver/sabnzbd` | 8080 → 8080 | yes |
 | `recyclarr` | `recyclarr/recyclarr` | none | no (runs daily) |
-| `dozzle` | `amir20/dozzle` | 4040 → 8080 | yes (container logs) |
+| `dozzle` | `amir20/dozzle` | 7007 → 7007 | no (agent for the Dozzle hub on another host) |
 | `autoheal` | `willfarrell/autoheal` | none | no (restarts unhealthy services) |
 | `socket-proxy` | `lscr.io/linuxserver/socket-proxy` | none (internal network `docker-proxy`) | no |
 

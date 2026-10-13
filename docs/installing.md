@@ -110,8 +110,8 @@ its `SHA256SUMS` first, and a copy that was cut off has none yet, so it is refus
 - Turn on each app's authentication (**Forms**, required for all addresses) before anything else, and keep the
   web UIs on the LAN; put a reverse proxy with TLS and an allow-list in front of any you reach from elsewhere.
   Docker-published ports bypass host firewalls such as `ufw`.
-- **Dozzle can read every container's logs and, through the Docker socket, control Docker.** Keep its port on
-  the LAN only, or turn on its own authentication.
+- **The Dozzle agent can read every container's logs and, through the Docker socket, control Docker**, for any
+  Dozzle that connects to it. Keep its port (7007) on the LAN only.
 - Keep `.env` and `autoheal.env` at mode `600`. `.env` holds no secrets by design, but it does describe your
   host; `autoheal.env` holds the webhook URL.
 - Back up the config volumes and `RECYCLARR_CONFIG_PATH`: they hold every app's API key and database

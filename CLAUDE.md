@@ -1,7 +1,7 @@
 # homelab-atlas
 
 The Docker Compose stack for Atlas, the owner's homelab media automation server: Recyclarr and the *arr
-apps (Radarr and Sonarr with 4K instances, Lidarr, Bazarr, SABnzbd) plus Dozzle and autoheal (behind a socket
+apps (Radarr and Sonarr with 4K instances, Lidarr, Bazarr, SABnzbd) plus a Dozzle agent and autoheal (behind a socket
 proxy), every image pinned by tag and digest so the server can be upgraded and rebuilt from this repository.
 
 ## Before Making Structural Changes
@@ -52,7 +52,8 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
 - **Container paths are load-bearing**: the apps store `/media/...` paths in their databases, so `/media`,
   `/config` and `/scripts` never change. Config volumes are named `${CONFIG_VOLUME_PREFIX}<app>` so atlas keeps
   its existing (Portainer-created) volumes; the prefix lives only in atlas' `.env`.
-- Policy exceptions in use (each agreed by the owner): `dozzle` (`docker-socket`, read-only mount),
+- Policy exceptions in use (each agreed by the owner): `dozzle` (`docker-socket`, read-only mount; an agent for
+  the homelab's Dozzle hub on another host, port 7007, owner 2026-10-13),
   `socket-proxy` (`docker-socket`: filters the API down to list/inspect/restart/stop for autoheal, internal network,
   no port), `autoheal` (`latest`: the image's only maintained tag). Don't add more without the owner agreeing.
 - autoheal restarts every service labelled `autoheal: "true"` that turns unhealthy; every app service carries the

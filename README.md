@@ -89,8 +89,10 @@ Ports, volumes and labels: [docs/interfaces.md](docs/interfaces.md).
 - autoheal's optional webhook URL (restart notices, for example to Discord) goes in `autoheal.env` (template
   [`autoheal.env.example`](autoheal.env.example), mode `600`, gitignored).
 - Don't run an auto-updater such as Watchtower on these containers; upgrade by release instead.
-- The policy check refuses privileged containers, added capabilities, host networking and Docker socket
-  mounts unless a service documents why ([docs/security.md](docs/security.md)).
+- Every service drops all Linux capabilities and runs with `no-new-privileges`; the linuxserver.io apps add back
+  only the few their init needs. The policy check enforces that and refuses privileged containers, capabilities
+  beyond Docker's defaults, host networking, device mappings and Docker socket mounts unless a service documents
+  why ([docs/security.md](docs/security.md#hardening)).
 
 Report vulnerabilities privately: [SECURITY.md](SECURITY.md).
 

@@ -8,9 +8,11 @@ live. The reasoning behind these requirements is in the [assurance case](assuran
 1. **Only reviewed versions run.** Every image is pinned as `name:tag@sha256:<digest>`. A registry tag
    that is moved or hijacked doesn't change what `docker compose pull` fetches; a new version arrives only
    as a pull request that changes the digest.
-2. **No container gets more of the host than it needs.** No service runs privileged, adds Linux
-   capabilities, shares the host's network or PID namespace, or mounts the Docker socket (which is root on
-   the host), unless the exception is written into the service as a reasoned label and reviewed.
+2. **No container gets more of the host than it needs.** Every service drops every Linux capability, adds back
+   only the ones its image needs (never more than Docker's default set) and can't gain privileges from setuid
+   binaries or file capabilities. No service runs privileged, shares the host's network or PID namespace, maps a
+   host device or mounts the Docker socket (which is root on the host), unless the exception is written into the
+   service as a reasoned label and reviewed ([Hardening](#hardening)).
 3. **No secrets in the repository.** The apps keep their API keys, logins and provider credentials in
    their own config volumes, outside the repository. `.env` holds settings only; the stack's one secret, autoheal's optional webhook
    URL, is in `autoheal.env`. Both are gitignored. Secret
@@ -33,9 +35,12 @@ non-empty reason:
 | `latest` | uses the `latest` tag |
 | `build` | builds an image instead of pulling a pinned one |
 | `privileged` | sets `privileged: true` |
-| `cap-add` | adds Linux capabilities |
+| `no-new-privileges` | doesn't set `security_opt: [no-new-privileges:true]` |
+| `cap-drop` | doesn't drop every capability (`cap_drop: [ALL]`) |
+| `cap-add` | adds a capability outside Docker's default set (adding back one of those only narrows the default) |
 | `host-network` / `host-pid` | uses the host's network or PID namespace |
 | `docker-socket` | mounts the Docker socket |
+| `devices` | maps a host device into the container (a GPU reservation under `deploy.resources` is allowed) |
 | `healthcheck` | has no health check, or disables it (one defined only in the image isn't visible to the check) |
 
 ## What it doesn't protect

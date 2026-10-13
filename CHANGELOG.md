@@ -35,9 +35,15 @@ the same data as before, in a new layout.
 - The smoke test derives its throwaway settings from `.env.example` (every `*_ROOT` and `*_PATH` a temporary
   directory owned by `PUID:PGID` with mode 0755 as on a host, `*_PREFIX`, `*_VOLUME` and `*_NETWORK` names of its
   own, so never the real `SONARR4K_CONFIG_VOLUME`), and checks that skipped mounts and excluded paths are neither
-  archived nor overwritten, and that every backup has a `NETWORKS` file. It still never reads
-  `.env` or `autoheal.env`.
+  archived nor overwritten, and that every backup has a `NETWORKS` file. It still never reads `.env` or
+  `autoheal.env`.
 - The smoke test runs on `ubuntu-24.04` (amd64) instead of `ubuntu-latest`.
+- Every service drops every Linux capability (`cap_drop: [ALL]`) and runs with `no-new-privileges`. The
+  linuxserver.io apps add back only `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID` and `KILL`, which their init needs
+  to take ownership of `/config`, start the app as `PUID:PGID` and stop it cleanly; every other service runs with
+  none. The table is in docs/security.md#hardening.
+- The policy check enforces it: new rules `no-new-privileges` and `cap-drop`, `cap-add` now fails only on a
+  capability outside Docker's default set, and a new rule `devices` refuses host devices mapped into a container.
 
 ### Upgrading
 
@@ -46,6 +52,10 @@ the same data as before, in a new layout.
   without changing anything. Backups made from now on use the new format.
 - Nothing to change in `.env`, and the systemd units are the same as in 0.3.x (they already use the best-effort
   I/O class), so they don't need re-installing.
+- Data whose files have unexpected owners can fail with "permission denied" (`EACCES`) after the upgrade: a service
+  that runs without capabilities can only reach what it owns. The linuxserver.io apps still take ownership of
+  `/config` as they start. Recyclarr runs as `PUID:PGID` with no capabilities, so `RECYCLARR_CONFIG_PATH` must
+  belong to that user, as it should already.
 
 ## [0.3.1] - 2026-10-13
 

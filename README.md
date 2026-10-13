@@ -55,7 +55,7 @@ The full steps, including creating the directories with the right owner, are in 
 docker compose ps                 # what's running
 docker compose logs -f <service>  # one app's log
 make check                        # policy check: every image pinned, nothing privileged
-scripts/backup.sh                 # back up every app's config (stops the stack briefly)
+scripts/backup.sh                 # back up every app's config (each app stops briefly)
 ```
 
 Upgrading to a new release: [docs/upgrading.md](docs/upgrading.md).

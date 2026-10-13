@@ -29,6 +29,20 @@ Read by the `autoheal` service (template: [`autoheal.env.example`](../autoheal.e
 | --- | --- |
 | `WEBHOOK_URL` | Where autoheal posts a notice each time it restarts a container (a secret). A Discord channel webhook works as is; empty or missing = log only |
 
+### `backup.env`
+
+Read by `scripts/scheduled-backup.sh` (template: [`backup.env.example`](../backup.env.example)); optional, mode
+`600`, gitignored. Read as data (`KEY=value` lines), never sourced; an unknown key is an error. `BACKUP_ENV_FILE`
+names another file.
+
+| Setting | Meaning |
+| --- | --- |
+| `BACKUP_DIR` | Where backups are written (default `backups` in the checkout) |
+| `BACKUP_KEEP` | How many backups are kept in `BACKUP_DIR`, the newest (default `3`) |
+| `BACKUP_REMOTE` | Where each backup is copied with rsync, such as `backup-host:/volume1/atlas-backups`; empty = no copy off the host |
+| `BACKUP_REMOTE_KEEP` | How many backups are kept at `BACKUP_REMOTE`, the newest (default `30`) |
+| `BACKUP_PING_URL` | An Uptime Kuma push URL (a secret), told `up` after a good run and `down` after a failed one; empty = no reports |
+
 ## Services and ports
 
 | Service | Image | Host port → container | Web UI |
@@ -67,6 +81,7 @@ published; autoheal also joins the default network, to reach its webhook.
 | --- | --- |
 | `org.honeybeartech.atlas.allow.<rule>` | Lets one service break one policy rule; the value is the reason, and must not be empty. Rules: `image`, `digest`, `latest`, `build`, `privileged`, `cap-add`, `host-network`, `host-pid`, `docker-socket`, `healthcheck` ([security.md](security.md#policy)). In use: `dozzle` and `socket-proxy` (`docker-socket`), `autoheal` (`latest`). |
 | `autoheal` | `"true"` on every service autoheal may restart when its health check fails (every app service and socket-proxy). |
+| `org.honeybeartech.atlas.backup.exclude` | Entries directly inside the service's `/config` or `/scripts` (container paths, separated by spaces) that `scripts/backup.sh` leaves out and `scripts/restore.sh` keeps as they are; any other path fails the backup. In use: `/config/MediaCover` (posters the app downloads again) on Radarr, Radarr 4K, Sonarr, Sonarr 4K and Lidarr. |
 
 ## Commands
 
@@ -76,15 +91,17 @@ published; autoheal also joins the default network, to reach its webhook.
 | `make check` | `docker compose config --format json \| python scripts/check_compose.py`: the policy check |
 | `python scripts/check_compose.py [FILE] [--sbom OUT]` | Checks a resolved Compose config (from `FILE` or stdin); `--sbom` also writes a CycloneDX 1.6 SBOM of the images. Exit 0 = no violations, 1 = violations (one line each), 2 = unreadable input |
 | `make test`, `make lint` | The checker's tests and the linters |
-| `scripts/backup.sh [DIR]` | Stops the stack, archives every service's `/config` and `/scripts` mount, `.env` and `autoheal.env` into `DIR` (default `backups/<date>-<time>`, gitignored) with a `MANIFEST` and `SHA256SUMS`, then starts what was running. Exit 0 = backup complete |
-| `scripts/restore.sh [--yes] DIR [SERVICE...]` | Verifies `DIR/SHA256SUMS`, creates missing containers and volumes, asks for confirmation (unless `--yes`), stops the services, replaces their `/config` and `/scripts` contents with the archives, and starts what was running. Never writes other mounts |
+| `scripts/backup.sh [DIR]` | Archives every service's `/config` and `/scripts` mount (except what its `backup.exclude` label lists), stopping each service only while its own data is copied, plus `.env` and every `*.env` into `DIR` (default `backups/<date>-<time>`, gitignored) with a `MANIFEST` and `SHA256SUMS`. Exit 0 = backup complete |
+| `scripts/restore.sh [--yes] DIR [SERVICE...]` | Verifies `DIR/SHA256SUMS`, creates missing containers and volumes, asks for confirmation (unless `--yes`), stops the services, replaces their `/config` and `/scripts` contents with the archives (keeping what their `backup.exclude` label lists), and starts what was running. Never writes other mounts |
+| `scripts/scheduled-backup.sh` | `scripts/backup.sh`, then a copy to `BACKUP_REMOTE` (`SHA256SUMS` last), pruning to the newest `BACKUP_KEEP` / `BACKUP_REMOTE_KEEP`, and a report to `BACKUP_PING_URL` ([`backup.env`](#backupenv)). Run nightly by `deploy/systemd/homelab-atlas-backup.timer` (03:00). Exit 0 = backed up and copied |
 | `make smoke` | `scripts/smoke-test.sh`: starts every service under a separate Compose project with throwaway directories and volumes, no fixed container names and no published ports, waits until all are healthy, then removes what it created. Exit 0 = all healthy |
 
 ## Outbound connections
 
 From the host: the image registries (`lscr.io`, `ghcr.io`, Docker Hub) on `docker compose pull`. From the apps:
 the indexers, the Usenet provider and metadata services they're configured for; Recyclarr fetches the TRaSH
-Guides from GitHub and calls the Radarr and Sonarr APIs.
+Guides from GitHub and calls the Radarr and Sonarr APIs. The scheduled backup connects to `BACKUP_REMOTE` (rsync
+over SSH) and `BACKUP_PING_URL` (HTTPS), when they're set.
 
 ## Release files
 

@@ -15,19 +15,21 @@ anything you depend on.
 
 The state worth keeping is what each service mounts at `/config` and `/scripts`: the apps' config volumes
 (settings, API keys, databases), Recyclarr's config directory and Radarr's custom scripts. `scripts/backup.sh`
-stops the stack so the databases are consistent, archives each of those mounts, copies `.env` and `autoheal.env`, and starts
-again whatever was running:
+archives each of those mounts, stopping each service only while its own data is copied so its database is
+consistent, and copies `.env` and the other settings files (`autoheal.env`, `backup.env`). The posters the apps
+download again by themselves (`/config/MediaCover`) are left out:
 
 ```sh
 scripts/backup.sh                       # into backups/<date>-<time>/ in the checkout (gitignored)
 scripts/backup.sh /path/to/backup-dir   # or a directory of your choice (new or empty)
 ```
 
-The directory holds one `<service>-config.tar.gz` (and `<service>-scripts.tar.gz`) per mount, `env/.env` (and `env/autoheal.env`), a
-`MANIFEST` naming each archive's volume or host path and image, and `SHA256SUMS`. Everything in it is readable
+The directory holds one `<service>-config.tar.gz` (and `<service>-scripts.tar.gz`) per mount, `env/.env` (and
+`env/autoheal.env`, `env/backup.env`), a `MANIFEST` naming each archive's volume or host path and image, and `SHA256SUMS`. Everything in it is readable
 only by the user who ran the backup. **Copy it off the host**: it contains every app's API key and logins.
 `MEDIA_ROOT` (the media) is too large for this and is better covered by your storage's own snapshots or
-backups. Every service needs a container for the backup to read from, so run it on an installed stack.
+backups. Every service needs a container for the backup to read from, so run it on an installed stack. A
+nightly backup copied to another machine is set up as [installing.md](installing.md#scheduled-backups) describes.
 
 ## Upgrading
 

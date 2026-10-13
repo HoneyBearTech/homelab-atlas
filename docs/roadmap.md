@@ -14,6 +14,8 @@ file changes with them, in the same pull request.
   restarting and stopping containers.
 - Done: backup and restore scripts, exercised end to end by the smoke test in CI, and a documented rebuild of
   the host from a backup.
+- Done: a nightly backup copied to another machine, with retention and a push monitor
+  ([installing.md](installing.md#scheduled-backups)).
 - First release (0.1.0) before Atlas switches over, so Atlas is first deployed from a signed, verified version.
 - Switch Atlas to run the stack from a checkout of this repository, and retire the auto-updater.
 

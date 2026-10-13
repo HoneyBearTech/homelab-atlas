@@ -1,0 +1,12 @@
+# Starts homelab-atlas-backup.service every night. Each service is stopped only while its own data is copied, so pick
+# a quiet hour. Persistent: a run missed while the host was off happens at the next boot.
+[Unit]
+Description=Nightly backup of the homelab-atlas stack
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Restore a backup made by scripts/backup.sh: replace the contents of each service's /config and /scripts mount
-# with the archive for it. The services are stopped while their data is replaced, and whatever was running is
-# started again afterwards.
+# with the archive for it, except the entries the service's org.honeybeartech.atlas.backup.exclude label lists (the
+# backup left them out, so they're kept as they are). The services are stopped while their data is replaced, and
+# whatever was running is started again afterwards.
 #
 #   scripts/restore.sh [--yes] DIR [SERVICE...]
 #
@@ -10,8 +11,6 @@
 # from DIR/env first; the volumes and containers are created as needed. Uses `docker compose` from the
 # checkout, so the standard Compose variables select another project, as in scripts/backup.sh.
 set -euo pipefail
-
-busybox=busybox:1.38.0@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
 
 usage() {
   echo "usage: $0 [--yes] DIR [SERVICE...]" >&2
@@ -28,14 +27,9 @@ backup=$(cd "$1" && pwd)
 shift
 
 root=$(cd "$(dirname "$0")/.." && pwd)
+# shellcheck source=scripts/lib.sh
+. "$root/scripts/lib.sh"
 cd "$root"
-
-sha256() { if command -v sha256sum >/dev/null; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
-
-mount_source() {
-  docker inspect --format "{{range .Mounts}}{{if eq .Destination \"$2\"}}{{if .Name}}volume:{{.Name}}{{else}}\
-{{.Source}}{{end}}{{end}}{{end}}" "$1"
-}
 
 echo "Verifying $backup/SHA256SUMS"
 (cd "$backup" && sha256 -c --quiet SHA256SUMS)
@@ -74,7 +68,8 @@ docker compose create --no-recreate $services
 echo "This replaces everything in:"
 for name in "${archives[@]}"; do
   id=$(docker compose ps --all --quiet "${name%-*}")
-  echo "  ${name%-*} /${name##*-}: $(mount_source "$id" "/${name##*-}")"
+  keep=$(excluded_names "$id" "/${name##*-}" | tr '\n' ' ' | sed 's/ $//')
+  echo "  ${name%-*} /${name##*-}: $(mount_source "$id" "/${name##*-}")${keep:+ (except $keep)}"
 done
 if ! $yes; then
   read -r -p "Type 'yes' to continue: " answer
@@ -100,8 +95,14 @@ for name in "${archives[@]}"; do
   mount=/${name##*-}
   id=$(docker compose ps --all --quiet "$service")
   echo "Restoring $service $mount"
+  # find's conditions for the entries to keep, as arguments: ! -path <mount>/<name> ! -path <mount>/<name>/*
+  keep_args=()
+  while IFS= read -r keep; do
+    if [ -n "$keep" ]; then keep_args+=('!' -path "$mount/$keep" '!' -path "$mount/$keep/*"); fi
+  done < <(excluded_names "$id" "$mount")
   # tar runs as root in the container, so files get back their original owners and modes.
   docker run --rm -i --network none --volumes-from "$id" "$busybox" \
-    sh -c 'find "$1" -mindepth 1 -delete && tar -xzf - -C "$1"' restore "$mount" <"$backup/$name.tar.gz"
+    sh -c 'm=$1 && shift && find "$m" -mindepth 1 "$@" -delete && tar -xzf - -C "$m"' \
+    restore "$mount" "${keep_args[@]+"${keep_args[@]}"}" <"$backup/$name.tar.gz"
 done
 echo "Restored. Services that weren't running before stay stopped: start them with 'docker compose up -d'."

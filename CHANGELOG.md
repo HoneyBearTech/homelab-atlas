@@ -6,7 +6,21 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Scheduled backups: `scripts/scheduled-backup.sh` takes a backup, copies it to another machine with rsync
+  (`SHA256SUMS` last, so a cut-off copy is refused by the restore), keeps the newest 3 here and 30 there, and
+  reports to an Uptime Kuma push monitor. Settings in the optional, gitignored `backup.env`
+  (`backup.env.example`); systemd user units in `deploy/systemd/` run it nightly at 03:00
+  ([docs/installing.md](docs/installing.md#scheduled-backups)).
+- A service's `org.honeybeartech.atlas.backup.exclude` label lists entries in its `/config` or `/scripts` that
+  backups leave out and restores keep. Radarr, Sonarr (both instances) and Lidarr leave out their posters
+  (`/config/MediaCover`), which they download again.
+
 ### Changed
+
+- `scripts/backup.sh` stops each service only while its own data is copied, and compresses after it has started
+  again (with pigz when it's installed), instead of stopping the whole stack for the whole backup.
 
 - Radarr and Radarr 4K, Sonarr and Sonarr 4K, Lidarr, SABnzbd and socket-proxy move to linuxserver.io's newest
   builds of the same app versions: rebuilt base packages, no database migration.

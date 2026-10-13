@@ -46,7 +46,7 @@ non-empty reason:
   ([installing.md](installing.md#running-it-securely)). homelab-atlas doesn't add a reverse proxy, TLS or
   single sign-on.
 - **The host.** Anyone with root, `docker` group membership or write access to `.env`, `autoheal.env`, the config volumes,
-  `APPDATA_ROOT`, `RECYCLARR_CONFIG_PATH` or `MEDIA_ROOT` controls the stack; those are trusted.
+  `APPDATA_ROOT`, `RECYCLARR_CONFIG_PATH`, `SABNZBD_INCOMPLETE_PATH` or `MEDIA_ROOT` controls the stack; those are trusted.
 - **Media and downloads.** What the apps download is untrusted content from the internet; the apps run as
   an unprivileged user with access to `/media`, which limits but doesn't remove that risk.
 - **Dozzle's access to Docker.** The Dozzle agent needs the Docker socket to read logs; read-only mounting

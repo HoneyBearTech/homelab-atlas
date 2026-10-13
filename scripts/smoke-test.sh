@@ -7,8 +7,8 @@
 # CI runs it on every change; `make smoke` runs it locally.
 #
 # It stays away from any real installation on the same Docker host: its own Compose project, temporary
-# directories for MEDIA_ROOT, APPDATA_ROOT and RECYCLARR_CONFIG_PATH, config volumes under their own prefix, no
-# fixed container names and no published ports. It never reads .env or autoheal.env (so no webhook is called),
+# directories for MEDIA_ROOT, APPDATA_ROOT, RECYCLARR_CONFIG_PATH and SABNZBD_INCOMPLETE_PATH, config volumes
+# under their own prefix (never SONARR4K_CONFIG_VOLUME), no fixed container names and no published ports. It never reads .env or autoheal.env (so no webhook is called),
 # ignores the stack's settings in the environment, and on exit removes only the volumes Compose labelled with its
 # own project.
 set -euo pipefail
@@ -22,7 +22,8 @@ work=$(mktemp -d)
 
 # The settings come from the generated env file only, never from the caller's environment. The Compose
 # variables also point scripts/backup.sh and scripts/restore.sh at this project.
-unset PUID PGID TZ UMASK MEDIA_ROOT APPDATA_ROOT CONFIG_VOLUME_PREFIX RECYCLARR_CONFIG_PATH COMPOSE_PROFILES
+unset PUID PGID TZ UMASK MEDIA_ROOT APPDATA_ROOT CONFIG_VOLUME_PREFIX SONARR4K_CONFIG_VOLUME RECYCLARR_CONFIG_PATH \
+  SABNZBD_INCOMPLETE_PATH COMPOSE_PROFILES
 export COMPOSE_PROJECT_NAME=$project
 export COMPOSE_FILE=$root/compose.yaml:$work/override.yaml
 export COMPOSE_ENV_FILES=$work/env
@@ -43,7 +44,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir -p "$work/media" "$work/appdata/radarr/scripts" "$work/appdata/radarr4k/scripts" "$work/recyclarr"
+mkdir -p "$work/media" "$work/appdata/radarr/scripts" "$work/appdata/radarr4k/scripts" "$work/recyclarr" \
+  "$work/incomplete"
 cat >"$work/env" <<EOF
 PUID=$(id -u)
 PGID=$(id -g)
@@ -53,6 +55,7 @@ MEDIA_ROOT=$work/media
 APPDATA_ROOT=$work/appdata
 CONFIG_VOLUME_PREFIX=${project}_
 RECYCLARR_CONFIG_PATH=$work/recyclarr
+SABNZBD_INCOMPLETE_PATH=$work/incomplete
 EOF
 
 # Project-scoped container names and no published ports, so the test can't collide with anything already

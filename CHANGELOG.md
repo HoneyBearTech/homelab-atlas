@@ -6,6 +6,13 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- SABnzbd mounts `SABNZBD_INCOMPLETE_PATH` (a new, required setting) at `/incomplete`, its temporary download folder,
+  which can be on another disk or share than `MEDIA_ROOT`.
+- Sonarr 4K is published on port 8988 (was 8888), and its config volume can have a name of its own
+  (`SONARR4K_CONFIG_VOLUME`, optional; default `<CONFIG_VOLUME_PREFIX>sonarr4k`).
+
 ## [0.3.0] - 2026-10-13
 
 Nightly backups copied off the host, Dependabot updates for the linuxserver.io images, and Dozzle as an agent of a

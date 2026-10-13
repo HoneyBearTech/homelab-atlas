@@ -18,6 +18,8 @@ setting marked required stops `docker compose` with an error naming it when it's
 | `MEDIA_ROOT` | yes | `/srv/media` | Host directory with downloads and media on one filesystem, mounted at `/media` in Radarr, Sonarr, Lidarr, Bazarr and SABnzbd. |
 | `APPDATA_ROOT` | yes | `/srv/appdata` | Host directory for files beside the config volumes: Radarr's custom scripts in `radarr/scripts` and `radarr4k/scripts`, mounted at `/scripts`. |
 | `CONFIG_VOLUME_PREFIX` | yes | `homelab-atlas_` | Prefix of the Docker volumes with each app's config and database: `<prefix>radarr`, `<prefix>radarr4k`, `<prefix>sonarr`, `<prefix>sonarr4k`, `<prefix>lidarr`, `<prefix>bazarr`, `<prefix>bazarr4k`, `<prefix>sabnzbd`. |
+| `SONARR4K_CONFIG_VOLUME` | no (default `<prefix>sonarr4k`) | `sonarr4k-data` | Full name of Sonarr 4K's config volume, for an instance whose volume doesn't follow the prefix. |
+| `SABNZBD_INCOMPLETE_PATH` | yes | `/srv/downloads/incomplete` | Host directory where SABnzbd assembles downloads before they're complete, mounted at `/incomplete` (its temporary download folder). May be another disk or share; not backed up. |
 | `RECYCLARR_CONFIG_PATH` | yes | `/srv/appdata/recyclarr` | Host directory with Recyclarr's config, mounted at `/config`. |
 
 ### `autoheal.env`
@@ -50,7 +52,7 @@ names another file.
 | `radarr` | `lscr.io/linuxserver/radarr` | 7878 → 7878 | yes |
 | `radarr4k` | `lscr.io/linuxserver/radarr` | 17878 → 7878 | yes |
 | `sonarr` | `lscr.io/linuxserver/sonarr` | 8989 → 8989 | yes |
-| `sonarr4k` | `lscr.io/linuxserver/sonarr` | 8888 → 8989 | yes |
+| `sonarr4k` | `lscr.io/linuxserver/sonarr` | 8988 → 8989 | yes |
 | `lidarr` | `lscr.io/linuxserver/lidarr` | 8686 → 8686 | yes |
 | `bazarr` | `lscr.io/linuxserver/bazarr` | 6767 → 6767 | yes |
 | `bazarr4k` | `lscr.io/linuxserver/bazarr` | 6768 → 6767 | yes |
@@ -66,10 +68,11 @@ Ports are published on every host interface. Exact versions and digests are in [
 
 | Container path | Host source | Services |
 | --- | --- | --- |
-| `/config` | volume `<CONFIG_VOLUME_PREFIX><app>` | the *arr apps, Bazarr, SABnzbd |
+| `/config` | volume `<CONFIG_VOLUME_PREFIX><app>` (Sonarr 4K: `SONARR4K_CONFIG_VOLUME` when set) | the *arr apps, Bazarr, SABnzbd |
 | `/config` | `RECYCLARR_CONFIG_PATH` | recyclarr |
 | `/media` | `MEDIA_ROOT` | the *arr apps, Bazarr, SABnzbd |
 | `/scripts` | `APPDATA_ROOT/radarr/scripts`, `APPDATA_ROOT/radarr4k/scripts` | radarr, radarr4k |
+| `/incomplete` | `SABNZBD_INCOMPLETE_PATH` | sabnzbd |
 | `/var/run/docker.sock` (read-only) | the Docker socket | dozzle, socket-proxy (allowed exceptions, see below) |
 
 `socket-proxy` and `autoheal` share the internal network `docker-proxy`, which has no route out and nothing

@@ -45,9 +45,14 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   follow those. Patch and minor updates, and rebuilds (same tag, new digest, owner's decision 2026-10-13), are
   auto-merged once the required checks pass (`dependabot-auto-merge.yml`, owner's decision 2026-10-06); major
   updates wait for the owner (an app may migrate its database). A merge never deploys: atlas changes only on a deliberate pull.
-- **No privileged containers, added capabilities, host network/PID or Docker socket mounts** unless the
-  service carries `org.honeybeartech.atlas.allow.<rule>: "<reason>"` and the owner agreed.
-  `scripts/check_compose.py` enforces both rules in CI and in the release workflow.
+- **No privileged containers, host network/PID, Docker socket mounts or device mappings** unless the
+  service carries `org.honeybeartech.atlas.allow.<rule>: "<reason>"` and the owner agreed. **Every service is
+  hardened** (`<<: *hardened`: `cap_drop: [ALL]`, `no-new-privileges:true`; the linuxserver.io apps
+  `<<: *linuxserver`, which adds back `CHOWN DAC_OVERRIDE SETUID SETGID KILL`); a capability added back must be in
+  Docker's default set, carry a comment saying why, and be proven needed (docs/security.md#hardening).
+  recyclarr, dozzle (tmpfs `/tmp`), autoheal and socket-proxy (tmpfs `/run`, `/tmp`) run with `read_only: true`;
+  the linuxserver.io apps can't (s6-overlay execs from `/run`).
+  `scripts/check_compose.py` enforces these rules in CI and in the release workflow.
 - **Never change the live server** (atlas) without the owner asking: no `docker compose up`, no edits to
   app data or Portainer stacks. Read-only inspection (`docker ps`, `docker inspect`) only when asked.
 - Every setting goes through `.env` (`${VAR:?…}` in compose when required) and is listed in `.env.example`

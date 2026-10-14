@@ -8,9 +8,12 @@ live. The reasoning behind these requirements is in the [assurance case](assuran
 1. **Only reviewed versions run.** Every image is pinned as `name:tag@sha256:<digest>`. A registry tag
    that is moved or hijacked doesn't change what `docker compose pull` fetches; a new version arrives only
    as a pull request that changes the digest.
-2. **No container gets more of the host than it needs.** No service runs privileged, adds Linux
-   capabilities, shares the host's network or PID namespace, or mounts the Docker socket (which is root on
-   the host), unless the exception is written into the service as a reasoned label and reviewed.
+2. **No container gets more of the host than it needs.** Every service drops every Linux capability, adds back
+   only the ones its image needs (never more than Docker's default set) and can't gain privileges from setuid
+   binaries or file capabilities. No service runs privileged, shares the host's network or PID namespace, maps a
+   host device or mounts the Docker socket (which is root on the host), unless the exception is written into the
+   service as a reasoned label and reviewed. Where an image allows it, its root filesystem is read-only
+   ([Hardening](#hardening)).
 3. **No secrets in the repository.** The apps keep their API keys, logins and provider credentials in
    their own config volumes, outside the repository. `.env` holds settings only; the stack's one secret, autoheal's optional webhook
    URL, is in `autoheal.env`. Both are gitignored. Secret
@@ -33,10 +36,32 @@ non-empty reason:
 | `latest` | uses the `latest` tag |
 | `build` | builds an image instead of pulling a pinned one |
 | `privileged` | sets `privileged: true` |
-| `cap-add` | adds Linux capabilities |
+| `no-new-privileges` | doesn't set `security_opt: [no-new-privileges:true]` |
+| `cap-drop` | doesn't drop every capability (`cap_drop: [ALL]`) |
+| `cap-add` | adds a capability outside Docker's default set (adding back one of those only narrows the default) |
 | `host-network` / `host-pid` | uses the host's network or PID namespace |
 | `docker-socket` | mounts the Docker socket |
+| `devices` | maps a host device into the container (a GPU reservation under `deploy.resources` is allowed) |
 | `healthcheck` | has no health check, or disables it (one defined only in the image isn't visible to the check) |
+
+## Hardening
+
+What each service runs with, beyond the policy. Every service has `cap_drop: [ALL]` and
+`no-new-privileges:true`, and every service whose image allows it has a read-only root filesystem. The smoke test
+proves each one still starts healthy with data directories owned by `PUID:PGID` as on a host, survives a backup and
+restore, and that autoheal can still restart a container through socket-proxy with these settings.
+
+| Service | Capabilities added back | Read-only root filesystem | Why |
+| --- | --- | --- | --- |
+| radarr, radarr4k, sonarr, sonarr4k, lidarr, bazarr, bazarr4k, sabnzbd | `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID`, `KILL` | no | The linuxserver.io init (s6) runs as root: it takes ownership of `/config` and the app's own directories for `PUID:PGID` (`CHOWN`; it must enter directories it doesn't own to do so, `DAC_OVERRIDE`), starts the app as that user (`SETUID`, `SETGID`) and signals it to stop (`KILL`; without it every stop waits for Docker's timeout and kills the app). Their root stays writable: s6-overlay runs its init from `/run`, which a tmpfs mounts without exec, and the init rewrites `/etc/passwd` for `PUID` |
+| recyclarr | none | yes (`/tmp` in memory) | Runs as `PUID:PGID` and writes only its config directory, and its crontab to `/tmp` |
+| dozzle | none | yes (`/tmp` in memory) | Reads the Docker socket, which belongs to root; writes only its address file to `/tmp` |
+| autoheal | none | yes | Only talks to socket-proxy |
+| socket-proxy | none | yes (`/run`, `/tmp` in memory) | Only reads the socket |
+
+Each capability was found by starting the image without it: the app then fails to start, can't write its
+database, can't repair a `/config` with files owned by another user, or takes 30 seconds to stop and is killed.
+Without `CHOWN` and `DAC_OVERRIDE` the apps' root can only reach what it owns.
 
 ## What it doesn't protect
 

@@ -25,7 +25,8 @@ git clone https://github.com/HoneyBearTech/homelab-atlas.git && cd homelab-atlas
 make test     # creates .venv with the hash-pinned tools, runs the checker's tests with coverage
 make lint     # ruff, ruff format, yamllint, shellcheck
 cp .env.example .env && make check   # the policy check over the resolved Compose file
-make smoke    # starts the whole stack with throwaway settings and waits until every service is healthy
+make smoke    # starts the whole stack with throwaway settings, waits until every service is healthy,
+              # then backs it up, changes it, restores it, and checks that autoheal restarts an unhealthy container
 ```
 
 How the stack fits together is in [docs/architecture.md](docs/architecture.md).
@@ -36,9 +37,17 @@ Every push and pull request runs two CI jobs ([`.github/workflows/ci.yml`](.gith
 required checks on `main`. "Checks + tests" runs the linters below, a gitleaks scan of the whole history,
 the checker's unit tests with a coverage floor, `docker compose config` and the policy check
 ([`scripts/check_compose.py`](scripts/check_compose.py)). "Stack smoke test"
-([`scripts/smoke-test.sh`](scripts/smoke-test.sh)) starts every service with throwaway directories and
-volumes and fails unless each one reports healthy within five minutes. CodeQL, dependency review, a DCO check and OpenSSF
-Scorecard also run on the repository.
+([`scripts/smoke-test.sh`](scripts/smoke-test.sh)), on an amd64 runner like the server, starts every
+service with throwaway directories and volumes, fails unless each one reports healthy within five minutes,
+runs a backup and restore round trip over every data mount (checking that `/media`, SABnzbd's `/incomplete` and
+the apps' posters are neither archived nor overwritten), runs the scheduled backup against a stand-in backup
+server, and checks that autoheal restarts a container that turns unhealthy. CodeQL, dependency review, a DCO check
+and OpenSSF Scorecard also run on the repository.
+
+The maintainer also plans a copy on a self-hosted GitLab, mirrored from GitHub by a scheduled job in
+[`.gitlab-ci.yml`](.gitlab-ci.yml), which re-runs the "Checks + tests" steps that need no Docker daemon on
+every commit it receives. Until the GitLab project, its mirror token and the schedule exist, the file does
+nothing. Changes go to GitHub only; a commit made on the GitLab copy stops the mirror.
 
 The checker's tests are offline: they feed it JSON fixtures in [`tests/fixtures/`](tests/fixtures/), with no
 Docker and no network. The smoke test needs both: it pulls the pinned images.

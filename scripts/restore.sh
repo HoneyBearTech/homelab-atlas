@@ -1,20 +1,26 @@
 #!/usr/bin/env bash
-# Restore a backup made by scripts/backup.sh: replace the contents of each service's /config and /scripts mount
-# with the archive for it, except the entries the service's org.honeybeartech.atlas.backup.exclude label lists (the
-# backup left them out, so they're kept as they are). The services are stopped while their data is replaced, and
-# whatever was running is started again afterwards.
+# Restore a backup made by scripts/backup.sh: replace the contents of each data mount listed in the backup's
+# MANIFEST with its archive. The services are stopped while their data is replaced, and whatever was running is
+# started again afterwards.
 #
 #   scripts/restore.sh [--yes] DIR [SERVICE...]
 #
-# Without SERVICE, every service that has an archive in DIR is restored. The checksums are verified first, and
-# it asks for confirmation (unless --yes) after listing what it will overwrite. On a new host, restore .env
-# from DIR/env first; the volumes and containers are created as needed. Uses `docker compose` from the
-# checkout, so the standard Compose variables select another project, as in scripts/backup.sh.
+# Without SERVICE, every service that has an archive in DIR is restored. The checksums are verified first, and it
+# asks for confirmation (unless --yes) after listing what it will overwrite. It only writes to a container path
+# the service still mounts read-write, never to the Docker socket or a path the service excludes from backups, and
+# leaves the paths a service's exclude label lists inside a mount as they are. On a new host, restore .env from
+# DIR/env first; the volumes and containers are created as needed. Uses `docker compose` from the checkout, so the
+# standard Compose variables select another project, as in scripts/backup.sh.
 set -euo pipefail
 
 usage() {
   echo "usage: $0 [--yes] DIR [SERVICE...]" >&2
   exit 2
+}
+
+fail() {
+  echo "error: $*" >&2
+  exit 1
 }
 
 yes=false
@@ -31,49 +37,56 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 . "$root/scripts/lib.sh"
 cd "$root"
 
+[ -f "$backup/MANIFEST" ] && [ -f "$backup/SHA256SUMS" ] || fail "$backup has no MANIFEST or SHA256SUMS"
 echo "Verifying $backup/SHA256SUMS"
 (cd "$backup" && sha256 -c --quiet SHA256SUMS)
+grep -q ' MANIFEST$' "$backup/SHA256SUMS" || fail "SHA256SUMS doesn't cover the MANIFEST"
 
-# The archives to restore: <service>-<mount>.tar.gz, for the services asked for (or all).
+# The archives to restore, from the MANIFEST, for the services asked for (or all). Its names are checked before
+# they're used: an archive is a plain file in DIR, a mount an absolute container path.
 known=" $(docker compose config --services | tr '\n' ' ') "
-archives=()
-for path in "$backup"/*.tar.gz; do
-  [ -e "$path" ] || continue
-  name=$(basename "$path" .tar.gz)
-  service=${name%-*}
-  # Only the mounts backup.sh archives; anything else (/media above all) is never written to.
-  case ${name##*-} in
-    config | scripts) ;;
-    *)
-      echo "error: $(basename "$path") isn't a /config or /scripts archive" >&2
-      exit 1
-      ;;
-  esac
-  if [[ "$known" != *" $service "* ]]; then
-    echo "error: $(basename "$path") belongs to $service, which isn't in compose.yaml" >&2
-    exit 1
+entries=()
+while IFS=$'\t' read -r archive service mount _; do
+  case $archive in '#'* | '') continue ;; esac
+  if [[ ! "$archive" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*\.tar\.gz$ ]] || [ ! -f "$backup/$archive" ]; then
+    fail "the MANIFEST names an archive that isn't in $backup: $archive"
   fi
-  if [ $# -eq 0 ] || [[ " $* " == *" $service "* ]]; then archives+=("$name"); fi
-done
-if [ ${#archives[@]} -eq 0 ]; then
-  echo "error: nothing to restore in $backup${*:+ for $*}" >&2
-  exit 1
+  if [[ ! "$mount" =~ ^/[A-Za-z0-9_.@/-]+$ ]] || [[ "$mount" == *..* || "$mount" == *docker.sock ]]; then
+    fail "$archive has an unusable mount path: $mount"
+  fi
+  if [[ "$known" != *" $service "* ]]; then
+    fail "$archive belongs to $service, which isn't in compose.yaml"
+  fi
+  if [ $# -eq 0 ] || [[ " $* " == *" $service "* ]]; then entries+=("$archive	$service	$mount"); fi
+done <"$backup/MANIFEST"
+if [ ${#entries[@]} -eq 0 ]; then
+  fail "nothing to restore in $backup${*:+ for $*}"
 fi
-services=$(printf '%s\n' "${archives[@]%-*}" | sort -u)
+services=$(printf '%s\n' "${entries[@]}" | cut -f2 | sort -u)
 
 # Containers (and their volumes) must exist to write into; this creates missing ones without starting them.
 # shellcheck disable=SC2086 # one service name per word
 docker compose create --no-recreate $services
 
 echo "This replaces everything in:"
-for name in "${archives[@]}"; do
-  id=$(docker compose ps --all --quiet "${name%-*}")
-  keep=$(excluded_names "$id" "/${name##*-}" | tr '\n' ' ' | sed 's/ $//')
-  echo "  ${name%-*} /${name##*-}: $(mount_source "$id" "/${name##*-}")${keep:+ (except $keep)}"
+for entry in "${entries[@]}"; do
+  IFS=$'\t' read -r archive service mount <<<"$entry"
+  id=$(docker compose ps --all --quiet "$service")
+  if skipped_mounts "$id" | grep -qxF -- "$mount"; then
+    fail "$service excludes $mount from backups ($skip_label); refusing to write it"
+  fi
+  check_excludes "$id" || exit 1
+  source=$(data_mounts "$id" | awk -F '\t' -v m="$mount" '$1 == m { print $2 }')
+  [ -n "$source" ] || fail "$service has no read-write mount at $mount any more (compose.yaml changed since the backup)"
+  keep=$(left_out "$id" "$mount" | tr '\n' ',' | sed -e 's/,$//' -e 's/,/, /g')
+  echo "  $service $mount: $source${keep:+ (except $keep)}"
 done
 if ! $yes; then
   read -r -p "Type 'yes' to continue: " answer
-  [ "$answer" = yes ] || { echo "Nothing changed."; exit 1; }
+  [ "$answer" = yes ] || {
+    echo "Nothing changed."
+    exit 1
+  }
 fi
 
 running=$(docker compose ps --services --status running)
@@ -90,19 +103,25 @@ trap restart EXIT
 # shellcheck disable=SC2086 # one service name per word
 docker compose stop $services
 
-for name in "${archives[@]}"; do
-  service=${name%-*}
-  mount=/${name##*-}
+for entry in "${entries[@]}"; do
+  IFS=$'\t' read -r archive service mount <<<"$entry"
   id=$(docker compose ps --all --quiet "$service")
   echo "Restoring $service $mount"
-  # find's conditions for the entries to keep, as arguments: ! -path <mount>/<name> ! -path <mount>/<name>/*
-  keep_args=()
-  while IFS= read -r keep; do
-    if [ -n "$keep" ]; then keep_args+=('!' -path "$mount/$keep" '!' -path "$mount/$keep/*"); fi
-  done < <(excluded_names "$id" "$mount")
+  # A mount inside this one is restored or skipped on its own, and the paths the service's exclude label lists
+  # (the apps' MediaCover posters) aren't in the archive: neither they nor the directories leading to them are
+  # deleted. (-delete implies -depth, so -prune can't be used; the patterns exclude them instead.)
+  spare=()
+  while IFS= read -r nested; do
+    spare+=(! -path "$nested" ! -path "$nested/*")
+    parent=${nested%/*}
+    while [ "$parent" != "$mount" ]; do
+      spare+=(! -path "$parent")
+      parent=${parent%/*}
+    done
+  done < <(left_out "$id" "$mount")
+  docker run --rm --network none --volumes-from "$id" "$busybox" \
+    find "$mount" -mindepth 1 "${spare[@]+"${spare[@]}"}" -delete </dev/null
   # tar runs as root in the container, so files get back their original owners and modes.
-  docker run --rm -i --network none --volumes-from "$id" "$busybox" \
-    sh -c 'm=$1 && shift && find "$m" -mindepth 1 "$@" -delete && tar -xzf - -C "$m"' \
-    restore "$mount" "${keep_args[@]+"${keep_args[@]}"}" <"$backup/$name.tar.gz"
+  docker run --rm -i --network none --volumes-from "$id" "$busybox" tar -xzf - -C "$mount" <"$backup/$archive"
 done
 echo "Restored. Services that weren't running before stay stopped: start them with 'docker compose up -d'."

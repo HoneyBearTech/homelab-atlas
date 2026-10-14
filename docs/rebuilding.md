@@ -49,11 +49,14 @@ a file there.
 
 ```sh
 git clone https://github.com/HoneyBearTech/homelab-atlas.git && cd homelab-atlas
-git checkout vX.Y.Z      # the release the backup was taken with, or newer; verify it (verifying-releases.md)
+git checkout vX.Y.Z      # the release in the backup's VERSION, or newer; verify it (verifying-releases.md)
 cp /path/to/backup/env/.env .env && chmod 600 .env
 cp /path/to/backup/env/autoheal.env autoheal.env && chmod 600 autoheal.env   # if the backup has one
 cp /path/to/backup/env/backup.env backup.env && chmod 600 backup.env         # if the backup has one
 ```
+
+A backup without a `VERSION` file was made by 0.3.1 or earlier, in the older archive format: check out v0.3.1 to
+restore it.
 
 Edit `.env` if the new host's paths differ (`MEDIA_ROOT`, `APPDATA_ROOT`, `RECYCLARR_CONFIG_PATH`,
 `SABNZBD_INCOMPLETE_PATH`). Keep
@@ -79,7 +82,8 @@ should be found. Check Recyclarr's log after its next run (`docker compose logs 
 
 ## What the backup doesn't bring back
 
-- **The media itself**: restore it from your storage's snapshots or backups, if it was lost too.
+- **The media itself** (`/media`) and **SABnzbd's unfinished downloads** (`/incomplete`): never backed up
+  (`backup.skip`). Restore the media from your storage's snapshots or backups, if it was lost too.
 - **Host settings**: firewall rules, `/etc/fstab`, a reverse proxy, monitoring agents, and the scheduled
   backup's SSH key and systemd units: set those up again as [installing.md](installing.md#scheduled-backups)
   describes, with a new key (remove the old one from the backup server).

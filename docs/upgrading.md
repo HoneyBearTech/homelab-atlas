@@ -13,20 +13,23 @@ anything you depend on.
 
 ## Backing up
 
-The state worth keeping is what each service mounts at `/config` and `/scripts`: the apps' config volumes
-(settings, API keys, databases), Recyclarr's config directory and Radarr's custom scripts. `scripts/backup.sh`
-archives each of those mounts, stopping each service only while its own data is copied so its database is
-consistent, and copies `.env` and the other settings files (`autoheal.env`, `backup.env`). The posters the apps
-download again by themselves (`/config/MediaCover`) are left out:
+The state worth keeping is each service's data: every read-write volume or directory it mounts except the ones
+its `org.honeybeartech.atlas.backup.skip` label lists (`/media` and SABnzbd's `/incomplete`), which leaves the
+apps' config volumes (settings, API keys, databases), Recyclarr's config directory and Radarr's custom scripts.
+`scripts/backup.sh` stops one service at a time, copies its mounts while it is stopped so its database is
+consistent, and starts it again if it was running before compressing the copies; services with nothing to archive
+keep running. It also copies `.env` and the other settings files (`autoheal.env`, `backup.env`). The posters the
+apps download again by themselves (`/config/MediaCover`) are left out:
 
 ```sh
 scripts/backup.sh                       # into backups/<date>-<time>/ in the checkout (gitignored)
 scripts/backup.sh /path/to/backup-dir   # or a directory of your choice (new or empty)
 ```
 
-The directory holds one `<service>-config.tar.gz` (and `<service>-scripts.tar.gz`) per mount, `env/.env` (and
-`env/autoheal.env`, `env/backup.env`), a `MANIFEST` naming each archive's volume or host path and image, and `SHA256SUMS`. Everything in it is readable
-only by the user who ran the backup. **Copy it off the host**: it contains every app's API key and logins.
+The directory holds one `<service>--<path>.tar.gz` per mount (`radarr--config.tar.gz`, `radarr--scripts.tar.gz`,
+...), `env/.env` (and `env/autoheal.env`, `env/backup.env`), a `MANIFEST` naming each archive's service, container
+path, volume or host path and image, `NETWORKS`, `VERSION` (the release it was taken with) and `SHA256SUMS`.
+Everything in it is readable only by the user who ran the backup. **Copy it off the host**: it contains every app's API key and logins.
 `MEDIA_ROOT` (the media) is too large for this and is better covered by your storage's own snapshots or
 backups. Every service needs a container for the backup to read from, so run it on an installed stack. A
 nightly backup copied to another machine is set up as [installing.md](installing.md#scheduled-backups) describes.
@@ -54,8 +57,10 @@ scripts/restore.sh backups/YYYYMMDD-HHMMSS radarr   # checks SHA256SUMS, lists w
 docker compose up -d radarr
 ```
 
-`scripts/restore.sh` replaces everything in the service's `/config` and `/scripts` mounts with the archives,
-keeping the files' owners and modes. Without service names it restores every service in the backup. It stops
+`scripts/restore.sh` replaces everything in each mount the backup's `MANIFEST` lists for the service with its
+archive, keeping the files' owners and modes; it never writes `/media` or `/incomplete`, and leaves the posters as
+they are. Use the `restore.sh` of the release the backup was taken with (its `VERSION`), or a later one that reads
+the same format: a backup without a `VERSION` file was made by 0.3.1 or earlier and needs 0.3.1's `restore.sh`. Without service names it restores every service in the backup. It stops
 those services while it works and starts again the ones that were running; `--yes` skips the question.
 
 ## Restoring on a new host

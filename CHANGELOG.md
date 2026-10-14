@@ -6,6 +6,47 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ## [Unreleased]
 
+The backup scripts, smoke test and CI now follow homelab-ares, the template for the homelab stacks. A backup holds
+the same data as before, in a new layout.
+
+### Added
+
+- Label `org.honeybeartech.atlas.backup.skip`: container paths a backup never archives and a restore refuses to
+  write. Every app that mounts the media library carries `/media`, and SABnzbd also `/incomplete`.
+- Every backup also records `NETWORKS` (the address range of each network the stack uses but doesn't create; none
+  today) and `VERSION` (the release it was taken with).
+- CI logs in to Docker Hub with a read-only token when the repository has one (pulls stay anonymous until then), and
+  logs out before the smoke test starts any container. A `.gitlab-ci.yml` for a GitLab mirror of the repository
+  (inactive until that mirror is set up).
+
+### Changed
+
+- `scripts/backup.sh` archives every read-write volume or bind mount of every service except the Docker socket,
+  anonymous volumes and the mounts in its `backup.skip` label, instead of a fixed list of `/config` and `/scripts`.
+  With the new labels that is exactly what it archived before: the apps' `/config`, Recyclarr's `/config` and
+  Radarr's `/scripts`, never `/media` or `/incomplete`. A mount inside another mount is archived on its own.
+- Archives are named `<service>--<path>.tar.gz` (such as `radarr--config.tar.gz`, was `radarr-config.tar.gz`), and
+  the `MANIFEST` is tab-separated with the archive's name in its first column. `scripts/restore.sh` restores what
+  the `MANIFEST` lists, and refuses a skipped mount.
+- `org.honeybeartech.atlas.backup.exclude` takes comma-separated paths at any depth inside a data mount (it was
+  entries directly inside `/config` or `/scripts`, separated by spaces). The apps' `/config/MediaCover` stays as it
+  is. A path outside every data mount, or with `..` or a pattern character, still fails the backup and the restore
+  before anything stops.
+- The smoke test derives its throwaway settings from `.env.example` (every `*_ROOT` and `*_PATH` a temporary
+  directory owned by `PUID:PGID` with mode 0755 as on a host, `*_PREFIX`, `*_VOLUME` and `*_NETWORK` names of its
+  own, so never the real `SONARR4K_CONFIG_VOLUME`), and checks that skipped mounts and excluded paths are neither
+  archived nor overwritten, and that every backup has a `NETWORKS` file. It still never reads
+  `.env` or `autoheal.env`.
+- The smoke test runs on `ubuntu-24.04` (amd64) instead of `ubuntu-latest`.
+
+### Upgrading
+
+- **Backups made before this version can only be restored with the previous release's `scripts/restore.sh`**
+  (v0.3.1): check out that tag to restore one. Such a backup has no `VERSION` file; the new `restore.sh` refuses it
+  without changing anything. Backups made from now on use the new format.
+- Nothing to change in `.env`, and the systemd units are the same as in 0.3.x (they already use the best-effort
+  I/O class), so they don't need re-installing.
+
 ## [0.3.1] - 2026-10-13
 
 Two settings the stack needs to take over Atlas as it runs today.

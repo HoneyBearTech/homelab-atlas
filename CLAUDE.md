@@ -3,6 +3,9 @@
 The Docker Compose stack for Atlas, the owner's homelab media automation server: Recyclarr and the *arr
 apps (Radarr and Sonarr with 4K instances, Lidarr, Bazarr, SABnzbd) plus a Dozzle agent and autoheal (behind a socket
 proxy), every image pinned by tag and digest so the server can be upgraded and rebuilt from this repository.
+homelab-ares is the template for the homelab stacks: tooling that isn't specific to this host's services (checker,
+backup scripts, smoke test, workflows) is kept the same as ares'; a change here that isn't about this host's
+services goes to ares too (owner's decision 2026-10-13).
 
 ## Before Making Structural Changes
 Read the project's notes first. They live outside this repo, in the owner's Obsidian vault **Chronos** at
@@ -61,20 +64,37 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   no port), `autoheal` (`latest`: the image's only maintained tag). Don't add more without the owner agreeing.
 - autoheal restarts every service labelled `autoheal: "true"` that turns unhealthy; every app service carries the
   label. It must never get the socket itself, only `tcp://socket-proxy:2375`.
-- Backups (`scripts/backup.sh`, `restore.sh`, `scheduled-backup.sh`, helpers in `scripts/lib.sh`) only ever touch
-  `/config` and `/scripts`, never `/media`. `org.honeybeartech.atlas.backup.exclude` lists entries inside them to
-  leave out (the apps' `/config/MediaCover`). The nightly run (systemd user timer, 03:00) copies to the backup server
-  with rsync and keeps 3 here / 30 there (owner's choices 2026-10-13); its settings, including the Uptime Kuma push
-  URL, are in the gitignored `backup.env`.
+- Backups (`scripts/backup.sh`, `restore.sh`, `scheduled-backup.sh`, helpers in `scripts/lib.sh`, as in ares)
+  archive every read-write volume or bind mount except the Docker socket, anonymous volumes and the mounts a
+  service's `org.honeybeartech.atlas.backup.skip` label lists. **Every service that mounts `/media` carries
+  `backup.skip: "/media"`** (SABnzbd `"/media,/incomplete"`), so a backup holds only the apps' `/config`,
+  Recyclarr's `/config` and Radarr's `/scripts`: a new service or mount gets a skip label unless its data
+  belongs in the nightly backup. `org.honeybeartech.atlas.backup.exclude` lists paths inside a mount to leave out
+  (comma-separated; the apps' `/config/MediaCover`). Each service is stopped only while its data is copied;
+  compression (pigz or gzip) runs after it starts again. `restore.sh` only writes mounts listed in the backup's
+  MANIFEST that the service still mounts read-write, never a skipped mount. The nightly run (systemd user timer,
+  03:00) copies to the backup server with rsync and keeps 3 here / 30 there (owner's choices 2026-10-13); its
+  settings, including the Uptime Kuma push URL, are in the gitignored `backup.env`.
 
 ## Stack
 - Docker Compose v2 (`compose.yaml`, 12 services), upstream images (linuxserver.io where available).
 - `scripts/check_compose.py`: Python 3.14, standard library only. Reads `docker compose config --format json`,
   reports policy violations (exit 1), `--sbom FILE` writes a CycloneDX 1.6 SBOM of the images.
+- Settings per path/volume/prefix in `.env` (`*_ROOT`, `*_PATH`, `*_VOLUME`, `*_PREFIX`): the smoke test replaces
+  each kind with throwaway ones derived from `.env.example`, so keep that naming for new settings.
+- `scripts/*.sh`: bash, must also run on macOS' bash 3.2 (no `mapfile`, no associative arrays).
 - Tooling: ruff with every rule family (`select = ["ALL"]`, exceptions in `pyproject.toml`; per-line `noqa`
-  with a reason) and `ruff format`; yamllint (`.yamllint.yml`); pytest + coverage (90 % branch floor);
-  pip-tools for the hash-pinned `requirements-dev.txt`. CI-only: actionlint, gitleaks, CodeQL (python,
-  actions), Scorecard, dependency review, DCO, Dependabot auto-merge (patch/minor, rebuilds).
+  with a reason) and `ruff format`; yamllint (`.yamllint.yml`); shellcheck (`-x`); pytest + coverage (90 % branch
+  floor); pip-tools for the hash-pinned `requirements-dev.txt`. CI-only: actionlint, gitleaks, CodeQL (python,
+  actions), Scorecard, dependency review, DCO, Trivy image scan, Dependabot auto-merge (patch/minor, rebuilds).
+- CI pulls from Docker Hub logged in with a read-only token (`DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN`, Actions and
+  Dependabot secrets; owner's decision 2026-10-13) when the secrets exist, else anonymously; the smoke job logs
+  out before any container starts. The smoke test runs on `ubuntu-24.04` (amd64, like atlas).
+- GitLab copy: the owner's self-hosted GitLab (CE, LAN only; host facts in Chronos) is to hold a mirror. GitHub
+  stays the home (OpenSSF badges, Scorecard, Dependabot, releases); every change goes to GitHub as a PR, never to
+  GitLab. `.gitlab-ci.yml` mirrors GitHub on a schedule (fast-forward only, `MIRROR_TOKEN` CI/CD variable) and
+  re-runs the daemon-free checks; the smoke test stays GitHub-only. The owner still has to create the GitLab
+  project, the `MIRROR_TOKEN` variable and the schedule; until then the file does nothing.
 - Releases (`release.yml`, on a `v*.*.*` tag): policy check, source archive, CycloneDX SBOM, `SHA256SUMS`
   signed with cosign keyless, SLSA provenance (Sigstore bundle + in-toto JSONL), GitHub Release from the
   tag's `CHANGELOG.md` section. No images are built or published.
@@ -91,8 +111,9 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
 ## Commands
 ```sh
 make test     # checker tests + coverage floor (no Docker, no network)
-make lint     # ruff check, ruff format --check, yamllint --strict
+make lint     # ruff check, ruff format --check, yamllint --strict, shellcheck -x
 make check    # docker compose config --format json | scripts/check_compose.py  (needs .env)
+make smoke    # scripts/smoke-test.sh: throwaway project, healthy, backup/restore round trip (needs Docker)
 make config   # docker compose config (resolved file)
 ```
 Regenerate the dev tools: `pip-compile --generate-hashes --strip-extras requirements-dev.in`, then put the

@@ -15,8 +15,8 @@ live. The reasoning behind these requirements is in the [assurance case](assuran
    service as a reasoned label and reviewed. Where an image allows it, its root filesystem is read-only
    ([Hardening](#hardening)).
 3. **No secrets in the repository.** The apps keep their API keys, logins and provider credentials in
-   their own config volumes, outside the repository. `.env` holds settings only; the stack's one secret, autoheal's optional webhook
-   URL, is in `autoheal.env`. Both are gitignored. Secret
+   their own config directories (under `CONFIG_ROOT`), outside the repository. `.env` holds settings only; the
+   stack's one secret, autoheal's optional webhook URL, is in `autoheal.env`. Both are gitignored. Secret
    scanning with push protection and a gitleaks scan of the whole history in CI back this up.
 4. **No host details in the repository.** It is public: no hostnames, IP addresses, internal domains or
    host paths are committed. Examples use placeholders.
@@ -70,7 +70,7 @@ Without `CHOWN` and `DAC_OVERRIDE` the apps' root can only reach what it owns.
 - **Access to the web UIs.** Each app has its own authentication, which the operator must turn on
   ([installing.md](installing.md#running-it-securely)). homelab-atlas doesn't add a reverse proxy, TLS or
   single sign-on.
-- **The host.** Anyone with root, `docker` group membership or write access to `.env`, `autoheal.env`, the config volumes,
+- **The host.** Anyone with root, `docker` group membership or write access to `.env`, `autoheal.env`, `CONFIG_ROOT`,
   `APPDATA_ROOT`, `RECYCLARR_CONFIG_PATH`, `SABNZBD_INCOMPLETE_PATH` or `MEDIA_ROOT` controls the stack; those are trusted.
 - **Media and downloads.** What the apps download is untrusted content from the internet; the apps run as
   an unprivileged user with access to `/media`, which limits but doesn't remove that risk.
@@ -92,10 +92,10 @@ Without `CHOWN` and `DAC_OVERRIDE` the apps' root can only reach what it owns.
 
 | Secret | Where | Never in |
 | --- | --- | --- |
-| App API keys, UI logins | each app's config volume | the repository, `.env`, issues, logs you paste |
-| Usenet provider and indexer credentials | SABnzbd's and the apps' config volumes | same |
+| App API keys, UI logins | each app's config directory (`CONFIG_ROOT/<app>/config`) | the repository, `.env`, issues, logs you paste |
+| Usenet provider and indexer credentials | SABnzbd's and the apps' config directories | same |
 | Radarr and Sonarr API keys for Recyclarr | `RECYCLARR_CONFIG_PATH` (`recyclarr.yml` or its secrets file) | same |
 | autoheal's webhook URL | `autoheal.env` (mode `600`, gitignored) | same |
 | The backup's push-monitor URL | `backup.env` (mode `600`, gitignored) | same |
 | The backup server's SSH key | `~/.ssh/` on the host, used only for the backup user (`restrict,from=` on the server) | the repository, `.env` |
-| Backups of the volumes | off the host, mode `600` | anywhere public |
+| Backups of the config directories | off the host, mode `600` | anywhere public |

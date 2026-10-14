@@ -46,8 +46,9 @@ Recyclarr ──API, daily──▶ Radarr / Sonarr (custom formats, quality pro
 ```
 
 All the apps share one `/media` mount (`MEDIA_ROOT`) so imports are hardlinks or instant moves on one
-filesystem. Each app keeps its settings and database in its own Docker volume at `/config`. The indexer manager
-(Prowlarr), the download client for torrents and the media server run outside this stack.
+filesystem. Each app keeps its settings and database in its own config directory (`CONFIG_ROOT/<app>/config`),
+mounted at `/config`. The indexer manager (Prowlarr), the download client for torrents and the media server run
+outside this stack.
 
 ## How changes reach the host
 

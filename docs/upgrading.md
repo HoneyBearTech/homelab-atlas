@@ -16,7 +16,7 @@ instead, where the merge is the upgrade ([Following `main`](#following-main)).
 
 The state worth keeping is each service's data: every read-write volume or directory it mounts except the ones
 its `org.honeybeartech.atlas.backup.skip` label lists (`/media` and SABnzbd's `/incomplete`), which leaves the
-apps' config volumes (settings, API keys, databases), Recyclarr's config directory and Radarr's custom scripts.
+apps' config directories (settings, API keys, databases), Recyclarr's config directory and Radarr's custom scripts.
 `scripts/backup.sh` stops one service at a time, copies its mounts while it is stopped so its database is
 consistent, and starts it again if it was running before compressing the copies; services with nothing to archive
 keep running. It also copies `.env` and the other settings files (`autoheal.env`, `backup.env`). The posters the
@@ -82,13 +82,15 @@ docker compose up -d radarr
 On a server that follows `main`, revert the change with a pull request instead of checking out the old release
 (the merge deploys the old version), then restore the service's data the same way.
 
-`scripts/restore.sh` replaces everything in each mount the backup's `MANIFEST` lists for the service with its
-archive, keeping the files' owners and modes; it never writes `/media` or `/incomplete`, and leaves the posters as
-they are. Use the `restore.sh` of the release the backup was taken with (its `VERSION`), or a later one that reads
-the same format: a backup without a `VERSION` file was made by 0.3.1 or earlier and needs 0.3.1's `restore.sh`. Without service names it restores every service in the backup. It stops
-those services while it works and starts again the ones that were running; `--yes` skips the question.
+`scripts/restore.sh` replaces everything in each mount the backup's `MANIFEST` lists for the service with its archive,
+keeping the files' owners and modes; it never writes `/media` or `/incomplete`, and leaves the posters as they are. It
+writes to what `compose.yaml` mounts at that container path now, creating a missing directory, so a backup taken while
+the apps' config was still in Docker volumes restores into their config directories. Use the `restore.sh` of the release
+the backup was taken with (its `VERSION`), or a later one that reads the same format: a backup without a `VERSION` file
+was made by 0.3.1 or earlier and needs 0.3.1's `restore.sh`. Without service names it restores every service in the
+backup. It stops those services while it works and starts again the ones that were running; `--yes` skips the question.
 
 ## Restoring on a new host
 
 See [rebuilding.md](rebuilding.md): install the host, restore `.env`, then `scripts/restore.sh` creates the
-volumes and containers and fills them from the backup.
+containers and the directories they mount and fills them from the backup.

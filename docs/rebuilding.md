@@ -61,21 +61,22 @@ A server that follows `main` ([upgrading.md](upgrading.md#following-main)) stays
 A backup without a `VERSION` file was made by 0.3.1 or earlier, in the older archive format: check out v0.3.1 to
 restore it.
 
-Edit `.env` if the new host's paths differ (`MEDIA_ROOT`, `APPDATA_ROOT`, `RECYCLARR_CONFIG_PATH`,
-`SABNZBD_INCOMPLETE_PATH`). Keep
-`CONFIG_VOLUME_PREFIX`: the restore creates volumes under that prefix. Create the host directories as the
-`PUID` user, so Docker doesn't create them owned by root:
+Edit `.env` if the new host's paths differ (`MEDIA_ROOT`, `CONFIG_ROOT`, `APPDATA_ROOT`, `RECYCLARR_CONFIG_PATH`,
+`SABNZBD_INCOMPLETE_PATH`). A backup's `.env` from before `CONFIG_ROOT` existed needs it added (see `.env.example`):
+the restore puts each app's config into `CONFIG_ROOT/<app>/config`. Create the host directories as the `PUID`
+user, so Docker doesn't create them owned by root:
 
 ```sh
 . ./.env && mkdir -p "$RECYCLARR_CONFIG_PATH" "$SABNZBD_INCOMPLETE_PATH" "$APPDATA_ROOT"/radarr/scripts \
   "$APPDATA_ROOT"/radarr4k/scripts
+for app in radarr radarr4k sonarr sonarr4k lidarr bazarr bazarr4k sabnzbd; do mkdir -p "$CONFIG_ROOT/$app/config"; done
 docker compose config --quiet && docker compose pull
 ```
 
 ## 5. Restore and start
 
 ```sh
-scripts/restore.sh /path/to/backup    # verifies SHA256SUMS, creates the volumes and containers, asks first
+scripts/restore.sh /path/to/backup    # verifies SHA256SUMS, creates the containers, asks first
 docker compose up -d --wait           # waits until every service reports healthy
 docker compose ps
 ```

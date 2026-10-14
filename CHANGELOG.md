@@ -27,6 +27,14 @@ All notable changes to homelab-atlas are documented here. The format follows
 - Backups taken while the config was in volumes (0.4.0 and later) restore as they are: `scripts/restore.sh` puts
   each app's archive into its config directory.
 
+### Added
+
+- `scripts/backup.sh` and `scripts/restore.sh` take the pull agent's deploy lock before they stop or create anything,
+  and hold it until they exit, so a deploy can't start a service a backup has stopped or recreate one in the middle
+  of a restore. The agent skips its runs meanwhile and catches up afterwards. A deploy in progress is waited for (up
+  to 30 minutes, then the script fails without changing anything). On a host without the agent (no
+  `homelab-pull/atlas` state directory) nothing changes ([docs/upgrading.md](docs/upgrading.md#following-main)).
+
 ### Changed
 
 - Each app's config (settings, API key and database) moves from a Docker volume to a config directory on the host,

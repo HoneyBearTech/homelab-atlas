@@ -14,6 +14,9 @@
 # recreated first, and a directory that doesn't exist yet is created. On a new host, restore .env from DIR/env
 # first; the containers, and the volumes and directories they mount, are created as needed. Uses `docker compose`
 # from the checkout, so the standard Compose variables select another project, as in scripts/backup.sh.
+#
+# Like scripts/backup.sh, it holds the pull agent's lock from the start (also while it asks), so no deploy starts or
+# recreates a service during the restore.
 set -euo pipefail
 
 usage() {
@@ -39,6 +42,7 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 # shellcheck source=scripts/lib.sh
 . "$root/scripts/lib.sh"
 cd "$root"
+deploy_lock
 
 [ -f "$backup/MANIFEST" ] && [ -f "$backup/SHA256SUMS" ] || fail "$backup has no MANIFEST or SHA256SUMS"
 echo "Verifying $backup/SHA256SUMS"

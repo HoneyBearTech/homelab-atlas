@@ -29,7 +29,7 @@ releases are managed independently.
 | Maintainer | Merges pull requests (a merge deploys), tags releases, configures each app in its web UI |
 | Dependabot | Opens a pull request when an image (tag and digest), a check tool or an Action has a new version; patch, minor and major updates and image rebuilds (same tag, new digest) are auto-merged once the checks pass |
 | CI | Lints, scans for secrets, tests the checker, resolves the Compose file and enforces the policy on every pull request |
-| Pull agent | On the maintainer's server, about every 90 seconds: fetches `main` and, when it moved, fast-forwards the checkout and runs `docker compose pull` and `docker compose up -d` (it lives in the maintainer's private orchestration repository) |
+| Pull agent | On the maintainer's server, about every 90 seconds: fetches `main` and, when it moved, fast-forwards the checkout and runs `docker compose pull` and `docker compose up -d` (it lives in the maintainer's private orchestration repository); skips its run while `scripts/backup.sh` or `scripts/restore.sh` holds its deploy lock |
 | Release workflow | On a version tag: checks the policy, writes the SBOM, signs the checksums, publishes the GitHub Release |
 | The apps | Talk to each other's APIs on the stack's network, to indexers and the Usenet provider on the internet, and read and write `/media` |
 | LAN users | Use the apps' web UIs, behind each app's own authentication |

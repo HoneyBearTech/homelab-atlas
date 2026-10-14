@@ -90,6 +90,10 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   the agent fast-forwards the checkout and runs `docker compose config --quiet`, `docker compose pull` and
   `docker compose up -d --remove-orphans --wait`: a merge is live within about two minutes. It refuses local
   changes and non-fast-forward history, and moves the checkout back if config or pull fails.
+- **Backups and restores lock out deploys**: `deploy_lock` in `scripts/lib.sh` (`pull_stack=atlas`, same function
+  text as ares) takes the agent's `flock` on `<state dir>/atlas/lock` before anything stops or is created, waits up
+  to 30 min for a deploy, and holds it until exit; the agent skips its runs meanwhile. No state dir = no lock (CI,
+  the Mac). The smoke test points `HOMELAB_PULL_STATE_DIR` at a directory that doesn't exist.
 - **Rollback is a revert PR**, deployed the same way. A revert doesn't undo a data migration: then the backup and
   `scripts/restore.sh` are the way back, with the owner.
 - **Pinning by hand**: the owner checks out another commit or tag on the host; the agent pauses until the checkout

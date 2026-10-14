@@ -54,7 +54,7 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   recyclarr, dozzle (tmpfs `/tmp`), autoheal and socket-proxy (tmpfs `/run`, `/tmp`) run with `read_only: true`;
   the linuxserver.io apps can't (s6-overlay execs from `/run`).
   `scripts/check_compose.py` enforces these rules in CI and in the release workflow.
-- **Never change the live server** (atlas) without the owner asking: no merge (a merge deploys), no
+- **Never change the live server** (atlas) without the owner asking: merges only as **Merging** says, no
   `docker compose up`, no edits to app data or Portainer stacks. Read-only inspection (`docker ps`, `docker inspect`)
   only when asked.
 - Every setting goes through `.env` (`${VAR:?…}` in compose when required) and is listed in `.env.example`
@@ -126,8 +126,11 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
 - `CI / Checks + tests` and `CI / Stack smoke test` are required checks (with DCO, dependency review and
   CodeQL's two analyses); don't rename those jobs.
 - **Merging (owner's decision 2026-10-14):** Claude opens a PR for every change. A merge deploys (see Deploys),
-  so Claude never merges and never turns on auto-merge (`gh pr merge --auto`) for a PR without the owner's OK for
-  that PR, and says in the question that merging deploys to atlas. Never bypass a check or the ruleset.
+  so Claude merges once every required check is green (the owner's standing permission, 2026-10-14) and
+  then says that it merged and that it's deploying to atlas. It asks first when the deploy needs something on
+  the server (a new `.env` setting, a data migration without a recent good backup, an update this file says
+  waits for the owner) or the server isn't healthy, and never turns on auto-merge (`gh pr merge --auto`)
+  without the owner's OK. Never bypass a check or the ruleset.
   Dependabot's patch and minor updates and rebuilds still auto-merge through
   `dependabot-auto-merge.yml` once every required check passes, so they now deploy unattended; majors wait for the
   owner. Keeping that auto-merge is the owner's call: don't change `dependabot-auto-merge.yml` without it.

@@ -42,10 +42,11 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
 - **Every image is pinned as `name:tag@sha256:<digest>`.** Never `latest`, never tag-only. Dependabot
   (`docker-compose` ecosystem) updates tag and digest together. linuxserver.io images use their
   `version-<app version>` tag (socket-proxy its bare version), never the `-lsNNN` build tag: Dependabot can't
-  follow those. Patch and minor updates, and rebuilds (same tag, new digest, owner's decision 2026-10-13), are
-  auto-merged once the required checks pass (`dependabot-auto-merge.yml`, owner's decision 2026-10-06); major
-  updates wait for the owner (an app may migrate its database). Every merge deploys, the automatic ones included
-  (see Deploys).
+  follow those. Patch and minor updates (owner's decision 2026-10-06), rebuilds (same tag, new digest, 2026-10-13)
+  and major updates (2026-10-14) are auto-merged once the required checks pass (`dependabot-auto-merge.yml`); an
+  update Dependabot can't classify waits for the owner. Every merge deploys, the automatic ones included (see
+  Deploys), so a major that migrates an app's database one way lands unattended: the nightly backup and a revert
+  PR are the way back (a revert alone doesn't undo the migration).
 - **No privileged containers, host network/PID, Docker socket mounts or device mappings** unless the
   service carries `org.honeybeartech.atlas.allow.<rule>: "<reason>"` and the owner agreed. **Every service is
   hardened** (`<<: *hardened`: `cap_drop: [ALL]`, `no-new-privileges:true`; the linuxserver.io apps
@@ -104,7 +105,7 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
 - Tooling: ruff with every rule family (`select = ["ALL"]`, exceptions in `pyproject.toml`; per-line `noqa`
   with a reason) and `ruff format`; yamllint (`.yamllint.yml`); shellcheck (`-x`); pytest + coverage (90 % branch
   floor); pip-tools for the hash-pinned `requirements-dev.txt`. CI-only: actionlint, gitleaks, CodeQL (python,
-  actions), Scorecard, dependency review, DCO, Trivy image scan, Dependabot auto-merge (patch/minor, rebuilds).
+  actions), Scorecard, dependency review, DCO, Trivy image scan, Dependabot auto-merge (patch/minor/major, rebuilds).
 - CI pulls from Docker Hub logged in with a read-only token (`DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN`, Actions and
   Dependabot secrets; owner's decision 2026-10-13) when the secrets exist, else anonymously; the smoke job logs
   out before any container starts. The smoke test runs on `ubuntu-24.04` (amd64, like atlas).
@@ -131,9 +132,10 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   the server (a new `.env` setting, a data migration without a recent good backup, an update this file says
   waits for the owner) or the server isn't healthy, and never turns on auto-merge (`gh pr merge --auto`)
   without the owner's OK. Never bypass a check or the ruleset.
-  Dependabot's patch and minor updates and rebuilds still auto-merge through
-  `dependabot-auto-merge.yml` once every required check passes, so they now deploy unattended; majors wait for the
-  owner. Keeping that auto-merge is the owner's call: don't change `dependabot-auto-merge.yml` without it.
+  Dependabot's patch, minor and major updates and rebuilds auto-merge through `dependabot-auto-merge.yml` once
+  every required check passes, so they deploy unattended; an update it can't classify waits for the owner.
+  Claude never merges a major update itself: majors are merged only by Dependabot's auto-merge or by the owner.
+  Keeping that auto-merge is the owner's call: don't change `dependabot-auto-merge.yml` without it.
 
 ## Commands
 ```sh

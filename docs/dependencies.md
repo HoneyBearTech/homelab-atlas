@@ -38,7 +38,7 @@ Each release carries a CycloneDX SBOM listing every service's image and digest
 - **Dependabot** ([`.github/dependabot.yml`](../.github/dependabot.yml)) checks weekly (Mondays, 06:00 UTC) for
   new image versions in the Compose file, new tool versions and new Action versions, and opens a pull request for
   each. Dependabot alerts and security updates are on.
-- **Patch and minor updates merge automatically**
+- **Patch, minor and major updates merge automatically**
   ([`.github/workflows/dependabot-auto-merge.yml`](../.github/workflows/dependabot-auto-merge.yml)): for the
   images, the Python tools and the GitHub Actions, they're squash-merged once every required check has passed
   (CI with the Compose policy check, CodeQL, dependency review). Nothing skips a check, and a failing update
@@ -51,11 +51,14 @@ Each release carries a CycloneDX SBOM listing every service's image and digest
   (`6.4.4.10685-ls320`): it reads `-ls320` as a suffix that must match exactly, so it never proposes another
   build. With the `version-` tag it proposes both new app versions and rebuilds (a new digest under the same
   tag). socket-proxy uses its bare version tag (`3.4.6`) for the same reason.
-- **Major updates are merged by hand**, after reading the app's release notes: a new major version can migrate
-  its database one way. So is any update Dependabot can't classify as patch, minor or major.
+- **Major updates merge automatically too** (the maintainer's decision, 2026-10-14), and so reach the server
+  unattended. A new major version can migrate its database one way: the nightly
+  [scheduled backup](installing.md#scheduled-backups) and a revert pull request are the way back, and a revert alone
+  doesn't undo the migration, so the service's data is restored from the backup
+  ([upgrading.md](upgrading.md#rolling-back)). Any update Dependabot can't classify as patch, minor or major is
+  still merged by hand.
 - **A merge deploys.** The maintainer's server follows `main` with a pull agent, so every merge, the automatic
-  ones included, reaches it within about two minutes ([upgrading.md](upgrading.md#following-main)). That's why
-  the updates that can migrate data wait for the maintainer, who takes a backup before merging them.
+  ones included, reaches it within about two minutes ([upgrading.md](upgrading.md#following-main)).
 - **Dependency review** ([`.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml))
   blocks a pull request that adds or changes a Python or Actions dependency with a known vulnerability of
   moderate severity or higher, or a license outside the allowlist.

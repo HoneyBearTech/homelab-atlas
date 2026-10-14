@@ -3,8 +3,8 @@
 # every read-write mount (the apps' /config, Radarr's /scripts) except the ones a service's
 # org.honeybeartech.atlas.backup.skip label lists (/media, SABnzbd's /incomplete), and leaves out of a mount what its
 # org.honeybeartech.atlas.backup.exclude label lists.
-# Every image is pinned as name:tag@sha256:<digest>; Dependabot proposes updates (patch and minor ones and rebuilds
-# merge automatically once CI passes). scripts/check_compose.py enforces the policy (docs/security.md#policy).
+# Every image is pinned as name:tag@sha256:<digest>; Dependabot proposes updates (patch, minor and major ones and
+# rebuilds merge automatically once CI passes). scripts/check_compose.py enforces the policy (docs/security.md#policy).
 
 name: homelab-atlas
 

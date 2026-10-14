@@ -27,7 +27,7 @@ releases are managed independently.
 | Actor | Does |
 | --- | --- |
 | Maintainer | Merges pull requests (a merge deploys), tags releases, configures each app in its web UI |
-| Dependabot | Opens a pull request when an image (tag and digest), a check tool or an Action has a new version; patch and minor updates and image rebuilds (same tag, new digest) are auto-merged once the checks pass |
+| Dependabot | Opens a pull request when an image (tag and digest), a check tool or an Action has a new version; patch, minor and major updates and image rebuilds (same tag, new digest) are auto-merged once the checks pass |
 | CI | Lints, scans for secrets, tests the checker, resolves the Compose file and enforces the policy on every pull request |
 | Pull agent | On the maintainer's server, about every 90 seconds: fetches `main` and, when it moved, fast-forwards the checkout and runs `docker compose pull` and `docker compose up -d` (it lives in the maintainer's private orchestration repository) |
 | Release workflow | On a version tag: checks the policy, writes the SBOM, signs the checksums, publishes the GitHub Release |
@@ -54,8 +54,8 @@ filesystem. Each app keeps its settings and database in its own Docker volume at
 1. Dependabot (or the maintainer) opens a pull request that changes an image's tag and digest, or only its digest
    (a rebuild of the same version).
 2. CI resolves the Compose file and runs the policy check; the maintainer reads the app's release notes.
-3. The pull request is squash-merged (automatically for Dependabot's patch and minor updates and rebuilds,
-   once every check passes; by the maintainer, after a backup, for anything that can migrate data).
+3. The pull request is squash-merged (automatically for Dependabot's patch, minor and major updates and rebuilds,
+   once every check passes, with the nightly backup behind them; by the maintainer for anything else).
 4. Within about 90 seconds the pull agent on the host sees `main` move, fast-forwards its checkout and runs
    `docker compose pull && docker compose up -d --remove-orphans --wait`
    ([upgrading.md](upgrading.md#following-main)). A rollback is a revert pull request, deployed the same way.

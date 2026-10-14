@@ -13,7 +13,7 @@ the secure design principles it follows, and how common weaknesses are countered
 | App API keys and credentials | Leaked through a backup | `scripts/backup.sh` writes backups readable only by the user who ran it; documented as secret, to be kept off the host |
 | The media library | A compromised app deleting or encrypting it | Apps run as `PUID:PGID`, not root; storage-level snapshots recommended ([upgrading.md](upgrading.md#backing-up)) |
 | The app databases | An upgrade that migrates and breaks them | `scripts/backup.sh` before every upgrade; rollback = a revert (or the old tag) + `scripts/restore.sh`, both exercised by the CI smoke test |
-| The host | A bad change merged to `main` deploying by itself | The required checks (policy check, smoke test) pass before any merge; majors are merged by hand; the pull agent only fast-forwards and backs out a change that doesn't resolve or pull; rollback is a revert pull request |
+| The host | A bad change merged to `main` deploying by itself | The required checks (policy check, smoke test) pass before any merge; majors merge automatically too, with the nightly backup behind them; the pull agent only fast-forwards and backs out a change that doesn't resolve or pull; rollback is a revert pull request |
 | The release | Tampered release files | Keyless-signed `SHA256SUMS`, SLSA provenance, signed tags |
 | The CI pipeline | Untrusted pull request input running with credentials | `pull_request` only, read-only token by default, untrusted values only via `env:`, actions pinned by SHA |
 | Operator privacy | Hostnames, addresses or paths in the public repo | Placeholders only; reviewed in every pull request |

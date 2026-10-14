@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # Smoke test of the stack: start every service in compose.yaml with throwaway settings, wait until each one reports
 # healthy, then mark every data mount, take a backup, change the data, restore the backup and check that the data
-# and health came back (with Radarr's config.xml keeping its owner and mode, and the mounts and paths excluded from
-# backups, such as /media and the apps' MediaCover posters, neither archived nor overwritten), run the scheduled
-# backup against a stand-in backup server, make a test container unhealthy and check that autoheal restarts it (when
-# the stack has autoheal), and remove everything it created. CI runs it on every change; `make smoke` runs it locally.
-# Without a compose.yaml there is nothing to test, and it says so and passes.
+# and health came back (with Radarr's config.xml keeping its owner and mode, an app's config directory that is
+# missing, behind a container made from older settings, recreated where compose.yaml says, and the mounts and paths
+# excluded from backups, such as /media and the apps' MediaCover posters, neither archived nor overwritten), run the
+# scheduled backup against a stand-in backup server, make a test container unhealthy and check that autoheal
+# restarts it (when the stack has autoheal), and remove everything it created. CI runs it on every change;
+# `make smoke` runs it locally. Without a compose.yaml there is nothing to test, and it says so and passes.
 #
 # It stays away from any real installation on the same Docker host: its own Compose project, settings from
-# .env.example with every directory (*_ROOT, *_PATH) moved into a temporary directory, every volume and network
-# name (*_VOLUME, *_NETWORK) and name prefix (*_PREFIX) replaced by one of its own (so never the real
-# SONARR4K_CONFIG_VOLUME), no fixed container names, no published ports and no service env files. It never reads
+# .env.example with every directory (*_ROOT, *_PATH; so CONFIG_ROOT, with the apps' config directories, too) moved
+# into a temporary directory, every volume and network name (*_VOLUME, *_NETWORK) and name prefix (*_PREFIX)
+# replaced by one of its own, no fixed container names, no published ports and no service env files. It never reads
 # .env or autoheal.env (so no webhook is called), ignores the stack's settings in the environment, and on exit
 # removes only the volumes Compose labelled with its own project and the networks it created.
 set -euo pipefail
@@ -164,6 +165,10 @@ put_marker() {
     sh -c 'echo "$2" >"$1/.smoke-marker" && if [ "$2" = changed ]; then touch "$1/.smoke-stray"; fi' \
     marker "$2" "$3" </dev/null
 }
+# The owner and mode of a path in container $1, read in a throwaway container (the container may be stopped).
+owner_mode() {
+  docker run --rm --network none --volumes-from "$1:ro" "$busybox" stat -c '%u:%g %a' "$2" </dev/null
+}
 check_marker() {
   docker run --rm --network none --volumes-from "$1:ro" "$busybox" \
     sh -c 'test "$(cat "$1/.smoke-marker")" = backed-up && test ! -e "$1/.smoke-stray"' check "$2" </dev/null
@@ -226,6 +231,28 @@ else
     IFS=$'\t' read -r service mount <<<"$target"
     put_marker "$(compose ps --quiet "$service")" "$mount" changed
   done
+  # A restore writes where compose.yaml mounts a service's data now, whatever its container or the backup's MANIFEST
+  # names, and creates a directory that is missing (a new host, or the move from Docker volumes to CONFIG_ROOT): one
+  # app's container is recreated with its config somewhere else, as from older settings, and its config directory is
+  # removed. The app needs nothing left out of /config, which this removes too.
+  moved=""
+  config_root=$(sed -n 's/^CONFIG_ROOT=//p' "$work/env")
+  for target in "${targets[@]}"; do
+    IFS=$'\t' read -r service mount <<<"$target"
+    id=$(compose ps --quiet "$service")
+    if [ -z "$moved" ] && [ -n "$config_root" ] && [ "$mount" = /config ] && [ -z "$(left_out "$id" /config)" ] &&
+      data_mounts "$id" | grep -qxF -- "/config"$'\t'"$config_root/$service/config"; then
+      moved=$service
+    fi
+  done
+  if [ -n "$config_root" ] && [ -z "$moved" ]; then fail "no app keeps its /config in CONFIG_ROOT/<app>/config"; fi
+  if [ -n "$moved" ]; then
+    moved_owner=$(owner_mode "$(compose ps --quiet "$moved")" /config)
+    compose stop "$moved"
+    CONFIG_ROOT=$work/elsewhere docker compose create --force-recreate "$moved"
+    docker run --rm --network none -v "$config_root:/config-root" "$busybox" rm -rf "/config-root/$moved" </dev/null
+    echo "$moved: container recreated with its config elsewhere, and its config directory removed"
+  fi
   "$root/scripts/restore.sh" --yes "$work/backup"
   for target in "${skipped[@]+"${skipped[@]}"}"; do
     IFS=$'\t' read -r service mount <<<"$target"
@@ -257,6 +284,12 @@ else
     check_marker "$(compose ps --all --quiet "$service")" "$mount" ||
       fail "$service $mount wasn't restored exactly (marker changed, or a file not in the backup was left)"
   done
+  if [ -n "$moved" ]; then
+    [ ! -e "$work/elsewhere" ] || fail "restore.sh wrote to the mount of $moved's out-of-date container"
+    [ "$(owner_mode "$(compose ps --all --quiet "$moved")" /config)" = "$moved_owner" ] ||
+      fail "restore.sh didn't create $moved's config directory again with its owner and mode"
+    echo "$moved's config was restored into its config directory, created again, through a recreated container"
+  fi
   [ "$(compose exec -T radarr stat -c '%u:%g %a' /config/config.xml)" = "$owner" ] ||
     fail "restore changed the owner or mode of radarr's config.xml"
   compose up --detach --wait --wait-timeout "$timeout"

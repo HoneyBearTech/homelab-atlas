@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Back up the stack's state: every service's data mounts (each read-write volume or directory it mounts: the apps'
-# config volumes, Recyclarr's config directory and Radarr's custom scripts; never the Docker socket, and never a path
-# the service's org.honeybeartech.atlas.backup.skip label excludes, such as /media) and the settings files. Paths a
-# service's org.honeybeartech.atlas.backup.exclude label lists inside a mount (the apps' MediaCover posters) are left
-# out of that mount's archive. Each service is stopped only while its own data is copied, so its database is
+# config directories, Recyclarr's config directory and Radarr's custom scripts; never the Docker socket, and never a
+# path the service's org.honeybeartech.atlas.backup.skip label excludes, such as /media) and the settings files.
+# Paths a service's org.honeybeartech.atlas.backup.exclude label lists inside a mount (the apps' MediaCover posters)
+# are left out of that mount's archive. Each service is stopped only while its own data is copied, so its database is
 # consistent, and started again before the copy is compressed; services with nothing to archive keep running.
 #
 #   scripts/backup.sh [DIR]      DIR defaults to backups/<date>-<time> in the checkout (gitignored)

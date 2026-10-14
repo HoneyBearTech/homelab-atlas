@@ -74,8 +74,7 @@ Settings come from `.env` (template [`.env.example`](.env.example)), which holds
 | `UMASK` | `002` | File creation mask inside the linuxserver.io apps |
 | `MEDIA_ROOT` | `/srv/media` | Downloads and media on one filesystem (`/media`), so imports are hardlinks or instant moves |
 | `APPDATA_ROOT` | `/srv/appdata` | Radarr's custom scripts (`radarr/scripts`, `radarr4k/scripts`) |
-| `CONFIG_VOLUME_PREFIX` | `homelab-atlas_` | Prefix of the Docker volumes holding each app's config and database. Contains API keys: back them up |
-| `SONARR4K_CONFIG_VOLUME` | empty | Optional: Sonarr 4K's volume name, when it doesn't follow the prefix |
+| `CONFIG_ROOT` | `/srv/config` | Each app's config directory, `<app>/config` (settings, API key, database), owned by `PUID:PGID`. Contains API keys: back it up |
 | `SABNZBD_INCOMPLETE_PATH` | `/srv/downloads/incomplete` | SABnzbd's temporary download folder (`/incomplete`); may be another disk |
 | `RECYCLARR_CONFIG_PATH` | `/srv/appdata/recyclarr` | Recyclarr's config directory |
 
@@ -85,8 +84,8 @@ Ports, volumes and labels: [docs/interfaces.md](docs/interfaces.md).
 
 - Turn on each app's authentication before anything else, and keep the web UIs on your LAN. Docker-published
   ports bypass host firewalls such as `ufw`.
-- Secrets (API keys, logins, provider credentials) live only in each app's config volume, never in this
-  repository or `.env`.
+- Secrets (API keys, logins, provider credentials) live only in each app's config directory (under
+  `CONFIG_ROOT`), never in this repository or `.env`.
 - The Dozzle agent reads logs through the Docker socket: keep its port (7007) on the LAN. autoheal never gets
   the socket: it goes through a proxy that only lets it list, restart and stop containers.
 - autoheal's optional webhook URL (restart notices, for example to Discord) goes in `autoheal.env` (template

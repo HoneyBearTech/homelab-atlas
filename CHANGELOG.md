@@ -6,8 +6,35 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ## [Unreleased]
 
+### Upgrading
+
+- **Move each app's config into its config directory before deploying this**, and **add `CONFIG_ROOT` to `.env`**
+  (required; see `.env.example`). With each app stopped, copy the contents of its config volume
+  (`<CONFIG_VOLUME_PREFIX><app>`; Sonarr 4K's `SONARR4K_CONFIG_VOLUME` if you set it) into
+  `<CONFIG_ROOT>/<app>/config`, owned by `PUID:PGID`, for radarr, radarr4k, sonarr, sonarr4k, lidarr, bazarr,
+  bazarr4k and sabnzbd, and leave the app stopped until this is deployed (what it writes to the volume after the
+  copy is lost). For Radarr, for example:
+
+  ```sh
+  docker compose stop radarr
+  . ./.env && docker run --rm --network none -v "${CONFIG_VOLUME_PREFIX}radarr:/from:ro" \
+    -v "$CONFIG_ROOT/radarr/config:/to" busybox cp -a /from/. /to/
+  ```
+
+  `cp -a` keeps the files' owners. The old volumes aren't touched: remove them (`docker volume rm`) once the apps
+  run from the directories, and drop `CONFIG_VOLUME_PREFIX` and `SONARR4K_CONFIG_VOLUME` from `.env` (they're no
+  longer read). A deploy without `CONFIG_ROOT` stops at `docker compose config` and changes nothing.
+- Backups taken while the config was in volumes (0.4.0 and later) restore as they are: `scripts/restore.sh` puts
+  each app's archive into its config directory.
+
 ### Changed
 
+- Each app's config (settings, API key and database) moves from a Docker volume to a config directory on the host,
+  `CONFIG_ROOT/<app>/config`, still mounted at `/config` (the maintainer's decision, 2026-10-14). The new required
+  setting `CONFIG_ROOT` replaces `CONFIG_VOLUME_PREFIX` and `SONARR4K_CONFIG_VOLUME`, and `compose.yaml` no longer
+  declares any volumes. `scripts/restore.sh` writes each archive to what the service mounts at that container path
+  now, creating a missing directory and recreating a container that predates `compose.yaml`, so backups of the old
+  volumes restore into the new directories ([docs/installing.md](docs/installing.md#where-data-lives)).
 - Docs: the maintainer's server now follows `main` with a pull agent instead of running a release tag, so a merge
   deploys within about two minutes, Dependabot's automatic merges included. Rollback is a revert pull request; a
   server is held on a version by checking out that commit, which pauses the agent. Release tags stay as signed,

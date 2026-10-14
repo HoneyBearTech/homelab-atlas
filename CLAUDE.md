@@ -29,7 +29,7 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   only in the Chronos notes. Examples use placeholders (`/srv/appdata`, `/srv/media`, `homelab-atlas_`).
 - Commit as `31805425+HoneyBearTech@users.noreply.github.com` (set as this repo's `user.email`), with
   `git commit -s` for the DCO sign-off; commits and tags are SSH-signed.
-- No secrets: the apps' API keys, logins and provider credentials stay in their config volumes on the host,
+- No secrets: the apps' API keys, logins and provider credentials stay in their config directories on the host,
   never in `compose.yaml`, `.env` or the `*.example` files. The stack's only secret, autoheal's optional webhook
   URL, comes from the gitignored `autoheal.env` (`env_file`, not required); a new secret gets its own
   `<service>.env` the same way. `.gitignore` covers `.env`, keys,
@@ -61,11 +61,11 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
 - Every setting goes through `.env` (`${VAR:?…}` in compose when required) and is listed in `.env.example`
   and `docs/interfaces.md`.
 - **Container paths are load-bearing**: the apps store `/media/...` paths in their databases (SABnzbd also
-  `/incomplete`), so `/media`, `/incomplete`, `/config` and `/scripts` never change. Config volumes are named
-  `${CONFIG_VOLUME_PREFIX}<app>` so atlas keeps its existing (Portainer-created) volumes; Sonarr 4K's can be named
-  outright (`SONARR4K_CONFIG_VOLUME`: atlas' Sonarr 4K is the former test instance, port 8988). The prefix and
-  names live only in atlas' `.env`. Before a cutover or redeploy, compare the live containers' mounts and ports
-  with `docker compose config`: atlas has been changed by hand before.
+  `/incomplete`), so `/media`, `/incomplete`, `/config` and `/scripts` never change. Each app's `/config` is a
+  bind-mounted config directory, `${CONFIG_ROOT}/<app>/config` (owner's decision 2026-10-14; named volumes before,
+  which atlas keeps until the apps run from the directories); atlas' `CONFIG_ROOT` lives only in its `.env`. Before
+  a cutover or redeploy, compare the live containers' mounts and ports with `docker compose config`: atlas has been
+  changed by hand before.
 - Policy exceptions in use (each agreed by the owner): `dozzle` (`docker-socket`, read-only mount; an agent for
   the homelab's Dozzle hub on another host, port 7007, owner 2026-10-13),
   `socket-proxy` (`docker-socket`: filters the API down to list/inspect/restart/stop for autoheal, internal network,

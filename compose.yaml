@@ -1,6 +1,7 @@
 # The Atlas stack. Every setting comes from .env (template: .env.example; reference: docs/interfaces.md); the one
-# secret, autoheal's optional webhook, from autoheal.env (template: autoheal.env.example). scripts/backup.sh backs up
-# every read-write mount (the apps' /config, Radarr's /scripts) except the ones a service's
+# secret, autoheal's optional webhook, from autoheal.env (template: autoheal.env.example). Each app keeps its settings,
+# API key and database in its config directory, CONFIG_ROOT/<app>/config, mounted at /config. scripts/backup.sh backs
+# up every read-write mount (the apps' /config, Radarr's /scripts) except the ones a service's
 # org.honeybeartech.atlas.backup.skip label lists (/media, SABnzbd's /incomplete), and leaves out of a mount what its
 # org.honeybeartech.atlas.backup.exclude label lists.
 # Every image is pinned as name:tag@sha256:<digest>; Dependabot proposes updates (patch, minor and major ones and
@@ -65,7 +66,7 @@ services:
     ports:
       - "7878:7878"
     volumes:
-      - radarr-config:/config
+      - ${CONFIG_ROOT:?set CONFIG_ROOT in .env}/radarr/config:/config
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
       - ${APPDATA_ROOT:?set APPDATA_ROOT in .env}/radarr/scripts:/scripts
 
@@ -87,7 +88,7 @@ services:
     ports:
       - "17878:7878"
     volumes:
-      - radarr4k-config:/config
+      - ${CONFIG_ROOT:?set CONFIG_ROOT in .env}/radarr4k/config:/config
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
       - ${APPDATA_ROOT:?set APPDATA_ROOT in .env}/radarr4k/scripts:/scripts
 
@@ -110,7 +111,7 @@ services:
     ports:
       - "8989:8989"
     volumes:
-      - sonarr-config:/config
+      - ${CONFIG_ROOT:?set CONFIG_ROOT in .env}/sonarr/config:/config
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
 
   sonarr4k:
@@ -131,7 +132,7 @@ services:
     ports:
       - "8988:8989"
     volumes:
-      - sonarr4k-config:/config
+      - ${CONFIG_ROOT:?set CONFIG_ROOT in .env}/sonarr4k/config:/config
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
 
   # --- Music ----------------------------------------------------------------------------------------------------
@@ -153,7 +154,7 @@ services:
     ports:
       - "8686:8686"
     volumes:
-      - lidarr-config:/config
+      - ${CONFIG_ROOT:?set CONFIG_ROOT in .env}/lidarr/config:/config
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
 
   # --- Subtitles ------------------------------------------------------------------------------------------------
@@ -173,7 +174,7 @@ services:
     ports:
       - "6767:6767"
     volumes:
-      - bazarr-config:/config
+      - ${CONFIG_ROOT:?set CONFIG_ROOT in .env}/bazarr/config:/config
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
 
   bazarr4k:
@@ -192,7 +193,7 @@ services:
     ports:
       - "6768:6767"
     volumes:
-      - bazarr4k-config:/config
+      - ${CONFIG_ROOT:?set CONFIG_ROOT in .env}/bazarr4k/config:/config
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
 
   # --- Downloads ------------------------------------------------------------------------------------------------
@@ -213,7 +214,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - sabnzbd-config:/config
+      - ${CONFIG_ROOT:?set CONFIG_ROOT in .env}/sabnzbd/config:/config
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/media
       # Where downloads are assembled before they're complete (SABnzbd's "Temporary Download Folder"); it stores this
       # path, so /incomplete never changes. Not backed up (backup.skip above).
@@ -339,28 +340,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - docker-proxy
-
-# Each app's configuration and database. The volume names come from CONFIG_VOLUME_PREFIX, so an existing
-# installation keeps using the volumes it already has.
-volumes:
-  radarr-config:
-    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}radarr
-  radarr4k-config:
-    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}radarr4k
-  sonarr-config:
-    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}sonarr
-  # Sonarr 4K's volume can have a name of its own (SONARR4K_CONFIG_VOLUME), for an instance that didn't start under
-  # the prefix.
-  sonarr4k-config:
-    name: ${SONARR4K_CONFIG_VOLUME:-${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}sonarr4k}
-  lidarr-config:
-    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}lidarr
-  bazarr-config:
-    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}bazarr
-  bazarr4k-config:
-    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}bazarr4k
-  sabnzbd-config:
-    name: ${CONFIG_VOLUME_PREFIX:?set CONFIG_VOLUME_PREFIX in .env}sabnzbd
 
 # socket-proxy's network: internal, so nothing on it can reach the outside world and nothing outside can reach the
 # proxy; only autoheal joins it.

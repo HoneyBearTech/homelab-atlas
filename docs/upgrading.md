@@ -29,11 +29,13 @@ scripts/backup.sh /path/to/backup-dir   # or a directory of your choice (new or 
 
 The directory holds one `<service>--<path>.tar.gz` per mount (`radarr--config.tar.gz`, `radarr--scripts.tar.gz`,
 ...), `env/.env` (and `env/autoheal.env`, `env/backup.env`), a `MANIFEST` naming each archive's service, container
-path, volume or host path and image, `NETWORKS`, `VERSION` (the release it was taken with) and `SHA256SUMS`.
+path, volume or host path and image, `NETWORKS`, `VERSION` (the checkout's `git describe`: the release, or the
+commit of `main`, it was taken with) and `SHA256SUMS`.
 Everything in it is readable only by the user who ran the backup. **Copy it off the host**: it contains every app's API key and logins.
 `MEDIA_ROOT` (the media) is too large for this and is better covered by your storage's own snapshots or
 backups. Every service needs a container for the backup to read from, so run it on an installed stack. A
 nightly backup copied to another machine is set up as [installing.md](installing.md#scheduled-backups) describes.
+On a server with the pull agent, the backup first takes the agent's deploy lock ([Following `main`](#following-main)).
 
 ## Upgrading
 
@@ -63,6 +65,13 @@ itself ([dependencies.md](dependencies.md#tracking-dependencies)).
   release notes and take a backup on the server (`scripts/backup.sh`). The updates that merge by themselves (patch,
   minor and major ones, and image rebuilds) rely on the nightly [scheduled backup](installing.md#scheduled-backups):
   a major can migrate an app's data one way, and then a revert needs that backup restored too.
+- **Backups and restores hold deploys off.** The agent holds a lock file in its state directory while it deploys,
+  and skips its run while anyone else holds it. `scripts/backup.sh` and `scripts/restore.sh` take the same lock
+  before they stop or create anything (waiting up to 30 minutes for a deploy in progress, then failing without
+  changing anything) and keep it until they exit, so a deploy can't start a service a backup has stopped or
+  recreate one in the middle of a restore; the agent's next run after that deploys what it skipped. Where there
+  is no agent (no `homelab-pull/atlas` directory under `$HOMELAB_PULL_STATE_DIR`, by default
+  `~/.local/state/homelab-pull`), they don't lock.
 - **Rolling back** is a revert pull request, deployed the same way. If the service already migrated its data,
   restore that too ([Rolling back](#rolling-back)).
 - **Holding the server on a version**: check out that commit or release on the server (`git checkout vX.Y.Z`).
@@ -89,6 +98,8 @@ the apps' config was still in Docker volumes restores into their config director
 the backup was taken with (its `VERSION`), or a later one that reads the same format: a backup without a `VERSION` file
 was made by 0.3.1 or earlier and needs 0.3.1's `restore.sh`. Without service names it restores every service in the
 backup. It stops those services while it works and starts again the ones that were running; `--yes` skips the question.
+Like `scripts/backup.sh`, it holds the pull agent's deploy lock from the start, while it asks too, so no deploy runs
+until it has finished ([Following `main`](#following-main)).
 
 ## Restoring on a new host
 

@@ -99,7 +99,9 @@ app's API keys and logins: copy them only to a machine you trust as much as this
    `BACKUP_REMOTE=backup-host:/volume1/<folder>` and, optionally, the retention and `BACKUP_PING_URL`. For the
    ping, add a monitor of type **Push** in Uptime Kuma with a heartbeat interval of 25 hours, and copy its URL.
 4. **Try it**: `scripts/scheduled-backup.sh`. Each service stops only while its own data is copied (seconds to a
-   minute or two per app), and is compressed after it has started again.
+   minute or two per app), and is compressed after it has started again. On a server with the pull agent, the
+   backup waits for a deploy in progress and holds the next one off until it's done
+   ([upgrading.md](upgrading.md#following-main)).
 5. **Schedule it**, with the systemd user units in [`deploy/systemd/`](../deploy/systemd/) (they expect the
    checkout at `~/homelab-atlas`; edit both paths in the `.service` file if it's elsewhere). Lingering lets the
    timer run while you're logged out. Copy the units again after an upgrade that changes them (the release notes

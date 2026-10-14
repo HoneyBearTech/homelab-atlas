@@ -9,7 +9,7 @@ the `docker` group, and one directory (or mounted share) that holds both downloa
    git clone https://github.com/HoneyBearTech/homelab-atlas.git && cd homelab-atlas
    ```
 
-   Once releases exist, check out the latest one (`git checkout vX.Y.Z`) and verify it first
+   Check out the latest release (`git checkout vX.Y.Z`, from the repository's Releases page) and verify it first
    ([verifying-releases.md](verifying-releases.md)).
 
 2. **Configure it.**

@@ -3,7 +3,7 @@
 Where homelab-atlas is going over roughly the next twelve months (from October 2026). Plans change; this
 file changes with them, in the same pull request.
 
-## Now: the stack in git
+## Done: the stack in git
 
 - Done: `compose.yaml` with Radarr and Sonarr (regular and 4K), Lidarr, Bazarr (regular and 4K), SABnzbd,
   Recyclarr and Dozzle, every image pinned by tag and digest, Dependabot proposing updates.
@@ -19,12 +19,15 @@ file changes with them, in the same pull request.
 - Done: every service drops all Linux capabilities and can't gain new privileges; the linuxserver.io apps add back
   only what their init needs, and every other service has a read-only root filesystem
   ([security.md](security.md#hardening)).
-- First release (0.1.0) before Atlas switches over, so Atlas is first deployed from a signed, verified version.
-- Switch Atlas to run the stack from a checkout of this repository, and retire the auto-updater.
+- Done: a first signed, verified release (0.1.0) before Atlas switched over.
+- Done: Atlas runs the stack from a checkout of this repository, following `main` with a pull agent that deploys
+  each merge ([upgrading.md](upgrading.md#following-main)); the auto-updater is retired.
 
-## Next: safe upgrades and rebuilds
+## Now: safe upgrades and rebuilds
 
-- Optionally move the config volumes to bind mounts under `APPDATA_ROOT`, for simpler backups.
+- Done: each app's config in a directory on the host (`CONFIG_ROOT`) instead of a Docker volume, for simpler
+  backups and rebuilds.
+- Done: backups and restores hold off the pull agent's deploys while they run.
 - Rehearse the documented rebuild ([rebuilding.md](rebuilding.md)) on a scratch host.
 
 ## Later
@@ -37,9 +40,9 @@ file changes with them, in the same pull request.
 - Keep CI, CodeQL, Scorecard, dependency review and the DCO check green on every change.
 - Branch protection on `main` with required checks; private vulnerability reporting; secret scanning with
   push protection.
-- Register for the OpenSSF Best Practices badge and reach **Passing**, then **Silver**, and meet
-  **OSPS Baseline** Levels 1 and 2.
-- Signed releases with checksums, SBOM and SLSA provenance from the first release on.
+- Keep the OpenSSF Best Practices **Silver** badge (Passing and Silver reached in October 2026) and
+  **OSPS Baseline** Levels 1 and 2 (met).
+- Signed releases with checksums, SBOM and SLSA provenance, as every release so far has had.
 
 ## What homelab-atlas will not do
 

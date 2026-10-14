@@ -12,8 +12,9 @@
 # .env.example with every directory (*_ROOT, *_PATH; so CONFIG_ROOT, with the apps' config directories, too) moved
 # into a temporary directory, every volume and network name (*_VOLUME, *_NETWORK) and name prefix (*_PREFIX)
 # replaced by one of its own, no fixed container names, no published ports and no service env files. It never reads
-# .env or autoheal.env (so no webhook is called), ignores the stack's settings in the environment, and on exit
-# removes only the volumes Compose labelled with its own project and the networks it created.
+# .env or autoheal.env (so no webhook is called), ignores the stack's settings in the environment, never takes the
+# pull agent's deploy lock, and on exit removes only the volumes Compose labelled with its own project and the networks
+# it created.
 set -euo pipefail
 
 project=homelab-atlas-smoke
@@ -39,6 +40,8 @@ unset COMPOSE_PROFILES
 export COMPOSE_PROJECT_NAME=$project
 export COMPOSE_FILE=$root/compose.yaml:$work/override.yaml
 export COMPOSE_ENV_FILES=$work/env
+# A state directory that doesn't exist: the scripts never take, or wait for, a real pull agent's deploy lock.
+export HOMELAB_PULL_STATE_DIR=$work/homelab-pull
 
 compose() { docker compose "$@"; }
 

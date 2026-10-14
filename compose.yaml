@@ -18,7 +18,8 @@ x-hardened: &hardened
 
 # The linuxserver.io apps: their init (s6) runs as root, takes ownership of /config and the app's own directories
 # for PUID:PGID and starts the app as that user, so they get back what that takes, each proven by the smoke test
-# and by starting the image without it (docs/security.md#hardening).
+# and by starting the image without it (docs/security.md#hardening). Their root filesystem stays writable: s6-overlay
+# runs its init from /run (a tmpfs there is mounted noexec) and the init rewrites /etc/passwd for PUID.
 x-linuxserver: &linuxserver
   <<: *hardened
   cap_add:
@@ -224,6 +225,10 @@ services:
     image: recyclarr/recyclarr:8.7.3@sha256:9c6c74d52cfc6f740a5a3624aa83867e171bb70b90453ddb7a4048b8c80445f9
     container_name: recyclarr
     restart: unless-stopped
+    # Writes only its config directory, and its crontab to /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp
     labels:
       autoheal: "true"
     # Recyclarr has no web server; it's healthy while its scheduler (supercronic) runs.
@@ -246,6 +251,10 @@ services:
     container_name: dozzle
     restart: unless-stopped
     command: agent
+    # The agent writes only its address file to /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "/dozzle", "healthcheck"]
@@ -267,6 +276,7 @@ services:
     image: willfarrell/autoheal:latest@sha256:e7f42d5365c7c4490dd0cafc2858bb9fd2d64a274448d2de2bb5c386f1af7a0f
     container_name: autoheal
     restart: unless-stopped
+    read_only: true
     # autoheal exits if it can't reach the proxy, so it starts only once the proxy answers. (After a host reboot
     # Docker starts both at once; autoheal then restarts until the proxy is up, a few seconds.)
     depends_on:

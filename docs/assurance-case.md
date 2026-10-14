@@ -53,7 +53,7 @@ web UI; a malicious pull request; a malicious download. Out of scope: an attacke
 | --- | --- | --- |
 | CWE-494 (code downloaded without integrity check) | Image pulls | Digest pins; signed release checksums |
 | CWE-798 / CWE-312 (hard-coded or cleartext credentials) | Compose `environment:`, `.env`, docs | No secrets in the repo; gitleaks; push protection |
-| CWE-250 (unnecessary privileges) | Container settings | Policy rules `privileged`, `no-new-privileges`, `cap-drop`, `cap-add`, `host-*`, `docker-socket`, `devices` |
+| CWE-250 (unnecessary privileges) | Container settings | Policy rules `privileged`, `no-new-privileges`, `cap-drop`, `cap-add`, `host-*`, `docker-socket`, `devices`; read-only root filesystems where the images allow it |
 | CWE-1104 (unmaintained third-party components) | Images, tools, Actions | Dependabot weekly; triage SLAs ([dependencies.md](dependencies.md)) |
 | CWE-77/78 (injection) | Workflows | Untrusted values only via `env:`; actionlint with shellcheck; CodeQL for Actions |
 | CWE-20 (improper input validation) | The checker's input | It reads JSON only with the standard library, never evaluates it, and exits 2 on anything that isn't a JSON object |

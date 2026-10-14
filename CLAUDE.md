@@ -50,6 +50,8 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   hardened** (`<<: *hardened`: `cap_drop: [ALL]`, `no-new-privileges:true`; the linuxserver.io apps
   `<<: *linuxserver`, which adds back `CHOWN DAC_OVERRIDE SETUID SETGID KILL`); a capability added back must be in
   Docker's default set, carry a comment saying why, and be proven needed (docs/security.md#hardening).
+  recyclarr, dozzle (tmpfs `/tmp`), autoheal and socket-proxy (tmpfs `/run`, `/tmp`) run with `read_only: true`;
+  the linuxserver.io apps can't (s6-overlay execs from `/run`).
   `scripts/check_compose.py` enforces these rules in CI and in the release workflow.
 - **Never change the live server** (atlas) without the owner asking: no `docker compose up`, no edits to
   app data or Portainer stacks. Read-only inspection (`docker ps`, `docker inspect`) only when asked.

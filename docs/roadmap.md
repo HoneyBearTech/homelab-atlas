@@ -17,7 +17,8 @@ file changes with them, in the same pull request.
 - Done: a nightly backup copied to another machine, with retention and a push monitor
   ([installing.md](installing.md#scheduled-backups)).
 - Done: every service drops all Linux capabilities and can't gain new privileges; the linuxserver.io apps add back
-  only what their init needs ([security.md](security.md#hardening)).
+  only what their init needs, and every other service has a read-only root filesystem
+  ([security.md](security.md#hardening)).
 - First release (0.1.0) before Atlas switches over, so Atlas is first deployed from a signed, verified version.
 - Switch Atlas to run the stack from a checkout of this repository, and retire the auto-updater.
 
@@ -28,7 +29,7 @@ file changes with them, in the same pull request.
 
 ## Later
 
-- Read-only root filesystems where the images allow it.
+- Read-only root filesystems for the linuxserver.io apps, if their images ever allow it.
 - Optional services as Compose profiles, so a smaller installation can leave them out.
 
 ## Security and project health

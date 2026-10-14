@@ -41,7 +41,8 @@ the same data as before, in a new layout.
 - Every service drops every Linux capability (`cap_drop: [ALL]`) and runs with `no-new-privileges`. The
   linuxserver.io apps add back only `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID` and `KILL`, which their init needs
   to take ownership of `/config`, start the app as `PUID:PGID` and stop it cleanly; every other service runs with
-  none. The table is in docs/security.md#hardening.
+  none. recyclarr, dozzle and autoheal now have a read-only root filesystem too (socket-proxy already had one;
+  recyclarr and dozzle get `/tmp` in memory). The table is in docs/security.md#hardening.
 - The policy check enforces it: new rules `no-new-privileges` and `cap-drop`, `cap-add` now fails only on a
   capability outside Docker's default set, and a new rule `devices` refuses host devices mapped into a container.
 

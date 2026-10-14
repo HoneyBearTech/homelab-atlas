@@ -12,6 +12,10 @@ All notable changes to homelab-atlas are documented here. The format follows
   deploys within about two minutes, Dependabot's automatic merges included. Rollback is a revert pull request; a
   server is held on a version by checking out that commit, which pauses the agent. Release tags stay as signed,
   verified snapshots ([docs/upgrading.md](docs/upgrading.md#following-main)).
+- Dependabot's major updates now merge automatically too, once every required check passes (the maintainer's
+  decision, 2026-10-14), so they deploy unattended with the nightly backup behind them; a revert doesn't undo a
+  data migration, so that backup is the way back. An update Dependabot can't classify still waits for the
+  maintainer ([docs/dependencies.md](docs/dependencies.md#tracking-dependencies)).
 
 ## [0.4.0] - 2026-10-14
 

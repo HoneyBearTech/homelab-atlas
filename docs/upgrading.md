@@ -8,7 +8,8 @@ instead, where the merge is the upgrade ([Following `main`](#following-main)).
 ## Before you upgrade
 
 1. Read the release notes (the `CHANGELOG.md` section) for every release between yours and the new one, and
-   the apps' own release notes for any major version bump. Anything under **Upgrading** needs action.
+   the apps' own release notes for any major version bump. Dependabot's major updates merge automatically, so on
+   a server that follows `main` they arrive without a merge by hand. Anything under **Upgrading** needs action.
 2. Verify the new release ([verifying-releases.md](verifying-releases.md)).
 
 ## Backing up
@@ -58,9 +59,10 @@ itself ([dependencies.md](dependencies.md#tracking-dependencies)).
 - The agent only fast-forwards: it refuses a checkout with local changes or a `main` whose history was rewritten.
   If the configuration doesn't resolve or an image can't be pulled, it moves the checkout back, so the server keeps
   running what it ran.
-- **The merge is the upgrade.** Before merging an update that can migrate a service's data, read the release notes
-  and take a backup on the server (`scripts/backup.sh`). The updates that merge by themselves (patch and minor ones,
-  and image rebuilds) rely on the nightly [scheduled backup](installing.md#scheduled-backups).
+- **The merge is the upgrade.** Before merging an update by hand that can migrate a service's data, read the
+  release notes and take a backup on the server (`scripts/backup.sh`). The updates that merge by themselves (patch,
+  minor and major ones, and image rebuilds) rely on the nightly [scheduled backup](installing.md#scheduled-backups):
+  a major can migrate an app's data one way, and then a revert needs that backup restored too.
 - **Rolling back** is a revert pull request, deployed the same way. If the service already migrated its data,
   restore that too ([Rolling back](#rolling-back)).
 - **Holding the server on a version**: check out that commit or release on the server (`git checkout vX.Y.Z`).

@@ -6,6 +6,8 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-14
+
 The backup scripts, smoke test and CI now follow homelab-ares, the template for the homelab stacks. A backup holds
 the same data as before, in a new layout.
 
@@ -38,6 +40,9 @@ the same data as before, in a new layout.
   archived nor overwritten, and that every backup has a `NETWORKS` file. It still never reads `.env` or
   `autoheal.env`.
 - The smoke test runs on `ubuntu-24.04` (amd64) instead of `ubuntu-latest`.
+
+### Security
+
 - Every service drops every Linux capability (`cap_drop: [ALL]`) and runs with `no-new-privileges`. The
   linuxserver.io apps add back only `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID` and `KILL`, which their init needs
   to take ownership of `/config`, start the app as `PUID:PGID` and stop it cleanly; every other service runs with
@@ -190,7 +195,8 @@ checks, backups and release signing around it.
   Bazarr), none reachable from the internet. Triage and mitigations:
   [docs/dependencies.md](docs/dependencies.md#current-findings).
 
-[Unreleased]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/HoneyBearTech/homelab-atlas/compare/v0.1.0...v0.2.0

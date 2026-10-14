@@ -33,8 +33,9 @@ the same data as before, in a new layout.
   is. A path outside every data mount, or with `..` or a pattern character, still fails the backup and the restore
   before anything stops.
 - The smoke test derives its throwaway settings from `.env.example` (every `*_ROOT` and `*_PATH` a temporary
-  directory, `*_PREFIX`, `*_VOLUME` and `*_NETWORK` names of its own, so never the real `SONARR4K_CONFIG_VOLUME`),
-  and checks that skipped mounts and excluded paths are neither archived nor overwritten. It still never reads
+  directory owned by `PUID:PGID` with mode 0755 as on a host, `*_PREFIX`, `*_VOLUME` and `*_NETWORK` names of its
+  own, so never the real `SONARR4K_CONFIG_VOLUME`), and checks that skipped mounts and excluded paths are neither
+  archived nor overwritten, and that every backup has a `NETWORKS` file. It still never reads
   `.env` or `autoheal.env`.
 - The smoke test runs on `ubuntu-24.04` (amd64) instead of `ubuntu-latest`.
 

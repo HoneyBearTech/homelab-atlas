@@ -36,7 +36,9 @@ ports in [interfaces](docs/interfaces.md#services-and-ports)). The indexer manag
 media server run on other hosts.
 
 Every image is pinned by tag **and** digest. New versions arrive as Dependabot pull requests that CI checks
-and the maintainer merges; nothing on the host updates itself.
+before they're merged. The maintainer's server follows `main`: a pull agent there applies each merge within a couple
+of minutes ([upgrading](docs/upgrading.md#following-main)). Nothing updates from a registry tag by itself: what runs
+is always a commit in `main`.
 
 ## Getting started
 
@@ -58,7 +60,8 @@ make check                        # policy check: every image pinned, nothing pr
 scripts/backup.sh                 # back up every app's config (each app stops briefly)
 ```
 
-Upgrading to a new release: [docs/upgrading.md](docs/upgrading.md).
+Upgrading to a new release, or following `main` the way the maintainer's server does:
+[docs/upgrading.md](docs/upgrading.md).
 
 ## Configuration
 
@@ -88,7 +91,8 @@ Ports, volumes and labels: [docs/interfaces.md](docs/interfaces.md).
   the socket: it goes through a proxy that only lets it list, restart and stop containers.
 - autoheal's optional webhook URL (restart notices, for example to Discord) goes in `autoheal.env` (template
   [`autoheal.env.example`](autoheal.env.example), mode `600`, gitignored).
-- Don't run an auto-updater such as Watchtower on these containers; upgrade by release instead.
+- Don't run an auto-updater such as Watchtower on these containers; upgrade from this repository instead (a
+  release, or `main`).
 - Every service drops all Linux capabilities and runs with `no-new-privileges`; the linuxserver.io apps add back
   only the few their init needs. The policy check enforces that and refuses privileged containers, capabilities
   beyond Docker's defaults, host networking, device mappings and Docker socket mounts unless a service documents

@@ -12,7 +12,8 @@ the secure design principles it follows, and how common weaknesses are countered
 | App API keys and credentials | Committed to the public repository | Kept in the apps' config volumes, never in the repo; `.gitignore`; gitleaks over the history in CI; GitHub push protection |
 | App API keys and credentials | Leaked through a backup | `scripts/backup.sh` writes backups readable only by the user who ran it; documented as secret, to be kept off the host |
 | The media library | A compromised app deleting or encrypting it | Apps run as `PUID:PGID`, not root; storage-level snapshots recommended ([upgrading.md](upgrading.md#backing-up)) |
-| The app databases | An upgrade that migrates and breaks them | `scripts/backup.sh` before every upgrade; rollback = old tag + `scripts/restore.sh`, both exercised by the CI smoke test |
+| The app databases | An upgrade that migrates and breaks them | `scripts/backup.sh` before every upgrade; rollback = a revert (or the old tag) + `scripts/restore.sh`, both exercised by the CI smoke test |
+| The host | A bad change merged to `main` deploying by itself | The required checks (policy check, smoke test) pass before any merge; majors are merged by hand; the pull agent only fast-forwards and backs out a change that doesn't resolve or pull; rollback is a revert pull request |
 | The release | Tampered release files | Keyless-signed `SHA256SUMS`, SLSA provenance, signed tags |
 | The CI pipeline | Untrusted pull request input running with credentials | `pull_request` only, read-only token by default, untrusted values only via `env:`, actions pinned by SHA |
 | Operator privacy | Hostnames, addresses or paths in the public repo | Placeholders only; reviewed in every pull request |
@@ -24,8 +25,9 @@ web UI; a malicious pull request; a malicious download. Out of scope: an attacke
 ## Trust boundaries
 
 1. **Registries → host.** Images are trusted only at the digest a reviewed commit names.
-2. **Repository → host.** The host runs a tagged, signed release or a reviewed `main`; it never pulls code
-   that wasn't merged.
+2. **Repository → host.** The maintainer's host runs `main`: a pull agent fetches it and only fast-forwards,
+   refusing rewritten history and local changes, so the host never runs code that wasn't merged.
+   Nothing connects in to the host to deploy. (Others can run a tagged, signed release instead.)
 3. **LAN → apps.** Each web UI is behind the app's own authentication; anything beyond the LAN needs the
    operator's reverse proxy.
 4. **Containers → host.** Only the config volumes, `MEDIA_ROOT`, Radarr's scripts and Recyclarr's config are
@@ -42,7 +44,7 @@ web UI; a malicious pull request; a malicious download. Out of scope: an attacke
 - **Fail-safe defaults**: the policy check fails on anything it doesn't recognise as allowed; an exception
   needs a reason, in the file, in review.
 - **Complete mediation**: every change to what runs passes through a pull request and the same checks;
-  nothing on the host updates itself.
+  the host only fast-forwards to merged commits.
 - **Economy of mechanism**: one Compose file, one standard-library checker, upstream images unchanged.
 - **Separation of privilege**: secrets live with the apps, settings in `.env`, configuration in git.
 - **Open design**: the whole configuration, policy and release process are public.

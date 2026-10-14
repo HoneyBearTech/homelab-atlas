@@ -53,15 +53,16 @@ Each release carries a CycloneDX SBOM listing every service's image and digest
   tag). socket-proxy uses its bare version tag (`3.4.6`) for the same reason.
 - **Major updates are merged by hand**, after reading the app's release notes: a new major version can migrate
   its database one way. So is any update Dependabot can't classify as patch, minor or major.
-- **A merge doesn't deploy.** The server runs what it last pulled; updates reach it when the operator pulls
-  and redeploys, with a backup first ([upgrading.md](upgrading.md)).
+- **A merge deploys.** The maintainer's server follows `main` with a pull agent, so every merge, the automatic
+  ones included, reaches it within about two minutes ([upgrading.md](upgrading.md#following-main)). That's why
+  the updates that can migrate data wait for the maintainer, who takes a backup before merging them.
 - **Dependency review** ([`.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml))
   blocks a pull request that adds or changes a Python or Actions dependency with a known vulnerability of
   moderate severity or higher, or a license outside the allowlist.
 - The CI-only images in `run:` steps and the backup scripts' busybox image aren't seen by Dependabot; they're
   bumped by hand at least every quarter.
-- **Nothing updates itself on the host.** Auto-updaters such as Watchtower are not used: they would run
-  versions nobody reviewed.
+- **Nothing on the host updates from a registry.** Auto-updaters such as Watchtower are not used: they would run
+  versions nobody reviewed. The pull agent only applies commits merged into `main`.
 
 ## Policy for vulnerabilities in dependencies
 

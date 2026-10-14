@@ -47,7 +47,8 @@ file changes with them, in the same pull request.
 - **Configure the apps' internals** (quality profiles, indexers, download clients). Recyclarr handles
   quality settings; the rest is configured in each app and lives in its app data.
 - **Store secrets.** No API keys, logins or provider credentials in the repository, encrypted or not.
-- **Auto-update.** Every version change is a reviewed commit.
+- **Auto-update from registries.** Every version change is a commit in `main` that passed CI; the server applies
+  only those.
 - **Be a general-purpose media-server distribution.** It describes one server; others are welcome to fork
   or borrow from it, but options that only another setup needs are out of scope.
 - **Run the media server or the indexer manager.** Those run on other hosts.

@@ -48,7 +48,8 @@ settings and databases, and keep `MEDIA_ROOT` pointing at the directory they mou
 the old containers first: the container names (`radarr`, `sonarr`, …) must be free. Docker Compose warns that
 the volumes "already exist but were not created by Docker Compose"; that's expected.
 
-Running `main` instead of a release is possible but unsupported for anything you depend on.
+The maintainer's server runs `main` rather than a release, and deploys every merge by itself
+([upgrading.md](upgrading.md#following-main)). For your own setup, a release is the safer choice.
 
 ## Scheduled backups
 

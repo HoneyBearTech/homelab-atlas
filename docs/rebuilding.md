@@ -55,6 +55,9 @@ cp /path/to/backup/env/autoheal.env autoheal.env && chmod 600 autoheal.env   # i
 cp /path/to/backup/env/backup.env backup.env && chmod 600 backup.env         # if the backup has one
 ```
 
+A server that follows `main` ([upgrading.md](upgrading.md#following-main)) stays on `main` here instead
+(skip the `git checkout`), and gets its pull agent back once the stack is healthy.
+
 A backup without a `VERSION` file was made by 0.3.1 or earlier, in the older archive format: check out v0.3.1 to
 restore it.
 

@@ -44,7 +44,8 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   `version-<app version>` tag (socket-proxy its bare version), never the `-lsNNN` build tag: Dependabot can't
   follow those. Patch and minor updates, and rebuilds (same tag, new digest, owner's decision 2026-10-13), are
   auto-merged once the required checks pass (`dependabot-auto-merge.yml`, owner's decision 2026-10-06); major
-  updates wait for the owner (an app may migrate its database). A merge never deploys: atlas changes only on a deliberate pull.
+  updates wait for the owner (an app may migrate its database). Every merge deploys, the automatic ones included
+  (see Deploys).
 - **No privileged containers, host network/PID, Docker socket mounts or device mappings** unless the
   service carries `org.honeybeartech.atlas.allow.<rule>: "<reason>"` and the owner agreed. **Every service is
   hardened** (`<<: *hardened`: `cap_drop: [ALL]`, `no-new-privileges:true`; the linuxserver.io apps
@@ -53,8 +54,9 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   recyclarr, dozzle (tmpfs `/tmp`), autoheal and socket-proxy (tmpfs `/run`, `/tmp`) run with `read_only: true`;
   the linuxserver.io apps can't (s6-overlay execs from `/run`).
   `scripts/check_compose.py` enforces these rules in CI and in the release workflow.
-- **Never change the live server** (atlas) without the owner asking: no `docker compose up`, no edits to
-  app data or Portainer stacks. Read-only inspection (`docker ps`, `docker inspect`) only when asked.
+- **Never change the live server** (atlas) without the owner asking: no merge (a merge deploys), no
+  `docker compose up`, no edits to app data or Portainer stacks. Read-only inspection (`docker ps`, `docker inspect`)
+  only when asked.
 - Every setting goes through `.env` (`${VAR:?…}` in compose when required) and is listed in `.env.example`
   and `docs/interfaces.md`.
 - **Container paths are load-bearing**: the apps store `/media/...` paths in their databases (SABnzbd also
@@ -80,6 +82,17 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   MANIFEST that the service still mounts read-write, never a skipped mount. The nightly run (systemd user timer,
   03:00) copies to the backup server with rsync and keeps 3 here / 30 there (owner's choices 2026-10-13); its
   settings, including the Uptime Kuma push URL, are in the gitignored `backup.env`.
+
+## Deploys (owner's decision 2026-10-14)
+- **A merge to `main` deploys.** A pull agent on atlas (systemd user timer `homelab-pull@atlas`, from the owner's
+  private homelab-ops repo; rolled out host by host, see Chronos) fetches `main` about every 90 s. When it moved,
+  the agent fast-forwards the checkout and runs `docker compose config --quiet`, `docker compose pull` and
+  `docker compose up -d --remove-orphans --wait`: a merge is live within about two minutes. It refuses local
+  changes and non-fast-forward history, and moves the checkout back if config or pull fails.
+- **Rollback is a revert PR**, deployed the same way. A revert doesn't undo a data migration: then the backup and
+  `scripts/restore.sh` are the way back, with the owner.
+- **Pinning by hand**: the owner checks out another commit or tag on the host; the agent pauses until the checkout
+  is on `main` again. Release tags stay as signed, verified snapshots; they no longer drive deploys.
 
 ## Stack
 - Docker Compose v2 (`compose.yaml`, 12 services), upstream images (linuxserver.io where available).
@@ -112,6 +125,12 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   version comment; untrusted `${{ github.event.* }}` only through `env:`.
 - `CI / Checks + tests` and `CI / Stack smoke test` are required checks (with DCO, dependency review and
   CodeQL's two analyses); don't rename those jobs.
+- **Merging (owner's decision 2026-10-14):** Claude opens a PR for every change. A merge deploys (see Deploys),
+  so Claude never merges and never turns on auto-merge (`gh pr merge --auto`) for a PR without the owner's OK for
+  that PR, and says in the question that merging deploys to atlas. Never bypass a check or the ruleset.
+  Dependabot's patch and minor updates and rebuilds still auto-merge through
+  `dependabot-auto-merge.yml` once every required check passes, so they now deploy unattended; majors wait for the
+  owner. Keeping that auto-merge is the owner's call: don't change `dependabot-auto-merge.yml` without it.
 
 ## Commands
 ```sh

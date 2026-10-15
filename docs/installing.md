@@ -78,6 +78,37 @@ should be `PUID:PGID`):
 The old volumes aren't touched: remove them (`docker volume rm`) once the apps run from their config
 directories.
 
+### Connecting the apps
+
+Point the apps at each other by service name, on the stack's network, never by the host's address: that way they
+don't depend on the host's firewall ([below](#firewall)) or address. Use the container ports, not the published
+ones:
+
+| In | Settings | Host | Port |
+| --- | --- | --- | --- |
+| Radarr, Radarr 4K, Sonarr, Sonarr 4K, Lidarr | Download Clients → SABnzbd | `sabnzbd` | `8080` |
+| Bazarr | Sonarr / Radarr | `sonarr` / `radarr` | `8989` / `7878` |
+| Bazarr 4K | Sonarr / Radarr | `sonarr4k` / `radarr4k` | `8989` / `7878` |
+| Recyclarr (`recyclarr.yml`) | `base_url` of each instance | `http://sonarr:8989`, `http://sonarr4k:8989`, `http://radarr:7878`, `http://radarr4k:7878` | |
+
+SABnzbd refuses requests for a host name it doesn't know ("Hostname verification failed") unless it has a login
+set: add `sabnzbd` to Config → Special → `host_whitelist`, keeping the entries already there. If an app has a remote
+path mapping (Settings → Download Clients), its Host must match the download client's new host. Apps outside this
+stack (an indexer manager, a media server) keep using the host's address and published ports.
+
+### Firewall
+
+Docker-published ports bypass a host firewall such as `ufw` for other machines, but not for the stack itself: a
+container that calls the host's own address on a published port of a container on the same network goes through
+Docker's proxy on the host, so a firewall that denies incoming traffic by default drops it, and the apps time out
+reaching each other. Calls by service name ([above](#connecting-the-apps)) stay on the stack's network and never
+meet the firewall. If something on the stack must call the host's address, allow the stack's network, whose range
+`STACK_SUBNET` keeps fixed (default `172.25.0.0/16`):
+
+```sh
+sudo ufw allow from 172.25.0.0/16
+```
+
 The maintainer's server runs `main` rather than a release, and deploys every merge by itself
 ([upgrading.md](upgrading.md#following-main)). For your own setup, a release is the safer choice.
 
@@ -145,7 +176,8 @@ its `SHA256SUMS` first, and a copy that was cut off has none yet, so it is refus
 
 - Turn on each app's authentication (**Forms**, required for all addresses) before anything else, and keep the
   web UIs on the LAN; put a reverse proxy with TLS and an allow-list in front of any you reach from elsewhere.
-  Docker-published ports bypass host firewalls such as `ufw`.
+  Docker-published ports bypass host firewalls such as `ufw` (except for the stack's own calls to the host's
+  address, [firewall](#firewall)).
 - **The Dozzle agent can read every container's logs and, through the Docker socket, control Docker**, for any
   Dozzle that connects to it. Keep its port (7007) on the LAN only.
 - Keep `.env` and `autoheal.env` at mode `600`. `.env` holds no secrets by design, but it does describe your

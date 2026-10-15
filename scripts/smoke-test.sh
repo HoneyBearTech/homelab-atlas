@@ -11,7 +11,8 @@
 # It stays away from any real installation on the same Docker host: its own Compose project, settings from
 # .env.example with every directory (*_ROOT, *_PATH; so CONFIG_ROOT, with the apps' config directories, too) moved
 # into a temporary directory, every volume and network name (*_VOLUME, *_NETWORK) and name prefix (*_PREFIX)
-# replaced by one of its own, no fixed container names, no published ports and no service env files. It never reads
+# replaced by one of its own, the stack network's fixed address range dropped, no fixed container names, no published
+# ports and no service env files. It never reads
 # .env or autoheal.env (so no webhook is called), ignores the stack's settings in the environment, never takes the
 # pull agent's deploy lock, and on exit removes only the volumes Compose labelled with its own project and the networks
 # it created.
@@ -140,6 +141,9 @@ has_autoheal=false
       retries: 2
 YAML
   fi
+  # The stack's network gets whatever address range Docker picks, not a fixed one: the installation on this host may
+  # be using that range, and two networks can't share one.
+  printf 'networks:\n  default:\n    ipam: !reset {}\n'
 } >"$work/override.yaml"
 
 compose config --quiet

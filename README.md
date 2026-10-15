@@ -81,7 +81,8 @@ Ports, volumes and labels: [docs/interfaces.md](docs/interfaces.md).
 ## Running it securely
 
 - Turn on each app's authentication before anything else, and keep the web UIs on your LAN. Docker-published
-  ports bypass host firewalls such as `ufw`.
+  ports bypass host firewalls such as `ufw`, except for the apps' calls to the host's own address: connect the apps
+  to each other by service name ([docs/installing.md](docs/installing.md#connecting-the-apps)).
 - Secrets (API keys, logins, provider credentials) live only in each app's config directory (under
   `CONFIG_ROOT`), never in this repository or `.env`.
 - The Dozzle agent reads logs through the Docker socket: keep its port (7007) on the LAN. autoheal never gets

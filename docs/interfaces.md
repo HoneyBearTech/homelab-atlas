@@ -18,6 +18,7 @@ setting marked required stops `docker compose` with an error naming it when it's
 | `MEDIA_ROOT` | yes | `/srv/media` | Host directory with downloads and media on one filesystem, mounted at `/media` in Radarr, Sonarr, Lidarr, Bazarr and SABnzbd. |
 | `CONFIG_ROOT` | yes | `/srv/config` | Host directory with every app's own data, one folder per app named after its service, owned by `PUID:PGID`: `<app>/config` (settings, API key and database) for `radarr`, `radarr4k`, `sonarr`, `sonarr4k`, `lidarr`, `bazarr`, `bazarr4k`, `sabnzbd` and `recyclarr`, mounted at `/config`, and `radarr/scripts`, `radarr4k/scripts` (custom scripts), mounted at `/scripts`. Holds every app's API key: back it up. Never inside `/var/lib/docker/volumes` ([installing.md](installing.md#where-data-lives)). |
 | `SABNZBD_INCOMPLETE_PATH` | yes | `/srv/downloads/incomplete` | Host directory where SABnzbd assembles downloads before they're complete, mounted at `/incomplete` (its temporary download folder). May be another disk or share; not backed up. |
+| `STACK_SUBNET` | no (default `172.25.0.0/16`) | `172.25.0.0/16` | Address range of the stack's own network, fixed so a host firewall rule that allows it keeps matching when Compose recreates the network ([installing.md](installing.md#firewall)). A private range no other Docker network or LAN on the host uses. Changing it recreates the network, so every service restarts. |
 
 ### `autoheal.env`
 

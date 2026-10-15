@@ -26,6 +26,28 @@ All notable changes to homelab-atlas are documented here. The format follows
   longer read). A deploy without `CONFIG_ROOT` stops at `docker compose config` and changes nothing.
 - Backups taken while the config was in volumes (0.4.0 and later) restore as they are: `scripts/restore.sh` puts
   each app's archive into its config directory.
+- **Move Recyclarr's config and Radarr's scripts under `CONFIG_ROOT` before deploying this.** With the app stopped,
+  move the contents of each old folder into its new one, owned by `PUID:PGID`:
+
+  | App | Old location | New location |
+  | --- | --- | --- |
+  | recyclarr | `RECYCLARR_CONFIG_PATH` | `CONFIG_ROOT/recyclarr/config` |
+  | radarr | `APPDATA_ROOT/radarr/scripts` | `CONFIG_ROOT/radarr/scripts` |
+  | radarr4k | `APPDATA_ROOT/radarr4k/scripts` | `CONFIG_ROOT/radarr4k/scripts` |
+
+  For Recyclarr, for example:
+
+  ```sh
+  docker compose stop recyclarr
+  . ./.env && mkdir -p "$CONFIG_ROOT/recyclarr/config" &&
+    cp -a "$RECYCLARR_CONFIG_PATH/." "$CONFIG_ROOT/recyclarr/config/"
+  ```
+
+  Then drop `RECYCLARR_CONFIG_PATH` and `APPDATA_ROOT` from `.env` (they're no longer read), and remove the old
+  folders once the apps run from the new ones. `CONFIG_ROOT` must be in `.env` before deploying (see above): a
+  deploy without it stops at `docker compose config` and changes nothing. Never put `CONFIG_ROOT` inside
+  `/var/lib/docker/volumes` ([docs/installing.md](docs/installing.md#where-data-lives)). Backups taken before this
+  restore as they are: `scripts/restore.sh` puts Recyclarr's and Radarr's archives into the new folders.
 
 ### Added
 
@@ -37,6 +59,12 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ### Changed
 
+- Every app's own data now lives in one folder per app under `CONFIG_ROOT`, the same layout as the other homelab
+  stacks: Recyclarr's config moves to `CONFIG_ROOT/recyclarr/config` and Radarr's and Radarr 4K's custom scripts to
+  `CONFIG_ROOT/<app>/scripts` (the maintainer's decision, 2026-10-15), so the settings `RECYCLARR_CONFIG_PATH` and
+  `APPDATA_ROOT` are gone. The docs now warn never to point a path setting into `/var/lib/docker/volumes` or keep app
+  data in named volumes: `docker volume prune` deletes a volume no container mounts as one, even one whose `_data`
+  folder a service bind-mounts ([docs/installing.md](docs/installing.md#where-data-lives)).
 - Each app's config (settings, API key and database) moves from a Docker volume to a config directory on the host,
   `CONFIG_ROOT/<app>/config`, still mounted at `/config` (the maintainer's decision, 2026-10-14). The new required
   setting `CONFIG_ROOT` replaces `CONFIG_VOLUME_PREFIX` and `SONARR4K_CONFIG_VOLUME`, and `compose.yaml` no longer

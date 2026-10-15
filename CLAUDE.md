@@ -26,7 +26,7 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
 ## This repo is public
 - No hostnames, IP addresses, internal domains, host paths, Portainer stack names or personal email
   addresses in anything committed: code, compose, docs, examples, tests, commit messages. Host facts live
-  only in the Chronos notes. Examples use placeholders (`/srv/appdata`, `/srv/media`, `homelab-atlas_`).
+  only in the Chronos notes. Examples use placeholders (`/srv/config`, `/srv/media`, `homelab-atlas_`).
 - Commit as `31805425+HoneyBearTech@users.noreply.github.com` (set as this repo's `user.email`), with
   `git commit -s` for the DCO sign-off; commits and tags are SSH-signed.
 - No secrets: the apps' API keys, logins and provider credentials stay in their config directories on the host,
@@ -61,11 +61,20 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
 - Every setting goes through `.env` (`${VAR:?…}` in compose when required) and is listed in `.env.example`
   and `docs/interfaces.md`.
 - **Container paths are load-bearing**: the apps store `/media/...` paths in their databases (SABnzbd also
-  `/incomplete`), so `/media`, `/incomplete`, `/config` and `/scripts` never change. Each app's `/config` is a
-  bind-mounted config directory, `${CONFIG_ROOT}/<app>/config` (owner's decision 2026-10-14; named volumes before,
-  which atlas keeps until the apps run from the directories); atlas' `CONFIG_ROOT` lives only in its `.env`. Before
-  a cutover or redeploy, compare the live containers' mounts and ports with `docker compose config`: atlas has been
-  changed by hand before.
+  `/incomplete`), so `/media`, `/incomplete`, `/config` and `/scripts` never change.
+- **Data layout (owner's decisions 2026-10-14 and 2026-10-15, the same in every homelab stack):** one required
+  setting, `CONFIG_ROOT`. Each app's settings and database are in `${CONFIG_ROOT:?set CONFIG_ROOT in .env}/<app>/config`
+  and any other folder of its own sits beside it as `${CONFIG_ROOT}/<app>/<purpose>` (Radarr's `scripts`); `<app>` is
+  the lowercase service name, so Recyclarr's config is `recyclarr/config`. No named Docker volumes for app data and no
+  per-app path settings; the media and download roots (`MEDIA_ROOT`, `SABNZBD_INCOMPLETE_PATH`) stay separate. atlas'
+  `CONFIG_ROOT` lives only in its `.env`. Before a cutover or redeploy, compare the live containers' mounts and ports
+  with `docker compose config`: atlas has been changed by hand before.
+- **Never point a path setting into `/var/lib/docker/volumes`, and never keep app data in a named volume.**
+  `docker volume prune`, `docker system prune --volumes` and Portainer's "remove unused volumes" delete every volume
+  no container mounts as a volume, including one whose `_data` folder a service bind-mounts (a prune on another
+  homelab host deleted two apps' data that way, 2026-10-15). Keep app data under `CONFIG_ROOT`.
+  `tests/test_settings.py` checks that every app's data mounts come from `CONFIG_ROOT/<app>/...` and that no service
+  mounts a named volume.
 - Policy exceptions in use (each agreed by the owner): `dozzle` (`docker-socket`, read-only mount; an agent for
   the homelab's Dozzle hub on another host, port 7007, owner 2026-10-13),
   `socket-proxy` (`docker-socket`: filters the API down to list/inspect/restart/stop for autoheal, internal network,

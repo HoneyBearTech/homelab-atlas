@@ -12,14 +12,12 @@ setting marked required stops `docker compose` with an error naming it when it's
 
 | Setting | Required | Example | Meaning |
 | --- | --- | --- | --- |
-| `PUID`, `PGID` | yes | `1000` | User and group the apps run as and write files as. Must be able to read and write `MEDIA_ROOT` and `RECYCLARR_CONFIG_PATH`. |
+| `PUID`, `PGID` | yes | `1000` | User and group the apps run as and write files as. Must be able to read and write `MEDIA_ROOT` and `CONFIG_ROOT`. |
 | `TZ` | yes | `Etc/UTC` | Time zone (tz database name) for logs and schedules. |
 | `UMASK` | no (default `002`) | `002` | File creation mask inside the linuxserver.io apps; `002` keeps files group-writable without making them world-writable. |
 | `MEDIA_ROOT` | yes | `/srv/media` | Host directory with downloads and media on one filesystem, mounted at `/media` in Radarr, Sonarr, Lidarr, Bazarr and SABnzbd. |
-| `APPDATA_ROOT` | yes | `/srv/appdata` | Host directory for files beside the config directories: Radarr's custom scripts in `radarr/scripts` and `radarr4k/scripts`, mounted at `/scripts`. |
-| `CONFIG_ROOT` | yes | `/srv/config` | Host directory with each app's config directory (settings, API key and database), `<app>/config` for `radarr`, `radarr4k`, `sonarr`, `sonarr4k`, `lidarr`, `bazarr`, `bazarr4k` and `sabnzbd`, mounted at `/config`; owned by `PUID:PGID`. Holds every app's API key: back it up. |
+| `CONFIG_ROOT` | yes | `/srv/config` | Host directory with every app's own data, one folder per app named after its service, owned by `PUID:PGID`: `<app>/config` (settings, API key and database) for `radarr`, `radarr4k`, `sonarr`, `sonarr4k`, `lidarr`, `bazarr`, `bazarr4k`, `sabnzbd` and `recyclarr`, mounted at `/config`, and `radarr/scripts`, `radarr4k/scripts` (custom scripts), mounted at `/scripts`. Holds every app's API key: back it up. Never inside `/var/lib/docker/volumes` ([installing.md](installing.md#where-data-lives)). |
 | `SABNZBD_INCOMPLETE_PATH` | yes | `/srv/downloads/incomplete` | Host directory where SABnzbd assembles downloads before they're complete, mounted at `/incomplete` (its temporary download folder). May be another disk or share; not backed up. |
-| `RECYCLARR_CONFIG_PATH` | yes | `/srv/appdata/recyclarr` | Host directory with Recyclarr's config, mounted at `/config`. |
 
 ### `autoheal.env`
 
@@ -67,10 +65,9 @@ Ports are published on every host interface. Exact versions and digests are in [
 
 | Container path | Host source | Services |
 | --- | --- | --- |
-| `/config` | `CONFIG_ROOT/<app>/config` | the *arr apps, Bazarr, SABnzbd |
-| `/config` | `RECYCLARR_CONFIG_PATH` | recyclarr |
+| `/config` | `CONFIG_ROOT/<app>/config` | the *arr apps, Bazarr, SABnzbd, Recyclarr |
 | `/media` | `MEDIA_ROOT` | the *arr apps, Bazarr, SABnzbd |
-| `/scripts` | `APPDATA_ROOT/radarr/scripts`, `APPDATA_ROOT/radarr4k/scripts` | radarr, radarr4k |
+| `/scripts` | `CONFIG_ROOT/<app>/scripts` | radarr, radarr4k |
 | `/incomplete` | `SABNZBD_INCOMPLETE_PATH` | sabnzbd |
 | `/var/run/docker.sock` (read-only) | the Docker socket | dozzle, socket-proxy (allowed exceptions, see below) |
 

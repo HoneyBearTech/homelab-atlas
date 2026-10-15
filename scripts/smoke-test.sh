@@ -81,18 +81,26 @@ while IFS= read -r line; do
   printf '%s=%s\n' "$key" "$value"
 done <<<"$settings" >"$work/env"
 
+# Every folder a service bind-mounts from those directories (CONFIG_ROOT/<app>/config and the folders beside it)
+# exists before anything starts, as the install docs have the operator create them, so it gets the owner below:
+# Docker would create a missing one owned by root, which a service running as PUID without capabilities (Recyclarr)
+# can't write to.
+while IFS= read -r source; do
+  case $source in "$work"/*) mkdir -p "$source" ;; esac
+done < <(COMPOSE_FILE=$root/compose.yaml docker compose config | sed -n 's/^ *source: //p')
+
 # The directories are owned as on a host: by PUID:PGID with mode 0755 when the stack sets PUID (the LinuxServer.io
 # images' convention), so a service that needs more than that, such as DAC_OVERRIDE to write into a directory it
 # doesn't own, fails here rather than at a deploy. Without PUID they're writable by any user: some services run as
-# a fixed uid that isn't the caller's. chown runs as root in a throwaway container.
+# a fixed uid that isn't the caller's. Both cover the folders made above. chown runs as root in a throwaway container.
 puid=$(sed -n 's/^PUID=//p' "$work/env")
 pgid=$(sed -n 's/^PGID=//p' "$work/env")
 for dir in "${data_dirs[@]+"${data_dirs[@]}"}"; do
   if [ -n "$puid" ]; then
     docker run --rm --network none -v "$dir:/data" "$busybox" \
-      sh -c 'chown "$1:$2" /data && chmod 0755 /data' own "$puid" "${pgid:-$puid}" </dev/null
+      sh -c 'chown -R "$1:$2" /data && chmod 0755 /data' own "$puid" "${pgid:-$puid}" </dev/null
   else
-    chmod 0777 "$dir"
+    chmod -R 0777 "$dir"
   fi
 done
 

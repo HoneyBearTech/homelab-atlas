@@ -69,14 +69,12 @@ Settings come from `.env` (template [`.env.example`](.env.example)), which holds
 
 | Setting | Default in `.env.example` | Meaning |
 | --- | --- | --- |
-| `PUID`, `PGID` | `1000` | User and group the apps run as; must be able to write `MEDIA_ROOT` and `RECYCLARR_CONFIG_PATH` |
+| `PUID`, `PGID` | `1000` | User and group the apps run as; must be able to write `MEDIA_ROOT` and `CONFIG_ROOT` |
 | `TZ` | `Etc/UTC` | Time zone |
 | `UMASK` | `002` | File creation mask inside the linuxserver.io apps |
 | `MEDIA_ROOT` | `/srv/media` | Downloads and media on one filesystem (`/media`), so imports are hardlinks or instant moves |
-| `APPDATA_ROOT` | `/srv/appdata` | Radarr's custom scripts (`radarr/scripts`, `radarr4k/scripts`) |
-| `CONFIG_ROOT` | `/srv/config` | Each app's config directory, `<app>/config` (settings, API key, database), owned by `PUID:PGID`. Contains API keys: back it up |
+| `CONFIG_ROOT` | `/srv/config` | Every app's data, one folder per app: `<app>/config` (settings, API key, database; Recyclarr's too) and Radarr's `<app>/scripts`, owned by `PUID:PGID`. Contains API keys: back it up. Never inside `/var/lib/docker/volumes` |
 | `SABNZBD_INCOMPLETE_PATH` | `/srv/downloads/incomplete` | SABnzbd's temporary download folder (`/incomplete`); may be another disk |
-| `RECYCLARR_CONFIG_PATH` | `/srv/appdata/recyclarr` | Recyclarr's config directory |
 
 Ports, volumes and labels: [docs/interfaces.md](docs/interfaces.md).
 

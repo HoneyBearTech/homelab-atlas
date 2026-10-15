@@ -14,13 +14,29 @@ The [quick start](quick-start.md) is the short version of this page.
 
 ## Where data lives
 
+Every app's own data lives in one folder per app under `CONFIG_ROOT`, named after its service: its settings and
+database in `CONFIG_ROOT/<app>/config`, anything else of its own beside that (`CONFIG_ROOT/<app>/<purpose>`).
+
 | What | Where on the host | In the container |
 | --- | --- | --- |
 | Each app's settings, API key and database | its config directory, `CONFIG_ROOT/<app>/config` (radarr, radarr4k, sonarr, sonarr4k, lidarr, bazarr, bazarr4k, sabnzbd) | `/config` |
+| Recyclarr's config (`recyclarr.yml`) | `CONFIG_ROOT/recyclarr/config` | `/config` |
+| Radarr's custom scripts | `CONFIG_ROOT/radarr/scripts`, `CONFIG_ROOT/radarr4k/scripts` | `/scripts` |
 | Downloads and media | `MEDIA_ROOT` | `/media` |
-| Radarr's custom scripts | `APPDATA_ROOT/radarr/scripts`, `APPDATA_ROOT/radarr4k/scripts` | `/scripts` |
 | SABnzbd's unfinished downloads (not backed up) | `SABNZBD_INCOMPLETE_PATH` | `/incomplete` |
-| Recyclarr's config | `RECYCLARR_CONFIG_PATH` | `/config` |
+
+```
+$CONFIG_ROOT/
+  radarr/{config,scripts}/  radarr4k/{config,scripts}/
+  sonarr/config/  sonarr4k/config/  lidarr/config/  bazarr/config/  bazarr4k/config/  sabnzbd/config/
+  recyclarr/config/
+```
+
+> **Warning: never point a path setting into `/var/lib/docker/volumes`, and don't keep app data in named Docker
+> volumes.** `docker volume prune`, `docker system prune --volumes` and Portainer's "remove unused volumes" delete
+> every volume that no container mounts *as a volume*, including one whose `_data` folder a service bind-mounts
+> through a path setting: Docker counts that volume as unused, and the app's settings and database go with it. Keep
+> every app's data under `CONFIG_ROOT`, outside Docker's own directories, and back it up.
 
 An example layout under `MEDIA_ROOT`, following the TRaSH Guides:
 
@@ -31,7 +47,9 @@ $MEDIA_ROOT/
 ```
 
 The apps save `/media/...` paths in their databases, so keep the container path the same if you move hosts.
-`MEDIA_ROOT` and the config directories must be readable and writable by `PUID:PGID`.
+`MEDIA_ROOT` and every folder under `CONFIG_ROOT` must be readable and writable by `PUID:PGID`. Create the folders
+as that user before the first start: Docker creates a missing one owned by root, and Recyclarr, which runs as
+`PUID:PGID` without capabilities, can't write to that.
 
 ## Installing
 
@@ -40,14 +58,17 @@ The apps save `/media/...` paths in their databases, so keep the container path 
 2. Create `.env` from `.env.example` (mode `600`) and set every value. Optionally create `autoheal.env` from
    `autoheal.env.example` (mode `600`) with a webhook URL for restart notices
    ([interfaces.md](interfaces.md)).
-3. Create the host directories, then `docker compose up -d`.
+3. Create the host directories as the `PUID` user (`MEDIA_ROOT`, `SABNZBD_INCOMPLETE_PATH` and each folder under
+   `CONFIG_ROOT` in the layout above; the [quick start](quick-start.md) has the commands), then
+   `docker compose up -d`.
 
 **Adopting existing containers.** If the apps already run on the host (for example from a Portainer stack), copy
-each app's config into its config directory so the stack takes over the same settings and databases, and keep
-`MEDIA_ROOT` pointing at the directory they mount at `/media`. Stop and remove the old containers first: the
-container names (`radarr`, `sonarr`, …) must be free. `docker inspect --format '{{json .Mounts}}' radarr` shows
-what an app mounts at `/config` before you remove it; for a Docker volume, copy its contents with the app stopped
-(`cp -a` keeps the owners, which should be `PUID:PGID`):
+each app's config into its config directory (Recyclarr's into `CONFIG_ROOT/recyclarr/config`, Radarr's scripts into
+`CONFIG_ROOT/<app>/scripts`) so the stack takes over the same settings and databases, and keep `MEDIA_ROOT` pointing
+at the directory they mount at `/media`. Stop and remove the old containers first: the container names (`radarr`,
+`sonarr`, …) must be free. `docker inspect --format '{{json .Mounts}}' radarr` shows what an app mounts at `/config`
+before you remove it; for a Docker volume, copy its contents with the app stopped (`cp -a` keeps the owners, which
+should be `PUID:PGID`):
 
 ```sh
 . ./.env && docker run --rm --network none -v <radarr's volume>:/from:ro -v "$CONFIG_ROOT/radarr/config:/to" \
@@ -129,8 +150,8 @@ its `SHA256SUMS` first, and a copy that was cut off has none yet, so it is refus
   Dozzle that connects to it. Keep its port (7007) on the LAN only.
 - Keep `.env` and `autoheal.env` at mode `600`. `.env` holds no secrets by design, but it does describe your
   host; `autoheal.env` holds the webhook URL.
-- Back up the config directories (`CONFIG_ROOT`) and `RECYCLARR_CONFIG_PATH`: they hold every app's API key and
-  database ([upgrading.md](upgrading.md#backing-up)).
+- Back up `CONFIG_ROOT`: it holds every app's API key and database ([upgrading.md](upgrading.md#backing-up)).
+  Never move it, or any app's data, into a Docker volume ([where data lives](#where-data-lives)).
 - Keep `UMASK` at `002`: `000` makes every new file on your media share world-writable.
 - Don't add services that mount the Docker socket, run privileged or use the host network without a documented
   reason; the policy check refuses them ([security.md](security.md)).
@@ -143,5 +164,5 @@ its `SHA256SUMS` first, and a copy that was cut off has none yet, so it is refus
 docker compose down          # stops and removes the containers and the stack's network
 ```
 
-The config directories (`CONFIG_ROOT`), `MEDIA_ROOT`, `APPDATA_ROOT` and `RECYCLARR_CONFIG_PATH` are left
-untouched. Remove the directories by hand if you no longer want the apps' settings or your media.
+`CONFIG_ROOT` (every app's data), `MEDIA_ROOT` and `SABNZBD_INCOMPLETE_PATH` are left untouched. Remove the
+directories by hand if you no longer want the apps' settings or your media.

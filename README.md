@@ -30,7 +30,7 @@ Docker Compose stack for Atlas, the homelab media automation server running Recy
 
 ## What's in the stack
 
-Radarr and Sonarr (regular and 4K instances), Lidarr, Bazarr (regular and 4K), SABnzbd and Recyclarr, plus
+Radarr and Sonarr (regular and 4K instances), Lidarr, Bazarr (regular and 4K), SABnzbd, Recyclarr and Seerr (requests), plus
 a Dozzle agent (container logs, for the homelab's Dozzle) and autoheal (restarts an app that turns unhealthy), all from their upstream images ([architecture](docs/architecture.md),
 ports in [interfaces](docs/interfaces.md#services-and-ports)). The indexer manager, the torrent client and the
 media server run on other hosts.
@@ -73,7 +73,7 @@ Settings come from `.env` (template [`.env.example`](.env.example)), which holds
 | `TZ` | `Etc/UTC` | Time zone |
 | `UMASK` | `002` | File creation mask inside the linuxserver.io apps |
 | `MEDIA_ROOT` | `/srv/media` | Downloads and media on one filesystem (`/media`), so imports are hardlinks or instant moves |
-| `CONFIG_ROOT` | `/srv/config` | Every app's data, one folder per app: `<app>/config` (settings, API key, database; Recyclarr's too) and Radarr's `<app>/scripts`, owned by `PUID:PGID`. Contains API keys: back it up. Never inside `/var/lib/docker/volumes` |
+| `CONFIG_ROOT` | `/srv/config` | Every app's data, one folder per app: `<app>/config` (settings, API key, database; Recyclarr's and Seerr's too) and Radarr's `<app>/scripts`, owned by `PUID:PGID`. Contains API keys: back it up. Never inside `/var/lib/docker/volumes` |
 | `SABNZBD_INCOMPLETE_PATH` | `/srv/downloads/incomplete` | SABnzbd's temporary download folder (`/incomplete`); may be another disk |
 
 Ports, volumes and labels: [docs/interfaces.md](docs/interfaces.md).

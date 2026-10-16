@@ -34,6 +34,11 @@ def test_each_app_keeps_its_config_in_a_directory_under_config_root() -> None:
         assert f"{CONFIG_ROOT}/{app}/config:/config" in services[app]["volumes"]
 
 
+def test_seerr_keeps_its_config_in_its_directory_under_config_root() -> None:
+    # Seerr's image keeps its data in /app/config, not /config.
+    assert f"{CONFIG_ROOT}/seerr/config:/app/config" in compose()["services"]["seerr"]["volumes"]
+
+
 def test_every_app_data_mount_is_a_folder_of_its_own_under_config_root() -> None:
     for name, service in compose()["services"].items():
         for volume in service.get("volumes") or []:

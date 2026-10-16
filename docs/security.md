@@ -55,6 +55,7 @@ restore, and that autoheal can still restart a container through socket-proxy wi
 | --- | --- | --- | --- |
 | radarr, radarr4k, sonarr, sonarr4k, lidarr, bazarr, bazarr4k, sabnzbd | `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID`, `KILL` | no | The linuxserver.io init (s6) runs as root: it takes ownership of `/config` and the app's own directories for `PUID:PGID` (`CHOWN`; it must enter directories it doesn't own to do so, `DAC_OVERRIDE`), starts the app as that user (`SETUID`, `SETGID`) and signals it to stop (`KILL`; without it every stop waits for Docker's timeout and kills the app). Their root stays writable: s6-overlay runs its init from `/run`, which a tmpfs mounts without exec, and the init rewrites `/etc/passwd` for `PUID` |
 | recyclarr | none | yes (`/tmp` in memory) | Runs as `PUID:PGID` and writes only its config directory, and its crontab to `/tmp` |
+| seerr | none | yes (`/tmp` in memory) | Runs as `PUID:PGID` (Node under `init`) and writes only its config directory |
 | dozzle | none | yes (`/tmp` in memory) | Reads the Docker socket, which belongs to root; writes only its address file to `/tmp` |
 | autoheal | none | yes | Only talks to socket-proxy |
 | socket-proxy | none | yes (`/run`, `/tmp` in memory) | Only reads the socket |
@@ -95,6 +96,7 @@ Without `CHOWN` and `DAC_OVERRIDE` the apps' root can only reach what it owns.
 | App API keys, UI logins | each app's config directory (`CONFIG_ROOT/<app>/config`) | the repository, `.env`, issues, logs you paste |
 | Usenet provider and indexer credentials | SABnzbd's and the apps' config directories | same |
 | Radarr and Sonarr API keys for Recyclarr | `CONFIG_ROOT/recyclarr/config` (`recyclarr.yml` or its secrets file) | same |
+| Seerr's API key (it acts as Seerr's admin: there is no read-only key), its Plex token, and the Radarr and Sonarr API keys it uses | `CONFIG_ROOT/seerr/config` (`settings.json`) | same |
 | autoheal's webhook URL | `autoheal.env` (mode `600`, gitignored) | same |
 | The backup's push-monitor URL | `backup.env` (mode `600`, gitignored) | same |
 | The backup server's SSH key | `~/.ssh/` on the host, used only for the backup user (`restrict,from=` on the server) | the repository, `.env` |

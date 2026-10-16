@@ -21,6 +21,7 @@ database in `CONFIG_ROOT/<app>/config`, anything else of its own beside that (`C
 | --- | --- | --- |
 | Each app's settings, API key and database | its config directory, `CONFIG_ROOT/<app>/config` (radarr, radarr4k, sonarr, sonarr4k, lidarr, bazarr, bazarr4k, sabnzbd) | `/config` |
 | Recyclarr's config (`recyclarr.yml`) | `CONFIG_ROOT/recyclarr/config` | `/config` |
+| Seerr's settings, API key and database (its `logs` folder isn't backed up) | `CONFIG_ROOT/seerr/config` | `/app/config` |
 | Radarr's custom scripts | `CONFIG_ROOT/radarr/scripts`, `CONFIG_ROOT/radarr4k/scripts` | `/scripts` |
 | Downloads and media | `MEDIA_ROOT` | `/media` |
 | SABnzbd's unfinished downloads (not backed up) | `SABNZBD_INCOMPLETE_PATH` | `/incomplete` |
@@ -29,7 +30,7 @@ database in `CONFIG_ROOT/<app>/config`, anything else of its own beside that (`C
 $CONFIG_ROOT/
   radarr/{config,scripts}/  radarr4k/{config,scripts}/
   sonarr/config/  sonarr4k/config/  lidarr/config/  bazarr/config/  bazarr4k/config/  sabnzbd/config/
-  recyclarr/config/
+  recyclarr/config/  seerr/config/
 ```
 
 > **Warning: never point a path setting into `/var/lib/docker/volumes`, and don't keep app data in named Docker
@@ -48,8 +49,8 @@ $MEDIA_ROOT/
 
 The apps save `/media/...` paths in their databases, so keep the container path the same if you move hosts.
 `MEDIA_ROOT` and every folder under `CONFIG_ROOT` must be readable and writable by `PUID:PGID`. Create the folders
-as that user before the first start: Docker creates a missing one owned by root, and Recyclarr, which runs as
-`PUID:PGID` without capabilities, can't write to that.
+as that user before the first start: Docker creates a missing one owned by root, and Recyclarr and Seerr, which run
+as `PUID:PGID` without capabilities, can't write to that.
 
 ## Installing
 
@@ -90,11 +91,13 @@ ones:
 | Bazarr | Sonarr / Radarr | `sonarr` / `radarr` | `8989` / `7878` |
 | Bazarr 4K | Sonarr / Radarr | `sonarr4k` / `radarr4k` | `8989` / `7878` |
 | Recyclarr (`recyclarr.yml`) | `base_url` of each instance | `http://sonarr:8989`, `http://sonarr4k:8989`, `http://radarr:7878`, `http://radarr4k:7878` | |
+| Seerr | Settings → Services → Radarr / Sonarr (tick **4K Server** for the 4K ones, and make each the default for its kind) | `radarr`, `radarr4k` / `sonarr`, `sonarr4k` | `7878` / `8989` |
 
 SABnzbd refuses requests for a host name it doesn't know ("Hostname verification failed") unless it has a login
 set: add `sabnzbd` to Config → Special → `host_whitelist`, keeping the entries already there. If an app has a remote
 path mapping (Settings → Download Clients), its Host must match the download client's new host. Apps outside this
-stack (an indexer manager, a media server) keep using the host's address and published ports.
+stack (an indexer manager, a media server) keep using the host's address and published ports: Seerr reaches Plex,
+on another host, by that host's address.
 
 ### Firewall
 

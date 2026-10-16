@@ -15,6 +15,7 @@ upstream images, pinned by digest.
 | Bazarr, Bazarr 4K | linuxserver.io | Subtitles for what Radarr and Sonarr imported |
 | SABnzbd | linuxserver.io | Usenet download client |
 | Recyclarr | the project's own image | Syncs TRaSH Guides custom formats and quality profiles into Radarr and Sonarr on a schedule |
+| Seerr | the project's own image | Request front end: viewers sign in with Plex and request movies and shows, which it sends to Radarr and Sonarr (the 4K instances for 4K requests); it checks Plex, on another host, for what's already there |
 | Dozzle | the project's own image | Agent that serves the containers' logs (read through the Docker socket) to the homelab's Dozzle on another host, which shows every host's logs in one web UI |
 | autoheal | the project's own image | Restarts any app whose health check fails, and can post a notice to a webhook (Docker on its own only restarts a container that exits) |
 | socket-proxy | linuxserver.io | Gives autoheal a filtered view of the Docker API (list, inspect, restart and stop containers only) on an internal network |
@@ -32,7 +33,7 @@ releases are managed independently.
 | Pull agent | On the maintainer's server, about every 90 seconds: fetches `main` and, when it moved, fast-forwards the checkout and runs `docker compose pull` and `docker compose up -d` (it lives in the maintainer's private orchestration repository); skips its run while `scripts/backup.sh` or `scripts/restore.sh` holds its deploy lock |
 | Release workflow | On a version tag: checks the policy, writes the SBOM, signs the checksums, publishes the GitHub Release |
 | The apps | Talk to each other's APIs on the stack's network, to indexers and the Usenet provider on the internet, and read and write `/media` |
-| LAN users | Use the apps' web UIs, behind each app's own authentication |
+| LAN users | Use the apps' web UIs, behind each app's own authentication; viewers use Seerr, signing in with their Plex account |
 
 ## Data flow
 
@@ -43,6 +44,7 @@ indexers (internet) ──search──▶ Radarr / Sonarr / Lidarr ──send re
                                                              │
                                                      /media/<library> ──▶ Bazarr (subtitles) ──▶ media server (elsewhere)
 Recyclarr ──API, daily──▶ Radarr / Sonarr (custom formats, quality profiles from the TRaSH Guides)
+viewers ──request──▶ Seerr ──API──▶ Radarr / Sonarr (4K requests to the 4K instances); Seerr ◀──library scan── Plex (elsewhere)
 ```
 
 All the apps share one `/media` mount (`MEDIA_ROOT`) so imports are hardlinks or instant moves on one

@@ -6,6 +6,15 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Seerr** (`seerr`, `ghcr.io/seerr-team/seerr` v3.5.0, port 5055): the request front end that succeeded Overseerr
+  and Jellyseerr. It sends requests to Radarr and Sonarr (4K requests to the 4K instances) by service name and checks
+  Plex on its host's address. Hardened like Recyclarr: runs as `PUID:PGID` under `init`, read-only root filesystem,
+  no capabilities, health check on `/api/v1/status`. Its data is in `CONFIG_ROOT/seerr/config`, backed up nightly
+  without its logs. **Before deploying, create that directory as the `PUID` user** (Docker would create it owned by
+  root, and Seerr couldn't write to it).
+
 ### Upgrading
 
 - **Move each app's config into its config directory before deploying this**, and **add `CONFIG_ROOT` to `.env`**

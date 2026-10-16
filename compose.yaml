@@ -349,8 +349,15 @@ services:
     networks:
       - docker-proxy
 
-# socket-proxy's network: internal, so nothing on it can reach the outside world and nothing outside can reach the
-# proxy; only autoheal joins it.
 networks:
+  # The apps' network keeps one address range (STACK_SUBNET) whenever Compose recreates it, so a host firewall rule
+  # that lets the apps reach each other through the host's own address keeps matching (docs/installing.md#firewall).
+  # Without a fixed range Docker picks any free one, and the rule silently stops matching.
+  default:
+    ipam:
+      config:
+        - subnet: ${STACK_SUBNET:-172.25.0.0/16}
+  # socket-proxy's network: internal, so nothing on it can reach the outside world and nothing outside can reach
+  # the proxy; only autoheal joins it.
   docker-proxy:
     internal: true

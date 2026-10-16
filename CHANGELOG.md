@@ -49,8 +49,23 @@ All notable changes to homelab-atlas are documented here. The format follows
   `/var/lib/docker/volumes` ([docs/installing.md](docs/installing.md#where-data-lives)). Backups taken before this
   restore as they are: `scripts/restore.sh` puts Recyclarr's and Radarr's archives into the new folders.
 
+- **Deploying the fixed network range recreates the stack's network once**: Compose stops every service, removes
+  the network, creates it again with `STACK_SUBNET` (default `172.25.0.0/16`, the range an existing installation
+  most likely has; compare `docker network inspect homelab-atlas_default`) and starts every service again. Set
+  `STACK_SUBNET` in `.env` first if your network has another range that a firewall rule relies on. **Docker
+  Compose 2.31 to 2.36 can't do this**: they recreate the network but then fail to start the containers ("network
+  … not found") and keep failing on every later `up`. Check `docker compose version` first; with one of those, or
+  if a deploy stopped with that error, run `docker compose down && docker compose up -d --wait` (2.30 and older, and
+  2.37 and newer, are fine).
+
 ### Added
 
+- `STACK_SUBNET` (optional, default `172.25.0.0/16`) fixes the address range of the stack's network, so a host
+  firewall rule that allows it keeps matching when Compose recreates the network; before, Docker picked any free
+  range. The install guide now says how to connect the apps to each other by service name, which needs no firewall
+  rule, and why a firewall that denies incoming traffic drops the apps' calls to the host's own address
+  ([docs/installing.md](docs/installing.md#connecting-the-apps)). The smoke test leaves the range to Docker, so it
+  doesn't collide with an installation on the same host.
 - `scripts/backup.sh` and `scripts/restore.sh` take the pull agent's deploy lock before they stop or create anything,
   and hold it until they exit, so a deploy can't start a service a backup has stopped or recreate one in the middle
   of a restore. The agent skips its runs meanwhile and catches up afterwards. A deploy in progress is waited for (up

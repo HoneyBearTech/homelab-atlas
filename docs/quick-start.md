@@ -30,7 +30,7 @@ the `docker` group, and one directory (or mounted share) that holds both downloa
    ```sh
    . ./.env && mkdir -p "$MEDIA_ROOT" "$SABNZBD_INCOMPLETE_PATH" \
      "$CONFIG_ROOT"/radarr/scripts "$CONFIG_ROOT"/radarr4k/scripts
-   for app in radarr radarr4k sonarr sonarr4k lidarr bazarr bazarr4k sabnzbd recyclarr; do
+   for app in radarr radarr4k sonarr sonarr4k lidarr bazarr bazarr4k sabnzbd recyclarr seerr; do
      mkdir -p "$CONFIG_ROOT/$app/config"
    done
    ```

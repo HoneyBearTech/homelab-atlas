@@ -251,6 +251,39 @@ services:
       # would create it owned by root).
       - ${CONFIG_ROOT:?set CONFIG_ROOT in .env}/recyclarr/config:/config
 
+  # --- Requests -------------------------------------------------------------------------------------------------
+  # Seerr: the request front end (successor of Overseerr and Jellyseerr). Viewers ask for movies and shows there;
+  # it sends them to Radarr and Sonarr (and their 4K instances) on this stack's network and checks Plex for what's
+  # already in the library. Its settings, API key and database live in its config directory.
+  seerr:
+    <<: *hardened
+    image: ghcr.io/seerr-team/seerr:v3.5.0@sha256:27602401178d54f1964442287b9f23f67a3fa2252645ee8065839ea1c3f69e45
+    container_name: seerr
+    restart: unless-stopped
+    # Node isn't PID 1: tini reaps child processes and passes on signals (the project's own compose does the same).
+    init: true
+    # Writes only its config directory (database, settings, logs) and /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp
+    labels:
+      autoheal: "true"
+      # Its own logs: rotated by the app, not worth a nightly copy.
+      org.honeybeartech.atlas.backup.exclude: "/app/config/logs"
+    # /api/v1/status answers without a login (version only).
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:5055/api/v1/status"]
+    user: ${PUID:?set PUID in .env}:${PGID:?set PGID in .env}
+    environment:
+      TZ: ${TZ:?set TZ in .env}
+    ports:
+      - "5055:5055"
+    volumes:
+      # Seerr runs as PUID:PGID and can't take ownership of a directory: create this one as that user (Docker would
+      # create it owned by root).
+      - ${CONFIG_ROOT:?set CONFIG_ROOT in .env}/seerr/config:/app/config
+
   # --- Operations -----------------------------------------------------------------------------------------------
   # A Dozzle agent: it serves this host's container logs to the homelab's Dozzle on another host, which shows the
   # logs of every host in one web UI. It has no web UI of its own. Keep it on the hub's version.

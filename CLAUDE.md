@@ -1,7 +1,7 @@
 # homelab-atlas
 
 The Docker Compose stack for Atlas, the owner's homelab media automation server: Recyclarr and the *arr
-apps (Radarr and Sonarr with 4K instances, Lidarr, Bazarr, SABnzbd) plus a Dozzle agent and autoheal (behind a socket
+apps (Radarr and Sonarr with 4K instances, Lidarr, Bazarr, SABnzbd), Seerr (requests) plus a Dozzle agent and autoheal (behind a socket
 proxy), every image pinned by tag and digest so the server can be upgraded and rebuilt from this repository.
 homelab-ares is the template for the homelab stacks: tooling that isn't specific to this host's services (checker,
 backup scripts, smoke test, workflows) is kept the same as ares'; a change here that isn't about this host's
@@ -52,7 +52,8 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   hardened** (`<<: *hardened`: `cap_drop: [ALL]`, `no-new-privileges:true`; the linuxserver.io apps
   `<<: *linuxserver`, which adds back `CHOWN DAC_OVERRIDE SETUID SETGID KILL`); a capability added back must be in
   Docker's default set, carry a comment saying why, and be proven needed (docs/security.md#hardening).
-  recyclarr, dozzle (tmpfs `/tmp`), autoheal and socket-proxy (tmpfs `/run`, `/tmp`) run with `read_only: true`;
+  recyclarr, seerr (tmpfs `/tmp`), dozzle (tmpfs `/tmp`), autoheal and socket-proxy (tmpfs `/run`, `/tmp`) run with
+  `read_only: true`;
   the linuxserver.io apps can't (s6-overlay execs from `/run`).
   `scripts/check_compose.py` enforces these rules in CI and in the release workflow.
 - **Never change the live server** (atlas) without the owner asking: merges only as **Merging** says, no
@@ -109,7 +110,7 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   is on `main` again. Release tags stay as signed, verified snapshots; they no longer drive deploys.
 
 ## Stack
-- Docker Compose v2 (`compose.yaml`, 12 services), upstream images (linuxserver.io where available).
+- Docker Compose v2 (`compose.yaml`, 13 services), upstream images (linuxserver.io where available).
 - `scripts/check_compose.py`: Python 3.14, standard library only. Reads `docker compose config --format json`,
   reports policy violations (exit 1), `--sbom FILE` writes a CycloneDX 1.6 SBOM of the images.
 - Settings per path/volume/prefix in `.env` (`*_ROOT`, `*_PATH`, `*_VOLUME`, `*_PREFIX`): the smoke test replaces

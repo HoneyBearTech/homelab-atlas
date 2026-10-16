@@ -205,6 +205,9 @@ services:
     image: lscr.io/linuxserver/sabnzbd:version-5.1.3@sha256:382f9bd4e3f6df2abf7bcc92edada0c5bd4d4ff26eb5416f257ac54989464fa1
     container_name: sabnzbd
     restart: unless-stopped
+    # Time to finish writing to /incomplete, which may be a network share, and exit cleanly on stop (as for the nightly
+    # backup) instead of being killed after Docker's default 10 s in the middle of a write.
+    stop_grace_period: 1m
     labels:
       autoheal: "true"
       # The media library (on its own storage, far too large to back up here) and unfinished downloads: never

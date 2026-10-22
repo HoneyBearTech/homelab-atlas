@@ -120,6 +120,9 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ### Security
 
+- The Dozzle agent moves to v11.3.4 (built with Go 1.27.3), which fixes the image scan's Go `crypto/x509` finding
+  (CVE-2026-111943) in v11.3.2. Dependabot didn't propose it: it holds back Docker Hub releases for a few days
+  after they're published, and both v11.3.3 and v11.3.4 were still that new at its last run.
 - Seerr 3.5.1 (Node.js 22.23.4, which stops trusting the compromised eMudhra intermediate certificates; newer
   OpenSSL and npm `tar`), and newer builds of Lidarr (`3.1.0.4875-ls45`: libX11), Bazarr (`v1.6.2-ls369`: Expat,
   Pillow 13.0.0) and SABnzbd (`5.1.3-ls278`: Expat) under the same version tags. They fix 8 of the 505 open

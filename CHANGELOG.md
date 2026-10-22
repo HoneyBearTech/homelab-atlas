@@ -118,6 +118,19 @@ All notable changes to homelab-atlas are documented here. The format follows
   `/incomplete` and exit cleanly rather than be killed in the middle of a write. Deploying this recreates its
   container.
 
+### Security
+
+- Seerr 3.5.1 (Node.js 22.23.4, which stops trusting the compromised eMudhra intermediate certificates; newer
+  OpenSSL and npm `tar`), and newer builds of Lidarr (`3.1.0.4875-ls45`: libX11), Bazarr (`v1.6.2-ls369`: Expat,
+  Pillow 13.0.0) and SABnzbd (`5.1.3-ls278`: Expat) under the same version tags. They fix 8 of the 505 open
+  image-scan findings (and 19 Pillow ones the next scan would have reported in Bazarr), none of them critical.
+- The image-scan findings were triaged again on 22 October 2026: 497 stay open, waiting for upstream, 32 of them
+  critical (in the .NET runtimes bundled into Lidarr and Radarr, and in Seerr's Next.js, handlebars and
+  proxy-addr). Three of the critical ones are reachable here: two request-smuggling flaws in the web server that
+  Lidarr and Radarr bundle (one of them in Lidarr only), and, without signing in, Next.js's image optimizer in
+  Seerr. Keep those apps on the LAN, or behind a reverse proxy with an allow-list, until upstream ships the fixes
+  ([docs/dependencies.md](docs/dependencies.md#current-findings)).
+
 ## [0.4.0] - 2026-10-14
 
 The backup scripts, smoke test and CI now follow homelab-ares, the template for the homelab stacks. A backup holds

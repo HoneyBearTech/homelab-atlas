@@ -25,12 +25,13 @@ database in `CONFIG_ROOT/<app>/config`, anything else of its own beside that (`C
 | Radarr's custom scripts | `CONFIG_ROOT/radarr/scripts`, `CONFIG_ROOT/radarr4k/scripts` | `/scripts` |
 | Downloads and media | `MEDIA_ROOT` | `/media` |
 | SABnzbd's unfinished downloads (not backed up) | `SABNZBD_INCOMPLETE_PATH` | `/incomplete` |
+| The Dozzle agent's certificate and key (owned by root, not backed up; [below](#dozzles-certificate)) | `CONFIG_ROOT/dozzle/certs` | `/run/secrets/dozzle_cert`, `/run/secrets/dozzle_key`, read-only |
 
 ```
 $CONFIG_ROOT/
   radarr/{config,scripts}/  radarr4k/{config,scripts}/
   sonarr/config/  sonarr4k/config/  lidarr/config/  bazarr/config/  bazarr4k/config/  sabnzbd/config/
-  recyclarr/config/  seerr/config/
+  recyclarr/config/  seerr/config/  dozzle/certs/
 ```
 
 > **Warning: never point a path setting into `/var/lib/docker/volumes`, and don't keep app data in named Docker
@@ -60,7 +61,8 @@ as `PUID:PGID` without capabilities, can't write to that.
    `autoheal.env.example` (mode `600`) with a webhook URL for restart notices
    ([interfaces.md](interfaces.md)).
 3. Create the host directories as the `PUID` user (`MEDIA_ROOT`, `SABNZBD_INCOMPLETE_PATH` and each folder under
-   `CONFIG_ROOT` in the layout above; the [quick start](quick-start.md) has the commands), then
+   `CONFIG_ROOT` in the layout above; the [quick start](quick-start.md) has the commands), and put the Dozzle
+   agent's certificate and key in `CONFIG_ROOT/dozzle/certs` as root ([below](#dozzles-certificate)), then
    `docker compose up -d`.
 
 **Adopting existing containers.** If the apps already run on the host (for example from a Portainer stack), copy
@@ -114,6 +116,52 @@ sudo ufw allow from 172.25.0.0/16
 
 The maintainer's server runs `main` rather than a release, and deploys every merge by itself
 ([upgrading.md](upgrading.md#following-main)). For your own setup, a release is the safer choice.
+
+## Dozzle's certificate
+
+The Dozzle agent and the homelab's Dozzle (the hub, on another host) authenticate each other with a certificate and
+key: each end presents the pair and accepts only a peer that presents the same one. Every Dozzle image also ships a
+built-in pair, the same in every copy, so an agent that uses it accepts anyone on the network who has a Dozzle image,
+and through it they can read every container's log and control Docker. This stack never uses the built-in pair: the
+agent reads its own from two files under `CONFIG_ROOT/dozzle/certs` (Docker secrets, mounted read-only in
+`/run/secrets`), and it doesn't start while either file is missing.
+
+| File | Owner, mode | What |
+| --- | --- | --- |
+| `CONFIG_ROOT/dozzle/certs/dozzle_cert.pem` | `root:root`, `644` | The certificate (self-signed, valid for five years) |
+| `CONFIG_ROOT/dozzle/certs/dozzle_key.pem` | `root:root`, `600` | Its private key: **a secret**; whoever holds it can connect to the agent |
+
+Both belong to root: the agent runs as root without capabilities, so it can read only a file that root owns (or one
+that every user can read, which the key must never be).
+
+**One pair for the hub and all its agents.** Make it once, on a machine you trust, with the Dozzle image this stack
+pins (the `image:` of `dozzle` in `compose.yaml`):
+
+```sh
+mkdir -m 700 dozzle-pair
+docker run --rm --network none -v "$PWD/dozzle-pair:/out" amir20/dozzle:<tag>@sha256:<digest> \
+  --no-analytics generate-certs --cert-out /out/dozzle_cert.pem --key-out /out/dozzle_key.pem
+```
+
+Save both files in a password manager: they are never in the stack's backups (`scripts/backup.sh` copies read-write
+mounts only), so that is where a rebuilt host gets them back from. Then copy them to every host that runs the hub or
+an agent (for example with `scp` into your home directory) and, in each checkout, put them in place:
+
+```sh
+. ./.env
+sudo install -d -o root -g root -m 755 "$CONFIG_ROOT/dozzle/certs"
+sudo install -o root -g root -m 644 ~/dozzle_cert.pem "$CONFIG_ROOT/dozzle/certs/dozzle_cert.pem"
+sudo install -o root -g root -m 600 ~/dozzle_key.pem "$CONFIG_ROOT/dozzle/certs/dozzle_key.pem"
+rm ~/dozzle_cert.pem ~/dozzle_key.pem
+```
+
+`docker compose logs dozzle` then says `Loaded custom dozzle certificate and key` at each start. The hub and every
+agent must hold the same pair: an agent refuses a hub with any other one, and the hub then shows that host as
+unavailable. So to change it (before it expires, or at once if the key may have leaked), put the new pair on every
+host first, then recreate the hub and each agent with it, one right after the other
+(`docker compose up -d --force-recreate dozzle` here): until the last one has it, the hub can't show the hosts whose
+pair differs from its own. The logs themselves aren't lost: Docker keeps them, and the hub shows them again once
+it reaches the agent.
 
 ## Scheduled backups
 
@@ -182,7 +230,8 @@ its `SHA256SUMS` first, and a copy that was cut off has none yet, so it is refus
   Docker-published ports bypass host firewalls such as `ufw` (except for the stack's own calls to the host's
   address, [firewall](#firewall)).
 - **The Dozzle agent can read every container's logs and, through the Docker socket, control Docker**, for any
-  Dozzle that connects to it. Keep its port (7007) on the LAN only.
+  Dozzle that connects to it with its certificate and key ([Dozzle's certificate](#dozzles-certificate)). Keep the
+  key secret, and the agent's port (7007) on the LAN only.
 - Keep `.env` and `autoheal.env` at mode `600`. `.env` holds no secrets by design, but it does describe your
   host; `autoheal.env` holds the webhook URL.
 - Back up `CONFIG_ROOT`: it holds every app's API key and database ([upgrading.md](upgrading.md#backing-up)).

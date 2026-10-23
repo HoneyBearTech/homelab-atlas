@@ -76,6 +76,10 @@ done
 docker compose config --quiet && docker compose pull
 ```
 
+Put the Dozzle agent's certificate and key back from your password manager, owned by root, as
+[installing.md](installing.md#dozzles-certificate) describes: they aren't in the backup, and without them the
+restore can't create the agent's container.
+
 ## 5. Restore and start
 
 ```sh
@@ -95,5 +99,7 @@ should be found. Check Recyclarr's log after its next run (`docker compose logs 
   backup's SSH key and systemd units: set those up again as [installing.md](installing.md#scheduled-backups)
   describes, with a new key (remove the old one from the backup server).
 - **The apps' posters** (`/config/MediaCover`): left out of backups; the apps download them again.
+- **The Dozzle agent's certificate and key** (`CONFIG_ROOT/dozzle/certs`): never backed up; they come from your
+  password manager (step 4).
 - **Other machines' view of this one**: if the host's address changed, update whatever calls these apps by
   address (the indexer manager, the media server, a reverse proxy, dashboards).

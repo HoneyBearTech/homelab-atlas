@@ -35,6 +35,10 @@ the `docker` group, and one directory (or mounted share) that holds both downloa
    done
    ```
 
+   The Dozzle agent also needs the certificate and key it shares with your Dozzle hub, in
+   `CONFIG_ROOT/dozzle/certs` and owned by root; it doesn't start without them
+   ([installing.md](installing.md#dozzles-certificate) has the commands).
+
 4. **Check and start.**
 
    ```sh

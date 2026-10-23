@@ -9,6 +9,7 @@ the secure design principles it follows, and how common weaknesses are countered
 | --- | --- | --- |
 | The host | A compromised or malicious image | Digest pins; versions change only by reviewed pull request; no privileged, capability, host-namespace or socket access without a reasoned label |
 | The host | A container breaking out through the Docker socket | The `docker-socket` rule; only Dozzle and socket-proxy mount it (socket-proxy filters the API for autoheal down to list, inspect, restart and stop), as labelled exceptions with its UI kept on the LAN |
+| Container logs, the Docker API | Someone on the LAN connecting their own Dozzle to the Dozzle agent's port | The agent accepts only a peer presenting the homelab's own certificate and key (Docker secrets owned by root, never committed or backed up), never the pair built into every Dozzle image, and doesn't start without them; the smoke test proves both; the port stays on the LAN |
 | App API keys and credentials | Committed to the public repository | Kept in the apps' config directories (`CONFIG_ROOT`), never in the repo; `.gitignore`; gitleaks over the history in CI; GitHub push protection |
 | App API keys and credentials | Leaked through a backup | `scripts/backup.sh` writes backups readable only by the user who ran it; documented as secret, to be kept off the host |
 | The media library | A compromised app deleting or encrypting it | Apps run as `PUID:PGID`, not root; storage-level snapshots recommended ([upgrading.md](upgrading.md#backing-up)) |

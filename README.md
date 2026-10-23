@@ -85,7 +85,9 @@ Ports, volumes and labels: [docs/interfaces.md](docs/interfaces.md).
   to each other by service name ([docs/installing.md](docs/installing.md#connecting-the-apps)).
 - Secrets (API keys, logins, provider credentials) live only in each app's config directory (under
   `CONFIG_ROOT`), never in this repository or `.env`.
-- The Dozzle agent reads logs through the Docker socket: keep its port (7007) on the LAN. autoheal never gets
+- The Dozzle agent reads logs through the Docker socket: it accepts only a Dozzle hub with the certificate and key
+  you made for them, never the pair built into every Dozzle image
+  ([docs/installing.md](docs/installing.md#dozzles-certificate)), and its port (7007) stays on the LAN. autoheal never gets
   the socket: it goes through a proxy that only lets it list, restart and stop containers.
 - autoheal's optional webhook URL (restart notices, for example to Discord) goes in `autoheal.env` (template
   [`autoheal.env.example`](autoheal.env.example), mode `600`, gitignored).

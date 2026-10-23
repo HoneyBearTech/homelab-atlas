@@ -56,7 +56,7 @@ restore, and that autoheal can still restart a container through socket-proxy wi
 | radarr, radarr4k, sonarr, sonarr4k, lidarr, bazarr, bazarr4k, sabnzbd | `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID`, `KILL` | no | The linuxserver.io init (s6) runs as root: it takes ownership of `/config` and the app's own directories for `PUID:PGID` (`CHOWN`; it must enter directories it doesn't own to do so, `DAC_OVERRIDE`), starts the app as that user (`SETUID`, `SETGID`) and signals it to stop (`KILL`; without it every stop waits for Docker's timeout and kills the app). Their root stays writable: s6-overlay runs its init from `/run`, which a tmpfs mounts without exec, and the init rewrites `/etc/passwd` for `PUID` |
 | recyclarr | none | yes (`/tmp` in memory) | Runs as `PUID:PGID` and writes only its config directory, and its crontab to `/tmp` |
 | seerr | none | yes (`/tmp` in memory) | Runs as `PUID:PGID` (Node under `init`) and writes only its config directory |
-| dozzle | none | yes (`/tmp` in memory) | Reads the Docker socket and its certificate and key, all owned by root; writes only its address file to `/tmp` |
+| dozzle | none | yes (`/tmp`, `/data` in memory) | Reads the Docker socket and its certificate and key, all owned by root; writes only its address file to `/tmp` and the notification settings the Dozzle hub sends it to `/data`. The hub keeps those settings and sends them again each time it starts (an agent restarted while the hub runs has none until then) |
 | autoheal | none | yes | Only talks to socket-proxy |
 | socket-proxy | none | yes (`/run`, `/tmp` in memory) | Only reads the socket |
 

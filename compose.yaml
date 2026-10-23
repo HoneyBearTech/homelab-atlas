@@ -296,10 +296,12 @@ services:
     container_name: dozzle
     restart: unless-stopped
     command: agent
-    # The agent writes only its address file to /tmp.
+    # The agent writes only its address file to /tmp and the notification settings the Dozzle hub sends it to /data,
+    # both in memory: the hub keeps those settings itself and sends them again each time it starts.
     read_only: true
     tmpfs:
       - /tmp
+      - /data
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "/dozzle", "healthcheck"]

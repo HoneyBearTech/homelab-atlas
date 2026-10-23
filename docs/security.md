@@ -56,7 +56,7 @@ restore, and that autoheal can still restart a container through socket-proxy wi
 | radarr, radarr4k, sonarr, sonarr4k, lidarr, bazarr, bazarr4k, sabnzbd | `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID`, `KILL` | no | The linuxserver.io init (s6) runs as root: it takes ownership of `/config` and the app's own directories for `PUID:PGID` (`CHOWN`; it must enter directories it doesn't own to do so, `DAC_OVERRIDE`), starts the app as that user (`SETUID`, `SETGID`) and signals it to stop (`KILL`; without it every stop waits for Docker's timeout and kills the app). Their root stays writable: s6-overlay runs its init from `/run`, which a tmpfs mounts without exec, and the init rewrites `/etc/passwd` for `PUID` |
 | recyclarr | none | yes (`/tmp` in memory) | Runs as `PUID:PGID` and writes only its config directory, and its crontab to `/tmp` |
 | seerr | none | yes (`/tmp` in memory) | Runs as `PUID:PGID` (Node under `init`) and writes only its config directory |
-| dozzle | none | yes (`/tmp` in memory) | Reads the Docker socket, which belongs to root; writes only its address file to `/tmp` |
+| dozzle | none | yes (`/tmp` in memory) | Reads the Docker socket and its certificate and key, all owned by root; writes only its address file to `/tmp` |
 | autoheal | none | yes | Only talks to socket-proxy |
 | socket-proxy | none | yes (`/run`, `/tmp` in memory) | Only reads the socket |
 
@@ -76,9 +76,11 @@ Without `CHOWN` and `DAC_OVERRIDE` the apps' root can only reach what it owns.
 - **Media and downloads.** What the apps download is untrusted content from the internet; the apps run as
   an unprivileged user with access to `/media`, which limits but doesn't remove that risk.
 - **Dozzle's access to Docker.** The Dozzle agent needs the Docker socket to read logs; read-only mounting
-  doesn't limit the Docker API, so any Dozzle that can reach the agent's port, and anyone who can use that
-  Dozzle's web UI, can see every container's logs. It is an allowed exception (label in `compose.yaml`); keep its
-  port on the LAN.
+  doesn't limit the Docker API, so any Dozzle that the agent accepts, and anyone who can use that Dozzle's web UI,
+  can see every container's logs. The agent accepts only a Dozzle that presents its own certificate and key, never
+  the pair built into every Dozzle image ([installing.md](installing.md#dozzles-certificate)), so whoever holds the
+  key (root on the hub's host and on every agent's, and the password manager it is kept in) is trusted too. It is an allowed exception (label
+  in `compose.yaml`); keep its port on the LAN.
 - **autoheal's reach.** autoheal never holds the socket: `socket-proxy` does (the second allowed exception) and
   passes on only listing, inspecting, restarting and stopping containers, on an internal network with no
   published port. Whoever controls autoheal or the proxy can still stop any container on the host and read
@@ -98,6 +100,7 @@ Without `CHOWN` and `DAC_OVERRIDE` the apps' root can only reach what it owns.
 | Radarr and Sonarr API keys for Recyclarr | `CONFIG_ROOT/recyclarr/config` (`recyclarr.yml` or its secrets file) | same |
 | Seerr's API key (it acts as Seerr's admin: there is no read-only key), its Plex token, and the Radarr and Sonarr API keys it uses | `CONFIG_ROOT/seerr/config` (`settings.json`) | same |
 | autoheal's webhook URL | `autoheal.env` (mode `600`, gitignored) | same |
+| The Dozzle agent's key, shared with the Dozzle hub | `CONFIG_ROOT/dozzle/certs/dozzle_key.pem` (root, mode `600`) and a password manager | same, and the stack's backups |
 | The backup's push-monitor URL | `backup.env` (mode `600`, gitignored) | same |
 | The backup server's SSH key | `~/.ssh/` on the host, used only for the backup user (`restrict,from=` on the server) | the repository, `.env` |
 | Backups of the config directories | off the host, mode `600` | anywhere public |

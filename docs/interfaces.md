@@ -72,6 +72,7 @@ Ports are published on every host interface. Exact versions and digests are in [
 | `/scripts` | `CONFIG_ROOT/<app>/scripts` | radarr, radarr4k |
 | `/incomplete` | `SABNZBD_INCOMPLETE_PATH` | sabnzbd |
 | `/var/run/docker.sock` (read-only) | the Docker socket | dozzle, socket-proxy (allowed exceptions, see below) |
+| `/run/secrets/dozzle_cert`, `/run/secrets/dozzle_key` (read-only; Docker secrets) | `CONFIG_ROOT/dozzle/certs/dozzle_cert.pem` and `dozzle_key.pem`, owned by root ([installing.md](installing.md#dozzles-certificate)) | dozzle (`DOZZLE_CERT`, `DOZZLE_KEY` point at them) |
 
 `socket-proxy` and `autoheal` share the internal network `docker-proxy`, which has no route out and nothing
 published; autoheal also joins the default network, to reach its webhook.

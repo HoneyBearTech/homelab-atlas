@@ -30,9 +30,12 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
 - Commit as `31805425+HoneyBearTech@users.noreply.github.com` (set as this repo's `user.email`), with
   `git commit -s` for the DCO sign-off; commits and tags are SSH-signed.
 - No secrets: the apps' API keys, logins and provider credentials stay in their config directories on the host,
-  never in `compose.yaml`, `.env` or the `*.example` files. The stack's only secret, autoheal's optional webhook
-  URL, comes from the gitignored `autoheal.env` (`env_file`, not required); a new secret gets its own
-  `<service>.env` the same way. `.gitignore` covers `.env`, keys,
+  never in `compose.yaml`, `.env` or the `*.example` files. autoheal's optional webhook URL comes from the
+  gitignored `autoheal.env` (`env_file`, not required); a new secret a service can only read from its environment
+  gets its own `<service>.env` the same way. The Dozzle agent's certificate and key, the same pair as the hub's, are
+  Docker secret files in `CONFIG_ROOT/dozzle/certs` on the host (owned by root, never in the repo or the backups,
+  copy in the owner's password manager); never let the agent fall back to the pair built into every Dozzle image
+  (the smoke test checks it, `scripts/smoke-stack.sh`). `.gitignore` covers `.env`, keys,
   `appdata/`, `data/`; extend it rather than work around it. gitleaks runs over the whole history in CI.
 - Keep the repo on track for OpenSSF Baseline Levels 1 and 2 and the Best Practices Passing and Silver
   badges. If a change would break a met criterion (for example unpinning an image or an Action, adding a

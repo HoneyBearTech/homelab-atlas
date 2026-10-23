@@ -1,7 +1,8 @@
-# The Atlas stack. Every setting comes from .env (template: .env.example; reference: docs/interfaces.md); the one
-# secret, autoheal's optional webhook, from autoheal.env (template: autoheal.env.example). Each app keeps its settings,
-# API key and database in its config directory, CONFIG_ROOT/<app>/config, mounted at /config, and any other folder of
-# its own beside it (Radarr's scripts in CONFIG_ROOT/radarr/scripts). No app data lives in a Docker volume, and no
+# The Atlas stack. Every setting comes from .env (template: .env.example; reference: docs/interfaces.md); autoheal's
+# optional webhook from autoheal.env (template: autoheal.env.example), and the Dozzle agent's certificate and key from
+# files under CONFIG_ROOT/dozzle/certs (Docker secrets, at the end). Each app keeps its settings, API key and database
+# in its config directory, CONFIG_ROOT/<app>/config, mounted at /config, and any other folder of its own beside it
+# (Radarr's scripts in CONFIG_ROOT/radarr/scripts). No app data lives in a Docker volume, and no
 # setting may point into /var/lib/docker/volumes: `docker volume prune` deletes a volume no container mounts as one,
 # even one whose _data folder a service bind-mounts (docs/installing.md#where-data-lives). scripts/backup.sh backs
 # up every read-write mount (the apps' /config, Radarr's /scripts) except the ones a service's
@@ -286,7 +287,9 @@ services:
 
   # --- Operations -----------------------------------------------------------------------------------------------
   # A Dozzle agent: it serves this host's container logs to the homelab's Dozzle on another host, which shows the
-  # logs of every host in one web UI. It has no web UI of its own. Keep it on the hub's version.
+  # logs of every host in one web UI. It has no web UI of its own. Keep it on the hub's version. It accepts only a hub
+  # that presents the homelab's own certificate and key (the secrets at the end), never the pair built into every
+  # Dozzle image, which anyone can use.
   dozzle:
     <<: *hardened
     image: amir20/dozzle:v11.3.4@sha256:8796ae7e1ecbe011482319cb7040e69aae91a0632b87bbe24b3f643e7455d94b
@@ -305,6 +308,12 @@ services:
       org.honeybeartech.atlas.allow.docker-socket: >-
         The Dozzle agent reads container logs through the Docker API for the Dozzle hub. The socket is mounted
         read-only, which protects the socket file but not the API, so the agent's port must stay on the LAN.
+    environment:
+      DOZZLE_CERT: /run/secrets/dozzle_cert
+      DOZZLE_KEY: /run/secrets/dozzle_key
+    secrets:
+      - dozzle_cert
+      - dozzle_key
     ports:
       - "7007:7007"
     volumes:
@@ -394,3 +403,15 @@ networks:
   # the proxy; only autoheal joins it.
   docker-proxy:
     internal: true
+
+# The certificate and key the Dozzle agent and the homelab's Dozzle hub authenticate each other with: one pair, made
+# once with `dozzle generate-certs`, the same on the hub and on every agent (docs/installing.md#dozzles-certificate).
+# Files on the host, owned by root: the agent runs as root without capabilities, so it can read only a file that root
+# owns. Compose mounts each read-only at /run/secrets/<name>, and the agent doesn't start while one is missing, so it
+# never falls back to the built-in pair. Never committed, and never in the stack's backups (they copy read-write
+# mounts only): keep the key in a password manager.
+secrets:
+  dozzle_cert:
+    file: ${CONFIG_ROOT:?set CONFIG_ROOT in .env}/dozzle/certs/dozzle_cert.pem
+  dozzle_key:
+    file: ${CONFIG_ROOT:?set CONFIG_ROOT in .env}/dozzle/certs/dozzle_key.pem

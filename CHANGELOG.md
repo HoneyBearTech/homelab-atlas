@@ -103,6 +103,10 @@ All notable changes to homelab-atlas are documented here. The format follows
   decision, 2026-10-14), so they deploy unattended with the nightly backup behind them; a revert doesn't undo a
   data migration, so that backup is the way back. An update Dependabot can't classify still waits for the
   maintainer ([docs/dependencies.md](docs/dependencies.md#tracking-dependencies)).
+- The smoke test runs a stack's own steps from `scripts/smoke-stack.sh` when that exists (`smoke_prepare` before the
+  services start, `smoke_check` once they are healthy and again after the restore), gives a `*_SUBNET` setting a free
+  address range, and leaves a service with Docker secrets out of the restore's "recreated with older settings" check.
+  None of these is in use here; they keep the homelab stacks' tooling the same.
 
 ### Fixed
 
@@ -117,6 +121,10 @@ All notable changes to homelab-atlas are documented here. The format follows
 - SABnzbd gets a minute to stop (`stop_grace_period: 1m`) instead of Docker's 10 s, so it can finish writing to
   `/incomplete` and exit cleanly rather than be killed in the middle of a write. Deploying this recreates its
   container.
+- `scripts/restore.sh` stops a service that bind-mounts a folder inside a mount it restores, and starts it again
+  afterwards. Such a container kept seeing the folder the restore had replaced, deleted, until it restarted (found on
+  homelab-hyperion, whose Steerhouse worker reads the API's Galaxy folder). No service here does that today; the smoke
+  test now checks it with a test container that follows another app's folder.
 
 ### Security
 

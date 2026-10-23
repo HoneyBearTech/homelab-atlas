@@ -90,7 +90,8 @@ only commit or push it when the owner asks. The old in-repo vault path `.obsidia
   belongs in the nightly backup. `org.honeybeartech.atlas.backup.exclude` lists paths inside a mount to leave out
   (comma-separated; the apps' `/config/MediaCover`). Each service is stopped only while its data is copied;
   compression (pigz or gzip) runs after it starts again. `restore.sh` only writes mounts listed in the backup's
-  MANIFEST that the service still mounts read-write, never a skipped mount. The nightly run (systemd user timer,
+  MANIFEST that the service still mounts read-write, never a skipped mount; a service that bind-mounts a folder
+  inside a mount it restores is stopped and started again with it. The nightly run (systemd user timer,
   03:00) copies to the backup server with rsync and keeps 3 here / 30 there (owner's choices 2026-10-13); its
   settings, including the Uptime Kuma push URL, are in the gitignored `backup.env`.
 

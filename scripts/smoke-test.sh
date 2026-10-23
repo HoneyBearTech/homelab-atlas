@@ -2,20 +2,22 @@
 # Smoke test of the stack: start every service in compose.yaml with throwaway settings, wait until each one reports
 # healthy, then mark every data mount, take a backup, change the data, restore the backup and check that the data
 # and health came back (with Radarr's config.xml keeping its owner and mode, an app's config directory that is
-# missing, behind a container made from older settings, recreated where compose.yaml says, and the mounts and paths
-# excluded from backups, such as /media and the apps' MediaCover posters, neither archived nor overwritten), run the
-# scheduled backup against a stand-in backup server, make a test container unhealthy and check that autoheal
-# restarts it (when the stack has autoheal), and remove everything it created. CI runs it on every change;
-# `make smoke` runs it locally. Without a compose.yaml there is nothing to test, and it says so and passes.
+# missing, behind a container made from older settings, recreated where compose.yaml says, a test container that
+# mounts a folder inside another app's data started again with it, and the mounts and paths excluded from backups,
+# such as /media and the apps' MediaCover posters, neither archived nor overwritten), run the scheduled backup against
+# a stand-in backup server, make a test container unhealthy and check that autoheal restarts it (when the stack has
+# autoheal), and remove everything it created. CI runs it on every change; `make smoke` runs it locally. Without a
+# compose.yaml there is nothing to test, and it says so and passes.
 #
 # It stays away from any real installation on the same Docker host: its own Compose project, settings from
 # .env.example with every directory (*_ROOT, *_PATH; so CONFIG_ROOT, with the apps' config directories, too) moved
 # into a temporary directory, every volume and network name (*_VOLUME, *_NETWORK) and name prefix (*_PREFIX)
-# replaced by one of its own, the stack network's fixed address range dropped, no fixed container names, no published
-# ports and no service env files. It never reads
+# replaced by one of its own, every address range (*_SUBNET) by one Docker has free, the stack network's fixed
+# address range dropped, no fixed container names, no published ports and no service env files. It never reads
 # .env or autoheal.env (so no webhook is called), ignores the stack's settings in the environment, never takes the
 # pull agent's deploy lock, and on exit removes only the volumes Compose labelled with its own project and the networks
-# it created.
+# it created. A stack's own steps (throwaway secrets, checks of what its services expose) go in
+# scripts/smoke-stack.sh, when that exists.
 set -euo pipefail
 
 project=homelab-atlas-smoke
@@ -23,6 +25,10 @@ timeout=${SMOKE_TIMEOUT:-300}
 root=$(cd "$(dirname "$0")/.." && pwd)
 # shellcheck source=scripts/lib.sh
 . "$root/scripts/lib.sh"
+if [ -f "$root/scripts/smoke-stack.sh" ]; then
+  # shellcheck source=/dev/null # only in a stack that has its own steps
+  . "$root/scripts/smoke-stack.sh"
+fi
 
 if [ ! -f "$root/compose.yaml" ]; then
   message="No compose.yaml yet; nothing to smoke-test"
@@ -64,6 +70,25 @@ cleanup() {
 networks=()
 trap cleanup EXIT
 
+# An address range (a /28) that no Docker network on the host uses, nor any range given as an argument, from
+# 172.16.0.0/16: outside Docker's default address pools (172.17-31.0.0/16, 192.168.0.0/16), so a network Compose
+# creates meanwhile can't be given it.
+free_subnet() {
+  # shellcheck disable=SC2046 # one network id per word
+  docker network inspect --format '{{range .IPAM.Config}}{{.Subnet}} {{end}}' $(docker network ls -q) |
+    python3 -I -c '
+import ipaddress, sys
+used = [ipaddress.ip_network(s) for s in sys.stdin.read().split() + sys.argv[1:] if "." in s]
+for n in range(255, -1, -1):
+    candidate = ipaddress.ip_network(f"172.16.{n}.0/28")
+    if not any(candidate.overlaps(u) for u in used):
+        print(candidate)
+        break
+else:
+    sys.exit("no free /28 in 172.16.0.0/16")' "$@"
+}
+subnets=()
+
 data_dirs=()
 while IFS= read -r line; do
   [ -n "$line" ] || continue
@@ -77,6 +102,12 @@ while IFS= read -r line; do
     *_PREFIX) value=${project}_ ;;
     *_VOLUME) value=${project}_$(echo "$key" | tr 'A-Z_' 'a-z-') ;;
     *_NETWORK) value=${project}_$(echo "$key" | tr 'A-Z_' 'a-z-') ;;
+    # A network's address range, which the stack fixes (for a firewall rule), mustn't overlap one already on the host.
+    # (The stack network's own is dropped below all the same: a /28 is too small for its services.)
+    *_SUBNET)
+      value=$(free_subnet "${subnets[@]+"${subnets[@]}"}")
+      subnets+=("$value")
+      ;;
     *) value=${line#*=} ;;
   esac
   printf '%s=%s\n' "$key" "$value"
@@ -89,6 +120,21 @@ done <<<"$settings" >"$work/env"
 while IFS= read -r source; do
   case $source in "$work"/*) mkdir -p "$source" ;; esac
 done < <(COMPOSE_FILE=$root/compose.yaml docker compose config | sed -n 's/^ *source: //p')
+
+# The app whose data a test container follows (follower-test, below): the last one with a config directory under
+# CONFIG_ROOT, so not the one the restore round trip moves elsewhere. Its folder is made here, with the others, so it
+# gets the same owner below.
+config_root=$(sed -n 's/^CONFIG_ROOT=//p' "$work/env")
+follow_leader=""
+if [ -n "$config_root" ]; then
+  for dir in "$config_root"/*/config; do
+    if [ -d "$dir" ]; then
+      follow_leader=${dir#"$config_root"/}
+      follow_leader=${follow_leader%/config}
+    fi
+  done
+fi
+if [ -n "$follow_leader" ]; then mkdir -p "$config_root/$follow_leader/config/smoke-follower"; fi
 
 # The directories are owned as on a host: by PUID:PGID with mode 0755 when the stack sets PUID (the LinuxServer.io
 # images' convention), so a service that needs more than that, such as DAC_OVERRIDE to write into a directory it
@@ -141,12 +187,26 @@ has_autoheal=false
       retries: 2
 YAML
   fi
+  # A container that bind-mounts a folder inside another app's data, read-only, as a worker reads its API's folder:
+  # a restore of that app must stop it and start it again, or it keeps seeing the folder the restore replaced.
+  if [ -n "$follow_leader" ]; then
+    cat <<YAML
+  follower-test:
+    image: $busybox
+    command: ["sleep", "infinity"]
+    init: true
+    volumes:
+      - $config_root/$follow_leader/config/smoke-follower:/follow:ro
+YAML
+  fi
   # The stack's network gets whatever address range Docker picks, not a fixed one: the installation on this host may
   # be using that range, and two networks can't share one.
   printf 'networks:\n  default:\n    ipam: !reset {}\n'
 } >"$work/override.yaml"
 
 compose config --quiet
+if declare -F smoke_prepare >/dev/null; then smoke_prepare; fi
+if [ -f "$work/override-stack.yaml" ]; then export COMPOSE_FILE=$COMPOSE_FILE:$work/override-stack.yaml; fi
 # The images first, a few at a time and with retries: pulling every layer of every image at once can run into the
 # registries' rate limits (lscr.io and ghcr.io answer "toomanyrequests"), which is the registry, not the stack.
 echo "Pulling the images"
@@ -173,6 +233,7 @@ fail() {
   echo "error: $*" >&2
   exit 1
 }
+if declare -F smoke_check >/dev/null; then smoke_check; fi
 
 # A marker file in a data mount, written and read in a throwaway container (the service's image may have no shell).
 put_marker() {
@@ -231,6 +292,11 @@ else
     IFS=$'\t' read -r service mount <<<"$target"
     put_marker "$(compose ps --quiet "$service")" "$mount" backed-up
   done
+  follow_marker() {
+    docker run --rm --network none -v "$config_root/$follow_leader/config:/data" "$busybox" \
+      sh -c 'echo "$1" >/data/smoke-follower/.smoke-follow' mark "$1" </dev/null
+  }
+  if [ -n "$follow_leader" ]; then follow_marker backed-up; fi
   "$root/scripts/backup.sh" "$work/backup"
   for network in "${networks[@]+"${networks[@]}"}"; do
     grep -Eq "^$network"$'\t'"[0-9a-f.:]+/[0-9]+"$'\t' "$work/backup/NETWORKS" ||
@@ -246,16 +312,19 @@ else
     IFS=$'\t' read -r service mount <<<"$target"
     put_marker "$(compose ps --quiet "$service")" "$mount" changed
   done
+  if [ -n "$follow_leader" ]; then follow_marker changed; fi
   # A restore writes where compose.yaml mounts a service's data now, whatever its container or the backup's MANIFEST
   # names, and creates a directory that is missing (a new host, or the move from Docker volumes to CONFIG_ROOT): one
   # app's container is recreated with its config somewhere else, as from older settings, and its config directory is
-  # removed. The app needs nothing left out of /config, which this removes too.
+  # removed. The app needs nothing left out of /config, which this removes too, and no Docker secrets (their files,
+  # under CONFIG_ROOT too, would be missing); it isn't the app follower-test follows.
   moved=""
-  config_root=$(sed -n 's/^CONFIG_ROOT=//p' "$work/env")
   for target in "${targets[@]}"; do
     IFS=$'\t' read -r service mount <<<"$target"
     id=$(compose ps --quiet "$service")
-    if [ -z "$moved" ] && [ -n "$config_root" ] && [ "$mount" = /config ] && [ -z "$(left_out "$id" /config)" ] &&
+    if [ -z "$moved" ] && [ -n "$config_root" ] && [ "$mount" = /config ] && [ "$service" != "$follow_leader" ] &&
+      [ -z "$(left_out "$id" /config)" ] &&
+      ! docker inspect --format '{{range .Mounts}}{{.Destination}}{{"\n"}}{{end}}' "$id" | grep -q '^/run/secrets/' &&
       data_mounts "$id" | grep -qxF -- "/config"$'\t'"$config_root/$service/config"; then
       moved=$service
     fi
@@ -307,8 +376,14 @@ else
   fi
   [ "$(compose exec -T radarr stat -c '%u:%g %a' /config/config.xml)" = "$owner" ] ||
     fail "restore changed the owner or mode of radarr's config.xml"
+  if [ -n "$follow_leader" ]; then
+    [ "$(compose exec -T follower-test cat /follow/.smoke-follow 2>/dev/null)" = backed-up ] ||
+      fail "follower-test doesn't see $follow_leader's restored folder (restore.sh didn't restart it with $follow_leader)"
+    echo "follower-test, which mounts a folder inside $follow_leader's data, sees the restored folder"
+  fi
   compose up --detach --wait --wait-timeout "$timeout"
   echo "Every data mount was restored, and every service is healthy again"
+  if declare -F smoke_check >/dev/null; then smoke_check; fi
 fi
 
 # The unattended backup, copying to a stand-in for the backup server (a local directory, which rsync treats the same

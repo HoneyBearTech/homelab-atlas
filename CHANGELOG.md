@@ -14,6 +14,11 @@ All notable changes to homelab-atlas are documented here. The format follows
   no capabilities, health check on `/api/v1/status`. Its data is in `CONFIG_ROOT/seerr/config`, backed up nightly
   without its logs. **Before deploying, create that directory as the `PUID` user** (Docker would create it owned by
   root, and Seerr couldn't write to it).
+- An encrypted copy off the host for the scheduled backup: with `BACKUP_AGE_RECIPIENT` (an age public key) in
+  `backup.env`, only `backup.tar.age` and its `SHA256SUMS` leave the host, and only the private key's holder can
+  read them (`age -d -i <key> backup.tar.age | tar -x`). Needs `age` on the host; optional, and without it the
+  backup is copied as before. The smoke test checks that only the archive leaves, that the key opens it into the
+  backup `scripts/restore.sh` reads, and that another key doesn't.
 
 ### Upgrading
 
@@ -114,6 +119,11 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ### Fixed
 
+- The smoke test's restore into a removed config directory also runs for a stack built from this one where only one
+  app keeps its data in `CONFIG_ROOT/<app>/config`; it used to fail with "no app keeps its /config in
+  CONFIG_ROOT/<app>/config". Atlas has ten such apps and isn't affected.
+- CI's smoke test always logs out of Docker Hub after pulling the images, also when it pulled anonymously on a runner
+  image that comes with a Docker Hub entry of its own.
 - **The Dozzle agent keeps the notification settings the Dozzle hub sends it in memory** (`/data` is a tmpfs now).
   It saves them to `/data`, which was part of its read-only root filesystem, so each time the hub started the agent
   logged "failed to save config: open ./data/notifications.yml: read-only file system" and "Could not remove cloud.yml

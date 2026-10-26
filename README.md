@@ -84,7 +84,8 @@ Ports, volumes and labels: [docs/interfaces.md](docs/interfaces.md).
   ports bypass host firewalls such as `ufw`, except for the apps' calls to the host's own address: connect the apps
   to each other by service name ([docs/installing.md](docs/installing.md#connecting-the-apps)).
 - Secrets (API keys, logins, provider credentials) live only in each app's config directory (under
-  `CONFIG_ROOT`), never in this repository or `.env`.
+  `CONFIG_ROOT`), never in this repository or `.env`. Backups contain them: keep them private, and encrypt the copy
+  that leaves the host (`BACKUP_AGE_RECIPIENT`).
 - The Dozzle agent reads logs through the Docker socket: it accepts only a Dozzle hub with the certificate and key
   you made for them, never the pair built into every Dozzle image
   ([docs/installing.md](docs/installing.md#dozzles-certificate)), and its port (7007) stays on the LAN. autoheal never gets

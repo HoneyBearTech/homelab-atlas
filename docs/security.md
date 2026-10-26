@@ -88,6 +88,10 @@ Without `CHOWN` and `DAC_OVERRIDE` the apps' root can only reach what it owns.
 - **Restart loops.** autoheal restarts an unhealthy app every few minutes for as long as it stays unhealthy;
   that keeps a hung app available but can hide a real fault. Restarts are logged (and sent to the webhook if one
   is set).
+- **The age private key.** With `BACKUP_AGE_RECIPIENT` set, the copy off the host is encrypted to an age key whose
+  private half isn't on this host, so the backup server holds nothing it can read; but whoever has the key can read
+  every backup copied off the host, and whoever loses it can read none. Keeping it is the operator's job. The
+  backups in `BACKUP_DIR` on the host aren't encrypted.
 - **Upstream images' internals.** linuxserver.io images start as root and drop to `PUID:PGID`; that is the
   image's design and is accepted.
 
@@ -103,4 +107,5 @@ Without `CHOWN` and `DAC_OVERRIDE` the apps' root can only reach what it owns.
 | The Dozzle agent's key, shared with the Dozzle hub | `CONFIG_ROOT/dozzle/certs/dozzle_key.pem` (root, mode `600`) and a password manager | same, and the stack's backups |
 | The backup's push-monitor URL | `backup.env` (mode `600`, gitignored) | same |
 | The backup server's SSH key | `~/.ssh/` on the host, used only for the backup user (`restrict,from=` on the server) | the repository, `.env` |
-| Backups of the config directories | off the host, mode `600` | anywhere public |
+| The age private key for the backups (`BACKUP_AGE_RECIPIENT`) | off this host, with the operator's recovery secrets | this host, the backup server, anywhere public |
+| Backups of the config directories | on the host and off it mode `600`; off the host encrypted with age when `BACKUP_AGE_RECIPIENT` is set | anywhere public |

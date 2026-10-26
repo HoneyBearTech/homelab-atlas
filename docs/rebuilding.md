@@ -3,9 +3,27 @@
 How to bring the stack back on a new or wiped machine from a backup made by `scripts/backup.sh`
 ([upgrading.md](upgrading.md#backing-up)), with every app's settings, history and API keys as they were. The
 backup and restore scripts run end to end in CI on every change (the smoke test backs up the running stack,
-changes it, restores it and checks the result).
+changes it, restores it and checks the result, and copies a scheduled backup, plain and encrypted with age, to a
+stand-in backup server).
 
-You need: the backup directory (copied off the old host), access to the media storage, and this repository.
+You need: the backup directory (copied off the old host), **the age private key** it was encrypted to if the copies
+off the host are encrypted (`BACKUP_AGE_RECIPIENT`), access to the media storage, and this repository.
+
+**An encrypted copy** (the folder on the backup server holds only `backup.tar.age` and `SHA256SUMS`) is opened on
+the machine that holds the age private key, never on the backup server or the new host. Copy it there and check it
+(a copy that was cut off has no `SHA256SUMS`, which is sent last: take the one before), then decrypt it, which gives
+the backup directory as it was written on the old host, and copy that to the new host:
+
+```sh
+rsync -rlpt backup-host:/volume1/<folder>/<date>-<time>/ ~/sealed/
+cd ~/sealed && sha256sum -c --quiet SHA256SUMS && cd -
+(umask 077 && age -d -i atlas-backup.key ~/sealed/backup.tar.age | tar -x -C ~)   # ~/<date>-<time>/
+rsync -rlpt ~/<date>-<time>/ <you>@<the new host>:restore/
+rm -rf ~/sealed ~/<date>-<time>
+```
+
+`~/restore` on the new host is then the backup directory (`/path/to/backup` below). Keep it private: it holds every
+app's API keys and logins.
 
 ## 1. The operating system
 

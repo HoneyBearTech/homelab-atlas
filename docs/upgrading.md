@@ -40,7 +40,8 @@ commit of `main`, it was taken with) and `SHA256SUMS`.
 Everything in it is readable only by the user who ran the backup. **Copy it off the host**: it contains every app's API key and logins.
 `MEDIA_ROOT` (the media) is too large for this and is better covered by your storage's own snapshots or
 backups. Every service needs a container for the backup to read from, so run it on an installed stack. A
-nightly backup copied to another machine is set up as [installing.md](installing.md#scheduled-backups) describes.
+nightly backup copied to another machine, encrypted with age when `BACKUP_AGE_RECIPIENT` is set, is set up as
+[installing.md](installing.md#scheduled-backups) describes.
 On a server with the pull agent, the backup first takes the agent's deploy lock ([Following `main`](#following-main)).
 
 ## Upgrading
@@ -111,3 +112,7 @@ until it has finished ([Following `main`](#following-main)).
 
 See [rebuilding.md](rebuilding.md): install the host, restore `.env`, then `scripts/restore.sh` creates the
 containers and the directories they mount and fills them from the backup.
+
+A backup copied off the host with `BACKUP_AGE_RECIPIENT` set is encrypted to that age key: restoring from it needs
+**the private key**, on the machine that holds it (`age -d -i atlas-backup.key backup.tar.age | tar -x` gives back the
+backup directory; [rebuilding.md](rebuilding.md)). The backups in `BACKUP_DIR` on the host aren't encrypted.

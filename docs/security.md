@@ -16,7 +16,8 @@ live. The reasoning behind these requirements is in the [assurance case](assuran
    ([Hardening](#hardening)).
 3. **No secrets in the repository.** The apps keep their API keys, logins and provider credentials in
    their own config directories (under `CONFIG_ROOT`), outside the repository. `.env` holds settings only; the
-   stack's one secret, autoheal's optional webhook URL, is in `autoheal.env`. Both are gitignored. Secret
+   secrets a service can only read from its environment, autoheal's optional webhook URL and Seerr's optional
+   database password, are in `autoheal.env` and `seerr.env`. All are gitignored. Secret
    scanning with push protection and a gitleaks scan of the whole history in CI back this up.
 4. **No host details in the repository.** It is public: no hostnames, IP addresses, internal domains or
    host paths are committed. Examples use placeholders.
@@ -71,8 +72,8 @@ Without `CHOWN` and `DAC_OVERRIDE` the apps' root can only reach what it owns.
 - **Access to the web UIs.** Each app has its own authentication, which the operator must turn on
   ([installing.md](installing.md#running-it-securely)). homelab-atlas doesn't add a reverse proxy, TLS or
   single sign-on.
-- **The host.** Anyone with root, `docker` group membership or write access to `.env`, `autoheal.env`, `CONFIG_ROOT`,
-  `SABNZBD_INCOMPLETE_PATH` or `MEDIA_ROOT` controls the stack; those are trusted.
+- **The host.** Anyone with root, `docker` group membership or write access to `.env`, `autoheal.env`,
+  `seerr.env`, `CONFIG_ROOT`, `SABNZBD_INCOMPLETE_PATH` or `MEDIA_ROOT` controls the stack; those are trusted.
 - **Media and downloads.** What the apps download is untrusted content from the internet; the apps run as
   an unprivileged user with access to `/media`, which limits but doesn't remove that risk.
 - **Dozzle's access to Docker.** The Dozzle agent needs the Docker socket to read logs; read-only mounting
@@ -104,6 +105,7 @@ Without `CHOWN` and `DAC_OVERRIDE` the apps' root can only reach what it owns.
 | Radarr and Sonarr API keys for Recyclarr | `CONFIG_ROOT/recyclarr/config` (`recyclarr.yml` or its secrets file) | same |
 | Seerr's API key (it acts as Seerr's admin: there is no read-only key), its Plex token, and the Radarr and Sonarr API keys it uses | `CONFIG_ROOT/seerr/config` (`settings.json`) | same |
 | autoheal's webhook URL | `autoheal.env` (mode `600`, gitignored) | same |
+| Seerr's PostgreSQL password (when its database is on a server) | `seerr.env` (mode `600`, gitignored); readable with `docker inspect` by root and the `docker` group | same |
 | The Dozzle agent's key, shared with the Dozzle hub | `CONFIG_ROOT/dozzle/certs/dozzle_key.pem` (root, mode `600`) and a password manager | same, and the stack's backups |
 | The backup's push-monitor URL | `backup.env` (mode `600`, gitignored) | same |
 | The backup server's SSH key | `~/.ssh/` on the host, used only for the backup user (`restrict,from=` on the server) | the repository, `.env` |

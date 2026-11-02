@@ -8,6 +8,10 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ### Added
 
+- An optional `seerr.env` (template `seerr.env.example`, mode `600`, gitignored) for Seerr's database on a
+  PostgreSQL server: Seerr reads its database settings, the password among them, only from its environment. Without
+  the file nothing changes (SQLite, as before); the nightly backup copies it with the other settings files. Moving
+  the existing data over is a separate step ([docs/interfaces.md](docs/interfaces.md#seerrenv)).
 - **Seerr** (`seerr`, `ghcr.io/seerr-team/seerr` v3.5.0, port 5055): the request front end that succeeded Overseerr
   and Jellyseerr. It sends requests to Radarr and Sonarr (4K requests to the 4K instances) by service name and checks
   Plex on its host's address. Hardened like Recyclarr: runs as `PUID:PGID` under `init`, read-only root filesystem,

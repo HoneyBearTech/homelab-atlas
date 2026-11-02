@@ -71,6 +71,7 @@ git checkout vX.Y.Z      # the release in the backup's VERSION, or newer; verify
 cp /path/to/backup/env/.env .env && chmod 600 .env
 cp /path/to/backup/env/autoheal.env autoheal.env && chmod 600 autoheal.env   # if the backup has one
 cp /path/to/backup/env/backup.env backup.env && chmod 600 backup.env         # if the backup has one
+cp /path/to/backup/env/seerr.env seerr.env && chmod 600 seerr.env            # if the backup has one
 ```
 
 A server that follows `main` ([upgrading.md](upgrading.md#following-main)) stays on `main` here instead

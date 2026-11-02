@@ -72,7 +72,7 @@ only pulls; nothing connects in to it to deploy.
 | Path | What |
 | --- | --- |
 | `compose.yaml` | The stack |
-| `.env.example`, `autoheal.env.example` | Templates for the settings and autoheal's optional webhook |
+| `.env.example`, `autoheal.env.example`, `seerr.env.example` | Templates for the settings, autoheal's optional webhook and Seerr's optional PostgreSQL settings |
 | `scripts/check_compose.py` | The policy check and SBOM generator (standard-library Python) |
 | `tests/` | Its tests, with JSON fixtures |
 | `docs/` | This documentation |

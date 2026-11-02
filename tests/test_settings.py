@@ -70,3 +70,15 @@ def test_no_named_volumes() -> None:
     for name, service in config["services"].items():
         for volume in service.get("volumes") or []:
             assert volume.startswith(("/", "${")), f"{name} mounts a named volume: {volume}"
+
+
+def test_every_env_file_is_optional_gitignored_and_has_a_committed_template() -> None:
+    ignored = read(".gitignore").splitlines()
+    for name, service in compose()["services"].items():
+        for entry in service.get("env_file") or []:
+            assert isinstance(entry, dict), f"{name}: {entry} must be optional (path + required: false)"
+            path = entry["path"]
+            assert entry.get("required") is False, f"{name}: {path} must not be required"
+            assert path.endswith(".env"), f"{name}: {path} isn't a <service>.env"
+            assert "*.env" in ignored, f"{name}: {path} isn't gitignored"
+            assert (ROOT / f"{path}.example").is_file(), f"{name}: {path}.example is missing"

@@ -29,6 +29,31 @@ Read by the `autoheal` service (template: [`autoheal.env.example`](../autoheal.e
 | --- | --- |
 | `WEBHOOK_URL` | Where autoheal posts a notice each time it restarts a container (a secret). A Discord channel webhook works as is; empty or missing = log only |
 
+### `seerr.env`
+
+Read by the `seerr` service (template: [`seerr.env.example`](../seerr.env.example)); optional, mode `600`,
+gitignored. Without it Seerr keeps its SQLite database in `CONFIG_ROOT/seerr/config/db`. With it, Seerr uses a
+PostgreSQL database instead; Seerr reads these only from its environment (there is no file variant for the
+password). After creating or changing it, recreate the service (`docker compose up -d seerr`).
+
+| Setting | Meaning |
+| --- | --- |
+| `DB_TYPE` | `postgres` to use PostgreSQL |
+| `DB_HOST`, `DB_PORT` | The server (port `5432` by default) |
+| `DB_NAME`, `DB_USER` | The database and its login, created beforehand (Seerr doesn't create them) |
+| `DB_PASS` | The login's password (a secret) |
+| `DB_USE_SSL` | `true` to encrypt the connection |
+| `DB_SSL_REJECT_UNAUTHORIZED` | `false` for a server with a self-signed certificate; otherwise leave it `true` and set `DB_SSL_CA_FILE` to the server's CA certificate |
+
+Seerr doesn't move its data. To keep it, stop Seerr after one start on the empty database (it creates its tables)
+and copy the data with pgloader (`data only`, `quote identifiers`), following
+[Seerr's guide](https://docs.seerr.dev/extending-seerr/database-config). Two things to know: the `migrations`
+table holds each engine's own migration names, so leave the PostgreSQL rows in place and don't copy SQLite's
+(otherwise Seerr reruns every migration at its next start); and a date Seerr once stored as `NaN` text in SQLite
+can't be loaded, so set any such value to `NULL` in a copy of the SQLite file first. Compare each table's row count
+and the foreign keys with a freshly created database afterwards. Removing `seerr.env` goes back to the SQLite file,
+without what was written to PostgreSQL in between.
+
 ### `backup.env`
 
 Read by `scripts/scheduled-backup.sh` (template: [`backup.env.example`](../backup.env.example)); optional, mode

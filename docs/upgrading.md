@@ -19,7 +19,8 @@ its `org.honeybeartech.atlas.backup.skip` label lists (`/media` and SABnzbd's `/
 apps' config directories (settings, API keys, databases), Recyclarr's config directory and Radarr's custom scripts.
 `scripts/backup.sh` stops one service at a time, copies its mounts while it is stopped so its database is
 consistent, and starts it again if it was running before compressing the copies; services with nothing to archive
-keep running. It also copies `.env` and the other settings files (`autoheal.env`, `backup.env`). The posters the
+keep running. It also copies `.env` and the other settings files (`autoheal.env`, `backup.env`, `seerr.env`). With
+`seerr.env`, Seerr's data is on the PostgreSQL server, so back that database up there. The posters the
 apps download again by themselves (`/config/MediaCover`) are left out:
 
 ```sh
@@ -34,7 +35,7 @@ more, so Compose doesn't skip a container that is about to exit. A backup that l
 running when it began fails and names it.
 
 The directory holds one `<service>--<path>.tar.gz` per mount (`radarr--config.tar.gz`, `radarr--scripts.tar.gz`,
-...), `env/.env` (and `env/autoheal.env`, `env/backup.env`), a `MANIFEST` naming each archive's service, container
+...), `env/.env` (and `env/autoheal.env`, `env/backup.env`, `env/seerr.env`), a `MANIFEST` naming each archive's service, container
 path, volume or host path and image, `NETWORKS`, `VERSION` (the checkout's `git describe`: the release, or the
 commit of `main`, it was taken with) and `SHA256SUMS`.
 Everything in it is readable only by the user who ran the backup. **Copy it off the host**: it contains every app's API key and logins.

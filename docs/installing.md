@@ -59,8 +59,8 @@ as `PUID:PGID` without capabilities, can't write to that.
 1. Clone the repository (or download a release's source archive and verify it,
    [verifying-releases.md](verifying-releases.md)).
 2. Create `.env` from `.env.example` (mode `600`) and set every value. Optionally create `autoheal.env` from
-   `autoheal.env.example` (mode `600`) with a webhook URL for restart notices
-   ([interfaces.md](interfaces.md)).
+   `autoheal.env.example` (mode `600`) with a webhook URL for restart notices, and `seerr.env` from
+   `seerr.env.example` (mode `600`) to keep Seerr's database on a PostgreSQL server ([interfaces.md](interfaces.md)).
 3. Create the host directories as the `PUID` user (`MEDIA_ROOT`, `SABNZBD_INCOMPLETE_PATH` and each folder under
    `CONFIG_ROOT` in the layout above; the [quick start](quick-start.md) has the commands), and put the Dozzle
    agent's certificate and key in `CONFIG_ROOT/dozzle/certs` as root ([below](#dozzles-certificate)), then
@@ -243,8 +243,10 @@ has none).
 - **The Dozzle agent can read every container's logs and, through the Docker socket, control Docker**, for any
   Dozzle that connects to it with its certificate and key ([Dozzle's certificate](#dozzles-certificate)). Keep the
   key secret, and the agent's port (7007) on the LAN only.
-- Keep `.env` and `autoheal.env` at mode `600`. `.env` holds no secrets by design, but it does describe your
-  host; `autoheal.env` holds the webhook URL.
+- Keep `.env`, `autoheal.env` and `seerr.env` at mode `600`. `.env` holds no secrets by design, but it does
+  describe your host; `autoheal.env` holds the webhook URL, `seerr.env` Seerr's database password. A setting in an
+  env file is part of the container's configuration: anyone who can run `docker inspect` (root, the `docker` group)
+  can read it.
 - Back up `CONFIG_ROOT`: it holds every app's API key and database ([upgrading.md](upgrading.md#backing-up)).
   Never move it, or any app's data, into a Docker volume ([where data lives](#where-data-lives)).
 - Keep `UMASK` at `002`: `000` makes every new file on your media share world-writable.

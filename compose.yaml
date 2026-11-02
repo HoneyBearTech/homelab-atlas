@@ -1,7 +1,8 @@
 # The Atlas stack. Every setting comes from .env (template: .env.example; reference: docs/interfaces.md); autoheal's
-# optional webhook from autoheal.env (template: autoheal.env.example), and the Dozzle agent's certificate and key from
-# files under CONFIG_ROOT/dozzle/certs (Docker secrets, at the end). Each app keeps its settings, API key and database
-# in its config directory, CONFIG_ROOT/<app>/config, mounted at /config, and any other folder of its own beside it
+# optional webhook from autoheal.env (template: autoheal.env.example), Seerr's optional PostgreSQL settings from
+# seerr.env (template: seerr.env.example), and the Dozzle agent's certificate and key from files under
+# CONFIG_ROOT/dozzle/certs (Docker secrets, at the end). Each app keeps its settings, API key and database in its
+# config directory, CONFIG_ROOT/<app>/config, mounted at /config, and any other folder of its own beside it
 # (Radarr's scripts in CONFIG_ROOT/radarr/scripts). No app data lives in a Docker volume, and no
 # setting may point into /var/lib/docker/volumes: `docker volume prune` deletes a volume no container mounts as one,
 # even one whose _data folder a service bind-mounts (docs/installing.md#where-data-lives). scripts/backup.sh backs
@@ -255,7 +256,8 @@ services:
   # --- Requests -------------------------------------------------------------------------------------------------
   # Seerr: the request front end (successor of Overseerr and Jellyseerr). Viewers ask for movies and shows there;
   # it sends them to Radarr and Sonarr (and their 4K instances) on this stack's network and checks Plex for what's
-  # already in the library. Its settings, API key and database live in its config directory.
+  # already in the library. Its settings and API key live in its config directory, and so does its database
+  # (SQLite) unless seerr.env points it at a PostgreSQL server.
   seerr:
     <<: *hardened
     image: ghcr.io/seerr-team/seerr:v3.5.1@sha256:d8fab675b55ad293ded98fd71efcfd46054cbad9746534ae1cc4794a88c0b3be
@@ -278,6 +280,11 @@ services:
     user: ${PUID:?set PUID in .env}:${PGID:?set PGID in .env}
     environment:
       TZ: ${TZ:?set TZ in .env}
+    # Seerr reads its database settings, the password among them, only from its environment. Without seerr.env it
+    # keeps its SQLite database.
+    env_file:
+      - path: seerr.env
+        required: false
     ports:
       - "5055:5055"
     volumes:

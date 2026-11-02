@@ -91,7 +91,8 @@ Ports, volumes and labels: [docs/interfaces.md](docs/interfaces.md).
   ([docs/installing.md](docs/installing.md#dozzles-certificate)), and its port (7007) stays on the LAN. autoheal never gets
   the socket: it goes through a proxy that only lets it list, restart and stop containers.
 - autoheal's optional webhook URL (restart notices, for example to Discord) goes in `autoheal.env` (template
-  [`autoheal.env.example`](autoheal.env.example), mode `600`, gitignored).
+  [`autoheal.env.example`](autoheal.env.example), mode `600`, gitignored). Seerr's optional PostgreSQL settings,
+  password included, go in `seerr.env` the same way ([docs/interfaces.md](docs/interfaces.md#seerrenv)).
 - Don't run an auto-updater such as Watchtower on these containers; upgrade from this repository instead (a
   release, or `main`).
 - Every service drops all Linux capabilities and runs with `no-new-privileges`; the linuxserver.io apps add back

@@ -165,7 +165,7 @@ services:
   # --- Subtitles ------------------------------------------------------------------------------------------------
   bazarr:
     <<: *linuxserver
-    image: lscr.io/linuxserver/bazarr:version-v1.6.2@sha256:9a625883f054e722795affe5e3ca71057e6ed817ecdf99f4a99624346fcc509c
+    image: lscr.io/linuxserver/bazarr:version-v1.6.2@sha256:7ef0e58216900dbce30b123e0eb65f5cb30e36f126de9474acdd2022fb069c54
     container_name: bazarr
     restart: unless-stopped
     labels:
@@ -184,7 +184,7 @@ services:
 
   bazarr4k:
     <<: *linuxserver
-    image: lscr.io/linuxserver/bazarr:version-v1.6.2@sha256:9a625883f054e722795affe5e3ca71057e6ed817ecdf99f4a99624346fcc509c
+    image: lscr.io/linuxserver/bazarr:version-v1.6.2@sha256:7ef0e58216900dbce30b123e0eb65f5cb30e36f126de9474acdd2022fb069c54
     container_name: bazarr4k
     restart: unless-stopped
     labels:

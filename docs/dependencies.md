@@ -164,11 +164,11 @@ Radarr and Sonarr have newer builds too, but they change none of the findings; D
   msgpack crashes only when an `Unpacker` is reused after an error. Fixed in the next linuxserver.io build that
   picks up the new packages.
 
-**Watch: Lidarr.** Its newest stable release (3.1.0.4875, November 2025) still bundles .NET 8.0.12 from January
-2025, so CVE-2025-55315 has had a .NET fix for a year that no stable Lidarr release ships. Lidarr's pre-release
-builds (3.1.6, .NET 8.0.27) fix it, but not CVE-2026-70188 or CVE-2026-88092. If there's still no stable release
-on a newer runtime at the monthly review on 22 November 2026, the maintainer decides between Lidarr's pre-release
-builds and staying on the stable one. Until then, keep Lidarr on the LAN with authentication on.
+**Watch: Lidarr.** Lidarr 3.1.6.5079 (the newest stable release since 26 October 2026) bundles .NET 8.0.27, which
+fixes CVE-2025-55315, but not CVE-2026-70188 or CVE-2026-88092; those wait for a release on .NET 8.0.32 or later.
+The alert counts above are from the scan of 3.1.0.4875 and aren't recounted here. At the monthly review on
+22 November 2026, check the next scan, and whether a release on a newer runtime has shipped. Until then, keep
+Lidarr on the LAN with authentication on.
 
 **Watch: Seerr.** It's the one service meant for viewers, so the one most likely to be reachable from beyond the
 LAN, and v3.5.1 still ships Next.js 16.2.6. Until a Seerr release ships Next.js 16.3.3 or later, keep Seerr on the

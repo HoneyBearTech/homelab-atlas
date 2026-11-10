@@ -96,6 +96,11 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ### Changed
 
+- **Lidarr moves from 3.1.0.4875 to 3.1.6.5079**, now Lidarr's newest stable release (it was a pre-release when
+  [docs/dependencies.md](docs/dependencies.md#current-findings) last looked). It bundles .NET 8.0.27 instead of
+  8.0.12, which fixes CVE-2025-55315 (request smuggling); CVE-2026-88092 and CVE-2026-70188 stay open until a
+  release ships .NET 8.0.32. Starting it migrates Lidarr's database, and an older image
+  usually won't start on a migrated one: [docs/upgrading.md](docs/upgrading.md) covers rolling back from a backup.
 - Every app's own data now lives in one folder per app under `CONFIG_ROOT`, the same layout as the other homelab
   stacks: Recyclarr's config moves to `CONFIG_ROOT/recyclarr/config` and Radarr's and Radarr 4K's custom scripts to
   `CONFIG_ROOT/<app>/scripts` (the maintainer's decision, 2026-10-15), so the settings `RECYCLARR_CONFIG_PATH` and

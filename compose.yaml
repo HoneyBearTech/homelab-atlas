@@ -143,7 +143,7 @@ services:
   # --- Music ----------------------------------------------------------------------------------------------------
   lidarr:
     <<: *linuxserver
-    image: lscr.io/linuxserver/lidarr:version-3.1.0.4875@sha256:d8549ff9ea29b4015c32257360652c1000c31ea471a2b3f0835ae77292faf35b
+    image: lscr.io/linuxserver/lidarr:version-3.1.6.5079@sha256:d5707cfe084da21a3864c7ef0edd9c0543b5e26c79c551f84dad5ef8683af8c7
     container_name: lidarr
     restart: unless-stopped
     labels:

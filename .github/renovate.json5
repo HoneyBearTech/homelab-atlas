@@ -1,7 +1,5 @@
-// Renovate configuration, switched off (`enabled: false`): Dependabot (.github/dependabot.yml) still proposes every
-// update. This file describes what Renovate would do if it took over, so that a cutover is one planned change and
-// not an onboarding pull request. Before setting `enabled` to true, remove .github/dependabot.yml and
-// workflows/dependabot-auto-merge.yml (two bots would propose every update twice) and update docs/dependencies.md.
+// Renovate configuration. Renovate proposes every dependency update (it replaced Dependabot's version updates) and
+// merges them once every required check has passed; docs/dependencies.md describes what it reads and when.
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   enabled: true,
@@ -18,7 +16,7 @@
   // Only the files listed in docs/dependencies.md.
   enabledManagers: ["docker-compose", "pip_requirements", "github-actions", "gitlabci", "custom.regex"],
 
-  // Mondays from 06:00 UTC, as Dependabot does now.
+  // Mondays from 06:00 UTC.
   timezone: "Etc/UTC",
   schedule: ["* 6-9 * * 1"],
   assignees: ["HoneyBearTech"],
@@ -29,7 +27,7 @@
   commitBody: "Signed-off-by: {{{gitAuthor}}}",
 
   // Patch, minor and major updates and image rebuilds (a new digest under the same tag) are squash-merged by GitHub
-  // once every required check has passed, as with Dependabot (docs/dependencies.md). A merge deploys: the server's
+  // once every required check has passed (docs/dependencies.md). A merge deploys: the server's
   // pull agent applies main within minutes, so a major, which can migrate an app's database one way, arrives
   // unattended with the nightly backup behind it.
   automerge: true,

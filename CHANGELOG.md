@@ -96,6 +96,12 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ### Changed
 
+- **Renovate replaces Dependabot for version updates.** `.github/dependabot.yml` and the Dependabot auto-merge
+  workflow are gone; Renovate (`.github/renovate.json5`) proposes the same updates on the same Monday schedule and
+  merges patch, minor and major updates and image rebuilds once every required check passes, as before. It also
+  proposes the images that workflow steps and the backup scripts run, which were bumped by hand until now, and
+  those merge automatically too. Dependabot alerts stay on.
+
 - **Lidarr moves from 3.1.0.4875 to 3.1.6.5079**, now Lidarr's newest stable release (it was a pre-release when
   [docs/dependencies.md](docs/dependencies.md#current-findings) last looked). It bundles .NET 8.0.27 instead of
   8.0.12, which fixes CVE-2025-55315 (request smuggling); CVE-2026-88092 and CVE-2026-70188 stay open until a

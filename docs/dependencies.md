@@ -35,35 +35,34 @@ Each release carries a CycloneDX SBOM listing every service's image and digest
 
 ## Tracking dependencies
 
-- **Dependabot** ([`.github/dependabot.yml`](../.github/dependabot.yml)) checks weekly (Mondays, 06:00 UTC) for
-  new image versions in the Compose file, new tool versions and new Action versions, and opens a pull request for
-  each. Dependabot alerts and security updates are on.
-- **Patch, minor and major updates merge automatically**
-  ([`.github/workflows/dependabot-auto-merge.yml`](../.github/workflows/dependabot-auto-merge.yml)): for the
-  images, the Python tools and the GitHub Actions, they're squash-merged once every required check has passed
-  (CI with the Compose policy check, CodeQL, dependency review). Nothing skips a check, and a failing update
-  stays open for the maintainer.
+- **Renovate** ([`.github/renovate.json5`](../.github/renovate.json5)) checks weekly (Mondays, 06:00 to 10:00 UTC)
+  for new image versions in the Compose file, new tool versions, new Action versions and new digests of the images
+  that workflow steps and the backup scripts run, and opens a pull request for each. Its commits are made through
+  GitHub's API, so they're signed, and carry a DCO sign-off. Dependabot alerts stay on; Dependabot no longer opens
+  version updates.
+- **Patch, minor and major updates merge automatically**: Renovate turns on GitHub's auto-merge for each of its
+  pull requests, so they're squash-merged once every required check has passed (CI with the Compose policy check,
+  CodeQL, dependency review, DCO). Nothing skips a check, and a failing update stays open for the maintainer.
 - **Image rebuilds merge automatically too**: a pull request that only moves an image to a new digest under the
   same tag (a rebuild of the same app version, with newer base packages) and changes nothing else in
   `compose.yaml`.
 - **linuxserver.io images are pinned by their `version-<app version>` tag** (`radarr:version-6.4.4.10685@sha256:…`),
-  which always points at the newest build of that app version. Dependabot can't follow the build tags
-  (`6.4.4.10685-ls320`): it reads `-ls320` as a suffix that must match exactly, so it never proposes another
-  build. With the `version-` tag it proposes both new app versions and rebuilds (a new digest under the same
-  tag). socket-proxy uses its bare version tag (`3.4.6`) for the same reason.
+  which always points at the newest build of that app version; Renovate reads it with a version scheme of its own
+  (`packageRules` in its configuration) and never proposes the build tags (`6.4.4.10685-ls320`). With the
+  `version-` tag it proposes both new app versions and rebuilds (a new digest under the same tag). socket-proxy uses its bare version tag (`3.4.6`) for the same reason.
 - **Major updates merge automatically too** (the maintainer's decision, 2026-10-14), and so reach the server
   unattended. A new major version can migrate its database one way: the nightly
   [scheduled backup](installing.md#scheduled-backups) and a revert pull request are the way back, and a revert alone
   doesn't undo the migration, so the service's data is restored from the backup
-  ([upgrading.md](upgrading.md#rolling-back)). Any update Dependabot can't classify as patch, minor or major is
-  still merged by hand.
+  ([upgrading.md](upgrading.md#rolling-back)).
 - **A merge deploys.** The maintainer's server follows `main` with a pull agent, so every merge, the automatic
   ones included, reaches it within about two minutes ([upgrading.md](upgrading.md#following-main)).
 - **Dependency review** ([`.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml))
   blocks a pull request that adds or changes a Python or Actions dependency with a known vulnerability of
   moderate severity or higher, or a license outside the allowlist.
-- The CI-only images in `run:` steps and the backup scripts' busybox image aren't seen by Dependabot; they're
-  bumped by hand at least every quarter.
+- The CI-only images in `run:` steps and the backup scripts' busybox image are pinned the same way and Renovate
+  proposes their new digests and versions too (a custom manager in its configuration); they merge automatically
+  like the rest.
 - **Nothing on the host updates from a registry.** Auto-updaters such as Watchtower are not used: they would run
   versions nobody reviewed. The pull agent only applies commits merged into `main`.
 
@@ -73,7 +72,7 @@ Known vulnerabilities are found through Dependabot alerts, the apps' and images'
 scan of the pinned digests ([`scan.yml`](../.github/workflows/scan.yml): Trivy, HIGH and CRITICAL findings that
 have a fix, reported to code scanning with one category per image). Each finding is triaged within 14 days:
 
-1. **If a fixed version exists**, bump to it (a Dependabot pull request usually already does) and release.
+1. **If a fixed version exists**, bump to it (a Renovate pull request usually already does) and release.
    A fix for an exploitable critical or high-severity vulnerability goes out in a patch release within 30
    days; others go out with the next release.
 2. **If upstream hasn't released a fix**, assess whether it's reachable in this stack (which ports are
@@ -115,7 +114,7 @@ image was already on its newest stable release.
   and SABnzbd `5.1.3-ls278` (Expat, CVE-2026-77214). Bazarr's rebuild also brings Pillow 13.0.0, which fixes 19
   Pillow vulnerabilities (3 critical) that the next scan would have reported in the older build.
 
-Radarr and Sonarr have newer builds too, but they change none of the findings; Dependabot proposes them as usual.
+Radarr and Sonarr have newer builds too, but they change none of the findings; Renovate proposes them as usual.
 
 **Critical, waiting for upstream** (32 alerts; 10 vulnerabilities, 12 counted once per image):
 
@@ -140,7 +139,7 @@ Radarr and Sonarr have newer builds too, but they change none of the findings; D
   CVE-2026-96231 need local access to the container.
 - **Sonarr v4 runs on .NET 6, out of support since November 2024**, so its count understates it: the scanner only
   reports vulnerabilities whose advisories list .NET 6 as affected, and newer advisories, such as the request
-  smuggling above, no longer do. Sonarr's fixes come with v5 (pre-release only so far; Dependabot's major update
+  smuggling above, no longer do. Sonarr's fixes come with v5 (pre-release only so far; Renovate's major update
   brings it once released).
 - **ImageSharp 3.1.11 and 3.1.12** in Lidarr, Radarr and Sonarr (CVE-2026-106110, CVE-2026-106113, CVE-2026-106115;
   54 alerts): not reachable. Two are in its TIFF CCITT encoders and one in histogram equalization; the apps only
@@ -192,7 +191,7 @@ with its reason in code scanning: Bazarr's `setuptools` (`PackageIndex` path tra
 SABnzbd imports it; only oauthlib does, in code paths SABnzbd's notifications don't use). autoheal and
 socket-proxy were added after that scan; autoheal's only maintained tag is `latest` (its versioned tags stop at
 1.2.0 from 2021), so it's pinned as `latest@sha256:…` with a policy exception, and bumped by hand with the other
-hand-pinned images if Dependabot doesn't propose new digests for it.
+hand-pinned images if Renovate doesn't propose new digests for it.
 
 ## Licenses
 

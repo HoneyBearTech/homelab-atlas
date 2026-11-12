@@ -1,0 +1,71 @@
+// Renovate configuration, switched off (`enabled: false`): Dependabot (.github/dependabot.yml) still proposes every
+// update. This file describes what Renovate would do if it took over, so that a cutover is one planned change and
+// not an onboarding pull request. Before setting `enabled` to true, remove .github/dependabot.yml and
+// workflows/dependabot-auto-merge.yml (two bots would propose every update twice) and update docs/dependencies.md.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  enabled: false,
+
+  extends: [
+    "config:recommended",
+    // Keep every image as name:tag@sha256:<digest> and every Action as a full commit SHA with its version in a
+    // comment, and propose a new digest when a tag is rebuilt.
+    "docker:pinDigests",
+    "helpers:pinGitHubActionDigests",
+    ":semanticCommitsDisabled",
+  ],
+
+  // Only the files listed in docs/dependencies.md.
+  enabledManagers: ["docker-compose", "pip_requirements", "github-actions", "gitlabci", "custom.regex"],
+
+  // Mondays from 06:00 UTC, as Dependabot does now.
+  timezone: "Etc/UTC",
+  schedule: ["* 6-9 * * 1"],
+  assignees: ["HoneyBearTech"],
+
+  // The main ruleset requires signed commits and a DCO sign-off on each one: commits made through GitHub's API are
+  // signed by GitHub, and the sign-off line is the one workflows/dco.yml looks for.
+  platformCommit: "enabled",
+  commitBody: "Signed-off-by: {{{gitAuthor}}}",
+
+  // Patch, minor and major updates and image rebuilds (a new digest under the same tag) are squash-merged by GitHub
+  // once every required check has passed, as with Dependabot (docs/dependencies.md). A merge deploys: the server's
+  // pull agent applies main within minutes, so a major, which can migrate an app's database one way, arrives
+  // unattended with the nightly backup behind it.
+  automerge: true,
+  automergeType: "pr",
+  automergeStrategy: "squash",
+  platformAutomerge: true,
+
+  // The check and test tools, pinned with hashes. Each pin in requirements-dev.txt is bumped in place with its
+  // hashes; a tool that gains a new dependency of its own still needs a pip-compile run by hand (the pip-compile
+  // manager can't read this file's header line).
+  pip_requirements: {
+    managerFilePatterns: ["/^requirements-dev\\.txt$/"],
+  },
+
+  customManagers: [
+    {
+      // Images that no other manager reads, bumped by hand until now: the ones `docker run` starts in workflow
+      // steps (actionlint, gitleaks, Trivy) and the backup scripts' busybox (scripts/lib.sh).
+      customType: "regex",
+      managerFilePatterns: ["/^\\.github/workflows/[^/]+\\.ya?ml$/", "/^scripts/[^/]+\\.sh$/"],
+      matchStrings: [
+        "(?<depName>[a-z0-9][a-z0-9./-]*[a-z0-9]):(?<currentValue>[A-Za-z0-9][A-Za-z0-9._-]*)@(?<currentDigest>sha256:[0-9a-f]{64})",
+      ],
+      datasourceTemplate: "docker",
+    },
+  ],
+
+  packageRules: [
+    {
+      // linuxserver.io images are pinned by their `version-<app version>` tag (version-6.4.4.10685, version-v1.6.2),
+      // which always points at the newest build of that app version: a new app version is a new tag, a rebuild is a
+      // new digest. The `-lsNNN` build tags are never proposed.
+      matchDatasources: ["docker"],
+      matchPackageNames: ["lscr.io/linuxserver/**"],
+      matchCurrentValue: "/^version-/",
+      versioning: "regex:^version-v?(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)(?:\\.(?<build>\\d+))?$",
+    },
+  ],
+}

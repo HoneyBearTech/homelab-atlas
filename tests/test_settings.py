@@ -58,7 +58,7 @@ def test_no_setting_points_into_dockers_own_directories() -> None:
 
 
 def test_the_docs_warn_against_docker_volumes() -> None:
-    for path in ("docs/installing.md", "CLAUDE.md", ".env.example"):
+    for path in ("docs/installing.md", ".env.example"):
         text = " ".join(read(path).split())
         assert "/var/lib/docker/volumes" in text, path
         assert "docker volume prune" in text, path

@@ -8,7 +8,7 @@ instead, where the merge is the upgrade ([Following `main`](#following-main)).
 ## Before you upgrade
 
 1. Read the release notes (the `CHANGELOG.md` section) for every release between yours and the new one, and
-   the apps' own release notes for any major version bump. Dependabot's major updates merge automatically, so on
+   the apps' own release notes for any major version bump. Renovate's major updates merge automatically, so on
    a server that follows `main` they arrive without a merge by hand. Anything under **Upgrading** needs action.
 2. Verify the new release ([verifying-releases.md](verifying-releases.md)).
 
@@ -63,7 +63,7 @@ The maintainer's server doesn't check out releases: it runs `main`, and a small 
 maintainer's private orchestration repository, not here) deploys every merge. A systemd user timer starts it about
 every 90 seconds; when `main` has moved, it fast-forwards the checkout, runs `docker compose config --quiet`,
 `docker compose pull` and `docker compose up -d --remove-orphans --wait`, and logs the old and the new commit. So
-**a merge to `main` reaches the server within about two minutes**, including the updates Dependabot merges by
+**a merge to `main` reaches the server within about two minutes**, including the updates Renovate merges by
 itself ([dependencies.md](dependencies.md#tracking-dependencies)).
 
 - The agent only fast-forwards: it refuses a checkout with local changes or a `main` whose history was rewritten.

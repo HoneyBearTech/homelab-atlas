@@ -35,7 +35,7 @@ a Dozzle agent (container logs, for the homelab's Dozzle) and autoheal (restarts
 ports in [interfaces](docs/interfaces.md#services-and-ports)). The indexer manager, the torrent client and the
 media server run on other hosts.
 
-Every image is pinned by tag **and** digest. New versions arrive as Dependabot pull requests that CI checks
+Every image is pinned by tag **and** digest. New versions arrive as Renovate pull requests that CI checks
 before they're merged. The maintainer's server follows `main`: a pull agent there applies each merge within a couple
 of minutes ([upgrading](docs/upgrading.md#following-main)). Nothing updates from a registry tag by itself: what runs
 is always a commit in `main`.

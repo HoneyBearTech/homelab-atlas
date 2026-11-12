@@ -1,0 +1,51 @@
+exclude: ^(?:\.agent/|README\.md$|docs/)
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        types: [text]
+        files: \.(py|sh|ya?ml|toml|ini|cfg|conf|json|txt)$
+      - id: end-of-file-fixer
+        types: [text]
+        files: \.(py|sh|ya?ml|toml|ini|cfg|conf|json|txt)$
+      - id: check-merge-conflict
+        types: [text]
+        files: \.(py|sh|ya?ml|toml|ini|cfg|conf|json|txt)$
+      - id: check-yaml
+        types: [yaml]
+      - id: check-added-large-files
+        args: [--maxkb=500]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        args: [--strict]
+
+  - repo: local
+    hooks:
+      - id: shellcheck
+        name: shellcheck
+        entry: shellcheck -x
+        language: python
+        additional_dependencies: [shellcheck-py==0.11.0.1]
+        types: [shell]
+        files: ^scripts/.*\.sh$
+      - id: actionlint
+        name: actionlint (pinned CI image)
+        entry: >-
+          bash -c 'docker run --rm -v "$PWD:/repo:ro" -w /repo
+          rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+          -color "$@"' --
+        language: system
+        types: [yaml]
+        files: ^\.github/workflows/.*\.ya?ml$

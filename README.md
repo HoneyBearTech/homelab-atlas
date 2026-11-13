@@ -6,7 +6,7 @@
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15265/badge)](https://www.bestpractices.dev/projects/15265)
 [![OpenSSF Baseline](https://www.bestpractices.dev/projects/15265/baseline)](https://www.bestpractices.dev/projects/15265)
 
-Docker Compose stack for Atlas, the homelab media automation server running Recyclarr and the *arr stack. Ubuntu + Docker, version-pinned for easy upgrades and rebuilds.
+Docker Compose stack for Atlas, the homelab media automation server running the *arr stack, Recyclarr and Seerr, with Dozzle and container health operations. Ubuntu + Docker, version-pinned for easy upgrades and rebuilds.
 
 > [!WARNING]
 > The apps in this stack rename, move and delete files in your media library, and an upgrade can migrate
@@ -73,7 +73,7 @@ Settings come from `.env` (template [`.env.example`](.env.example)), which holds
 | `TZ` | `Etc/UTC` | Time zone |
 | `UMASK` | `002` | File creation mask inside the linuxserver.io apps |
 | `MEDIA_ROOT` | `/srv/media` | Downloads and media on one filesystem (`/media`), so imports are hardlinks or instant moves |
-| `CONFIG_ROOT` | `/srv/config` | Every app's data, one folder per app: `<app>/config` (settings, API key, database; Recyclarr's and Seerr's too) and Radarr's `<app>/scripts`, owned by `PUID:PGID`. Contains API keys: back it up. Never inside `/var/lib/docker/volumes` |
+| `CONFIG_ROOT` | `/srv/config` | Every app's data, one folder per app: `<app>/config` (settings, API key and database; Seerr mounts at `/app/config`, other apps at `/config`), Radarr's `<app>/scripts`, and Dozzle's root-owned `dozzle/certs`, owned by `PUID:PGID` except the certificates. Contains API keys: back it up. Never inside `/var/lib/docker/volumes` |
 | `SABNZBD_INCOMPLETE_PATH` | `/srv/downloads/incomplete` | SABnzbd's temporary download folder (`/incomplete`); may be another disk |
 
 Ports, volumes and labels: [docs/interfaces.md](docs/interfaces.md).

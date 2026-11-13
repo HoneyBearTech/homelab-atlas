@@ -6,7 +6,8 @@ file changes with them, in the same pull request.
 ## Done: the stack in git
 
 - Done: `compose.yaml` with Radarr and Sonarr (regular and 4K), Lidarr, Bazarr (regular and 4K), SABnzbd,
-  Recyclarr and Dozzle, every image pinned by tag and digest, Dependabot proposing updates.
+  Recyclarr, Seerr, Dozzle, autoheal and socket-proxy, every image pinned by tag and digest; Renovate proposes
+  image, tool and Action updates and image rebuilds.
 - Done: a health check for each service, so `docker compose ps` shows a broken app, and a smoke test in CI that
   starts the whole stack and waits until every service is healthy.
 - Done: a weekly vulnerability scan of every pinned image (Trivy), reported to code scanning.

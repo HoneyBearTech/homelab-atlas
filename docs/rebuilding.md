@@ -80,16 +80,17 @@ A server that follows `main` ([upgrading.md](upgrading.md#following-main)) stays
 A backup without a `VERSION` file was made by 0.3.1 or earlier, in the older archive format: check out v0.3.1 to
 restore it.
 
-Edit `.env` if the new host's paths differ (`MEDIA_ROOT`, `CONFIG_ROOT`, `SABNZBD_INCOMPLETE_PATH`). A backup's
-`.env` from before `CONFIG_ROOT` existed needs it added (see `.env.example`), and `APPDATA_ROOT` and
-`RECYCLARR_CONFIG_PATH` taken out of it (no longer read): the restore puts each app's data into
-`CONFIG_ROOT/<app>/...`, whatever the backup's `.env` said. Never point `CONFIG_ROOT` into `/var/lib/docker/volumes`
+Edit `.env` if the new host's paths differ (`MEDIA_ROOT`, `CONFIG_ROOT`, `SABNZBD_INCOMPLETE_PATH`). Older backups
+made before the `CONFIG_ROOT` layout was introduced may still contain `APPDATA_ROOT` or
+`RECYCLARR_CONFIG_PATH`; those legacy settings are not read by this Compose stack. Remove them, set `CONFIG_ROOT`
+as in `.env.example`, and restore places each archived mount at the matching current container path, independent
+of the old source path in the manifest. Never point `CONFIG_ROOT` into `/var/lib/docker/volumes`
 ([installing.md](installing.md#where-data-lives)). Create the host directories as the `PUID` user, so Docker doesn't
 create them owned by root:
 
 ```sh
 . ./.env && mkdir -p "$SABNZBD_INCOMPLETE_PATH" "$CONFIG_ROOT"/radarr/scripts "$CONFIG_ROOT"/radarr4k/scripts
-for app in radarr radarr4k sonarr sonarr4k lidarr bazarr bazarr4k sabnzbd recyclarr; do
+for app in radarr radarr4k sonarr sonarr4k lidarr bazarr bazarr4k sabnzbd recyclarr seerr; do
   mkdir -p "$CONFIG_ROOT/$app/config"
 done
 docker compose config --quiet && docker compose pull

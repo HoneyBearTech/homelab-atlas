@@ -48,9 +48,10 @@ viewers ──request──▶ Seerr ──API──▶ Radarr / Sonarr (4K requ
 ```
 
 All the apps share one `/media` mount (`MEDIA_ROOT`) so imports are hardlinks or instant moves on one
-filesystem. Each app keeps its settings and database in its own config directory (`CONFIG_ROOT/<app>/config`),
-mounted at `/config`. The indexer manager (Prowlarr), the download client for torrents and the media server run
-outside this stack.
+filesystem. Each app keeps its settings and database in its own config directory under
+`CONFIG_ROOT/<app>/config`. LinuxServer apps and Recyclarr mount it at `/config`; Seerr mounts its
+`CONFIG_ROOT/seerr/config` at `/app/config`. The indexer manager (Prowlarr), the download client for torrents and
+the media server run outside this stack.
 
 ## How changes reach the host
 
@@ -73,7 +74,10 @@ only pulls; nothing connects in to it to deploy.
 | --- | --- |
 | `compose.yaml` | The stack |
 | `.env.example`, `autoheal.env.example`, `seerr.env.example` | Templates for the settings, autoheal's optional webhook and Seerr's optional PostgreSQL settings |
+| `backup.env.example` | Optional scheduled-backup settings |
 | `scripts/check_compose.py` | The policy check and SBOM generator (standard-library Python) |
+| `scripts/backup.sh`, `scripts/restore.sh`, `scripts/scheduled-backup.sh` | Backup, restore and scheduled-copy workflows |
+| `deploy/systemd/` | User service and nightly backup timer |
 | `tests/` | Its tests, with JSON fixtures |
 | `docs/` | This documentation |
 | `.github/` | CI, release and security workflows, Renovate's configuration, templates |

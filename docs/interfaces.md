@@ -16,7 +16,7 @@ setting marked required stops `docker compose` with an error naming it when it's
 | `TZ` | yes | `Etc/UTC` | Time zone (tz database name) for logs and schedules. |
 | `UMASK` | no (default `002`) | `002` | File creation mask inside the linuxserver.io apps; `002` keeps files group-writable without making them world-writable. |
 | `MEDIA_ROOT` | yes | `/srv/media` | Host directory with downloads and media on one filesystem, mounted at `/media` in Radarr, Sonarr, Lidarr, Bazarr and SABnzbd. |
-| `CONFIG_ROOT` | yes | `/srv/config` | Host directory with every app's own data, one folder per app named after its service, owned by `PUID:PGID`: `<app>/config` (settings, API key and database) for `radarr`, `radarr4k`, `sonarr`, `sonarr4k`, `lidarr`, `bazarr`, `bazarr4k`, `sabnzbd` and `recyclarr`, mounted at `/config`, and `radarr/scripts`, `radarr4k/scripts` (custom scripts), mounted at `/scripts`. Holds every app's API key: back it up. Never inside `/var/lib/docker/volumes` ([installing.md](installing.md#where-data-lives)). |
+| `CONFIG_ROOT` | yes | `/srv/config` | Host directory with every app's own data, one folder per app named after its service, owned by `PUID:PGID`: `<app>/config` (settings, API key and database) for `radarr`, `radarr4k`, `sonarr`, `sonarr4k`, `lidarr`, `bazarr`, `bazarr4k`, `sabnzbd` and `recyclarr`, mounted at `/config`; Seerr's `seerr/config`, mounted at `/app/config`; and `radarr/scripts`, `radarr4k/scripts` (custom scripts), mounted at `/scripts`. Also holds Dozzle's root-owned certificate files under `dozzle/certs`. Holds every app's API key: back it up. Never inside `/var/lib/docker/volumes` ([installing.md](installing.md#where-data-lives)). |
 | `SABNZBD_INCOMPLETE_PATH` | yes | `/srv/downloads/incomplete` | Host directory where SABnzbd assembles downloads before they're complete, mounted at `/incomplete` (its temporary download folder). May be another disk or share; not backed up. |
 | `STACK_SUBNET` | no (default `172.25.0.0/16`) | `172.25.0.0/16` | Address range of the stack's own network, fixed so a host firewall rule that allows it keeps matching when Compose recreates the network ([installing.md](installing.md#firewall)). A private range no other Docker network or LAN on the host uses. Changing it recreates the network, so every service restarts. |
 
@@ -93,7 +93,8 @@ Ports are published on every host interface. Exact versions and digests are in [
 
 | Container path | Host source | Services |
 | --- | --- | --- |
-| `/config` | `CONFIG_ROOT/<app>/config` | the *arr apps, Bazarr, SABnzbd, Recyclarr |
+| `/config` | `CONFIG_ROOT/<app>/config` | the LinuxServer apps and Recyclarr |
+| `/app/config` | `CONFIG_ROOT/seerr/config` | seerr (SQLite by default, or external PostgreSQL via `seerr.env`) |
 | `/media` | `MEDIA_ROOT` | the *arr apps, Bazarr, SABnzbd |
 | `/scripts` | `CONFIG_ROOT/<app>/scripts` | radarr, radarr4k |
 | `/incomplete` | `SABNZBD_INCOMPLETE_PATH` | sabnzbd |
@@ -110,7 +111,7 @@ published; autoheal also joins the default network, to reach its webhook.
 | `org.honeybeartech.atlas.allow.<rule>` | Lets one service break one policy rule; the value is the reason, and must not be empty. Rules: `image`, `digest`, `latest`, `build`, `privileged`, `no-new-privileges`, `cap-drop`, `cap-add`, `host-network`, `host-pid`, `docker-socket`, `devices`, `healthcheck` ([security.md](security.md#policy)). In use: `dozzle` and `socket-proxy` (`docker-socket`), `autoheal` (`latest`). |
 | `autoheal` | `"true"` on every service autoheal may restart when its health check fails (every app service and socket-proxy). |
 | `org.honeybeartech.atlas.backup.skip` | Container paths (comma-separated, exact) that `scripts/backup.sh` never archives and `scripts/restore.sh` refuses to write, even if a backup lists them: data too large to back up here or disposable. In use: `/media` on every service that mounts it, and `/incomplete` on SABnzbd, so a backup holds only the apps' `/config`, Recyclarr's `/config` and Radarr's `/scripts`. |
-| `org.honeybeartech.atlas.backup.exclude` | Paths inside a service's data mounts (comma-separated, exact container paths, at any depth) that `scripts/backup.sh` leaves out of the mount's archive and `scripts/restore.sh` leaves in place. A path that isn't inside one of the service's data mounts, or contains `..` or a pattern character (`*?[\`), makes both fail before anything stops. In use: `/config/MediaCover` (posters the app downloads again) on Radarr, Radarr 4K, Sonarr, Sonarr 4K and Lidarr. |
+| `org.honeybeartech.atlas.backup.exclude` | Paths inside a service's data mounts (comma-separated, exact container paths, at any depth) that `scripts/backup.sh` leaves out of the mount's archive and `scripts/restore.sh` leaves in place. A path that isn't inside one of the service's data mounts, or contains `..` or a pattern character (`*?[\`), makes both fail before anything stops. In use: `/config/MediaCover` (posters the app downloads again) on Radarr, Radarr 4K, Sonarr, Sonarr 4K and Lidarr; `/app/config/logs` on Seerr (its rotated logs). |
 
 ## Commands
 

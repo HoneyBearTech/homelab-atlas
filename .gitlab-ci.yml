@@ -50,7 +50,7 @@ mirror:
 compose-config:
   extends: .checks
   stage: config
-  image: docker:29.8.2-cli@sha256:35cfcf893c20f2931f4909151b5407aaaeab711277de7ce8b8f521f095d54c32
+  image: docker:29.9.3-cli@sha256:5a7af0dcb0e46c803efe9b45371dd21cb500e5b4453250394ac6f06d49b6e6f1
   script:
     - cp .env.example .env
     - docker compose config --quiet

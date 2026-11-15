@@ -3,11 +3,12 @@ through its --run-step mode (no Docker).
 
 Each marked block of the doc is a step, in the doc's order, with the doc's host-specific values replaced by the
 rehearsal's own; unmarked blocks are never run. A step stops at its first failing command, so a block with `&&` or
-`||` (which hide a failure on their left) is refused.
+`||` (which hide a failure on their left) is refused. Each step runs in a home directory of its own.
 """
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -183,6 +184,15 @@ def test_an_optional_copy_is_skipped_when_the_file_isnt_there(tmp_path: Path) ->
     result = run_step(tmp_path, 'if [ -f "$HOME/absent" ]; then cp "$HOME/absent" .; fi\necho reached\n')
     assert result.returncode == 0, result.stderr
     assert result.stdout == "reached\n"
+
+
+def test_a_step_runs_in_a_home_of_its_own_with_the_callers_docker_settings(tmp_path: Path) -> None:
+    result = run_step(tmp_path, 'echo "$HOME"\npwd\necho "$DOCKER_CONFIG"\n')
+    assert result.returncode == 0, result.stderr
+    home, cwd, docker_config = result.stdout.splitlines()
+    assert Path(home).resolve() != Path.home().resolve()
+    assert Path(cwd).resolve() == Path(home).resolve()
+    assert docker_config == os.environ.get("DOCKER_CONFIG", str(Path.home() / ".docker"))
 
 
 def test_every_compose_call_outside_the_steps_names_the_hosts_directory() -> None:

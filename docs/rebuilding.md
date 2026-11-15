@@ -151,9 +151,11 @@ settings and the backup on the host away and follows this page from a clean clon
 `<!-- rehearse: name -->` comment (invisible on GitHub) runs in order, as a bash script that stops at the first failing
 command. Such a script doesn't stop at a failing command on the left of `&&` or `||`, so the rehearsal refuses a
 marked block with either: put each command on its own line, and write one that only applies sometimes as
-`if [ -f ... ]; then ...; fi`. It checks that every service is healthy, that each data mount holds what was backed
-up, that each app kept its API key, and that the settings files are the ones backed up. A step that no longer works
-fails the rehearsal, so keep the marked blocks runnable; leave a block unmarked if it only works on a real host.
+`if [ -f ... ]; then ...; fi`. The steps run with a home directory of the rehearsal's own (`~` is the new host's,
+or the key holder's), never the caller's. It checks that every service is healthy, that each data mount holds what
+was backed up, that each app kept its API key, and that the settings files are the ones backed up. A step that no
+longer works fails the rehearsal, so keep the marked blocks runnable; leave a block unmarked if it only works on a
+real host.
 
 The rehearsal stands in for what only a real host has, and changes nothing else in the marked steps: the clone and the
 release come from the commit under test, a local directory is the backup server, and the copy and the age key are its

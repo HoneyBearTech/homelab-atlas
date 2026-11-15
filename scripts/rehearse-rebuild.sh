@@ -17,7 +17,8 @@
 # fenced sh block right after a `<!-- rehearse: NAME -->` line is a step, run in the doc's order as a bash script with
 # `set -euo pipefail`. Such a script doesn't stop at a failing command on the left of `&&` or `||`, so a marked block
 # with either is refused: each command goes on its own line, and one that only applies sometimes is written as
-# `if [ -f FILE ]; then ...; fi`.
+# `if [ -f FILE ]; then ...; fi`. The steps run with a home directory in the rehearsal's temporary directory (the key
+# holder's, below, or the new host's), never the caller's; Docker still uses the caller's configuration.
 # Steps that need a real host (installing the OS and Docker, the NAS mount, verifying a release, the password manager,
 # the apps' own screens, the pull agent) aren't marked, and the rehearsal does without them or puts a stand-in in
 # their place (see below). The doc is read from the working tree; everything else comes from the last commit, which
@@ -153,10 +154,13 @@ prepare_steps() {
   done
 }
 
+# The caller's Docker configuration (contexts, CLI plugins), which the steps keep while their home is another one.
+docker_config=${DOCKER_CONFIG:-$HOME/.docker}
+
 # Runs step file $1 as the doc's steps run: a bash script with `set -euo pipefail` (after the prelude file $4), with
 # home directory $2, in the directory named in file $3, which it then updates to the directory the step left.
 exec_step() {
-  HOME=$2 bash -c 'set -euo pipefail; shopt -s inherit_errexit 2>/dev/null || true
+  HOME=$2 DOCKER_CONFIG=$docker_config bash -c 'set -euo pipefail; shopt -s inherit_errexit 2>/dev/null || true
     . "$1"; cd "$(cat "$2")"; . "$3"; pwd >"$2"' step "$4" "$3" "$1"
 }
 
@@ -449,6 +453,7 @@ echo "Left: only the encrypted copy on the backup server and the key holder's ag
 # ---- The new host, following docs/rebuilding.md ----------------------------------------------------------------------
 prepare_steps
 use_host "$new"
+new_home=$work/new-host
 {
   declare -f rehearsal_docker
   echo 'docker() { rehearsal_docker "$@"; }'
@@ -460,7 +465,7 @@ echo "$work/new-host" >"$work/new-host.cwd"
 run_step() {
   local file=$1 name machine home status
   name=$(step_name "$file")
-  if [ "$name" = decrypt ]; then machine=key-holder home=$key_holder; else machine=new-host home=$HOME; fi
+  if [ "$name" = decrypt ]; then machine=key-holder home=$key_holder; else machine=new-host home=$new_home; fi
   echo "==> docs/rebuilding.md, step \"$name\", on the $machine:"
   sed 's/^/    /' "$file"
   status=0

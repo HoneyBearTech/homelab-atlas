@@ -42,14 +42,13 @@
   automergeStrategy: "squash",
   platformAutomerge: true,
 
-  // Every update waits three days after its release before it is proposed, then merges as above: a release that is
-  // pulled or fixed within days never reaches the server. Fixes for vulnerability alerts skip the wait
-  // (`vulnerabilityAlerts` sets `minimumReleaseAge: null` by default).
-  // Some updates have no release timestamp to age: a rebuilt image under the same tag (a digest-only update, such as
-  // autoheal:latest or a linuxserver.io rebuild), and any registry that doesn't report one. The default,
-  // `minimumReleaseAgeBehaviour: "timestamp-required"`, holds those back as pending, and with the default
-  // `internalChecksFilter: "strict"` they would never be proposed. "timestamp-optional" lets them through
-  // without the wait, so rebuilds keep arriving; updates that do have a timestamp still wait.
+  // A new version (patch, minor or major) waits three days after its release before it is proposed, then merges as
+  // above: a release that is pulled or fixed within days never reaches the server. Fixes for vulnerability alerts
+  // skip the wait (`vulnerabilityAlerts` sets `minimumReleaseAge: null` by default), and so do rebuilds (see the
+  // `digest` rule below).
+  // A version update from a registry that reports no release date would be held back as pending forever
+  // (`minimumReleaseAgeBehaviour` defaults to "timestamp-required"); "timestamp-optional" lets it through without
+  // the wait, and versions that do have a date still wait.
   // https://docs.renovatebot.com/configuration-options/#minimumreleaseage
   // https://docs.renovatebot.com/configuration-options/#minimumreleaseagebehaviour
   minimumReleaseAge: "3 days",
@@ -81,6 +80,34 @@
   ],
 
   packageRules: [
+    {
+      // A rebuild (a new digest under the same tag) doesn't wait: Docker Hub dates it by the tag's last push, so a tag
+      // rebuilt about weekly would restart the clock each time and never get through the Monday-only schedule
+      // (https://docs.renovatebot.com/key-concepts/minimum-release-age/#digest-updates). Rebuilds are mostly
+      // base-image security refreshes, and the smoke test and the required checks still gate them.
+      matchUpdateTypes: ["digest"],
+      minimumReleaseAge: null,
+    },
+    {
+      // Pin each hook repo by commit SHA with its version in a comment (`rev: <sha> # frozen: v1.2.3`), like the
+      // Actions, and propose a new SHA when the tag moves.
+      matchManagers: ["pre-commit"],
+      pinDigests: true,
+    },
+    {
+      // A tool is pinned twice (requirements-dev.txt for CI and `make`, .pre-commit-config.yaml for the hooks):
+      // one pull request moves both, so they never disagree.
+      matchPackageNames: ["ruff", "astral-sh/ruff-pre-commit"],
+      groupName: "ruff",
+    },
+    {
+      matchPackageNames: ["yamllint", "adrienverge/yamllint"],
+      groupName: "yamllint",
+    },
+    {
+      matchPackageNames: ["shellcheck-py"],
+      groupName: "shellcheck-py",
+    },
     {
       // The smoke test's `runs-on: ubuntu-24.04` (ci.yml) matches the server's Ubuntu release, so it moves with the
       // server, by hand, not when GitHub offers a newer label.

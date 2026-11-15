@@ -25,8 +25,10 @@ A new image or tool must:
 | --- | --- | --- | --- |
 | The stack's images | `compose.yaml` | version tag and digest | `docker compose pull` |
 | Check and test tools (pytest, coverage, ruff, yamllint, shellcheck) | [`requirements-dev.in`](../requirements-dev.in) → [`requirements-dev.txt`](../requirements-dev.txt) | exact version and SHA-256 hashes (`pip-compile --generate-hashes`) | `pip install --require-hashes --no-deps` |
-| Helper image for backups (busybox) | [`scripts/backup.sh`](../scripts/backup.sh), [`scripts/restore.sh`](../scripts/restore.sh) | version tag and digest | Docker |
-| Linters and scanners used only by CI (actionlint, gitleaks, Trivy) | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), [`scan.yml`](../.github/workflows/scan.yml) | version tag and digest | Docker |
+| Helper image for backups (busybox) | [`scripts/lib.sh`](../scripts/lib.sh) (sourced by `backup.sh` and `restore.sh`) | version tag and digest | Docker |
+| Linters and scanners used only by CI (actionlint, gitleaks, Trivy) | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), [`scan.yml`](../.github/workflows/scan.yml), [`.pre-commit-config.yaml`](../.pre-commit-config.yaml) (the actionlint image) | version tag and digest | Docker |
+| GitLab mirror job images (alpine/git, docker, python, gitleaks, actionlint) | [`.gitlab-ci.yml`](../.gitlab-ci.yml) | version tag and digest | GitLab CI |
+| Pre-commit hooks | [`.pre-commit-config.yaml`](../.pre-commit-config.yaml) | full commit SHA of the release (version in a `# frozen:` comment); `shellcheck-py` by exact version | pre-commit |
 | GitHub Actions | [`.github/workflows/`](../.github/workflows/) | full commit SHA (version in a comment) | GitHub Actions |
 
 Each release carries a CycloneDX SBOM listing every service's image and digest
@@ -36,16 +38,32 @@ Each release carries a CycloneDX SBOM listing every service's image and digest
 ## Tracking dependencies
 
 - **Renovate** ([`.github/renovate.json5`](../.github/renovate.json5)) checks weekly (Mondays, 06:00 to 10:00 UTC)
-  for new image versions in the Compose file, new tool versions, new Action versions and new digests of the images
-  that workflow steps and the backup scripts run, and opens a pull request for each. Its commits are made through
+  for new image versions in the Compose file, new tool versions, new Action versions, new pre-commit hook versions
+  and new digests of the images that workflow steps, the pre-commit config and the backup scripts run, and opens a
+  pull request for each. It reads `compose.yaml`, `requirements-dev.txt`, the workflows, `.gitlab-ci.yml`,
+  `.pre-commit-config.yaml` and `scripts/*.sh`, and nothing else. Its commits are made through
   GitHub's API, so they're signed, and carry a DCO sign-off. Dependabot alerts stay on; Dependabot no longer opens
   version updates.
 - **Patch, minor and major updates merge automatically**: Renovate turns on GitHub's auto-merge for each of its
   pull requests, so they're squash-merged once every required check has passed (CI with the Compose policy check,
   CodeQL, dependency review, DCO). Nothing skips a check, and a failing update stays open for the maintainer.
-- **Image rebuilds merge automatically too**: a pull request that only moves an image to a new digest under the
-  same tag (a rebuild of the same app version, with newer base packages) and changes nothing else in
-  `compose.yaml`.
+- **Image rebuilds are proposed, and merge, like any other update**: a new digest under the same tag (a rebuild of
+  the same app version, with newer base packages), autoheal's `latest` and busybox included, except that they
+  skip the three-day wait (below).
+- **A new version waits three days after its release** (`minimumReleaseAge`), so a release that is pulled or
+  fixed within days doesn't reach the server; the pull request then merges as above. Fixes for vulnerability alerts
+  skip the wait. An image rebuild (a new digest under the same tag) skips it too: Docker Hub dates a rebuild by
+  the tag's last push, so a tag rebuilt about weekly would never get through the Monday-only schedule, and rebuilds
+  are mostly base-image security refreshes, still gated by the smoke test and the required checks. A moved tag on a
+  pre-commit hook or an Action keeps the wait. A version update
+  from a registry that reports no release date isn't held back either.
+- **Each tool's two pins usually move in one pull request**: ruff, yamllint and shellcheck-py are pinned in
+  `requirements-dev.txt` and in `.pre-commit-config.yaml`, and Renovate groups them. Grouping is best-effort: a
+  member that hasn't waited out its three days is left out of an otherwise ready group, so the two pins can differ
+  for a week. That's harmless: CI uses `requirements-dev.txt`.
+- **The smoke test's runner label is left alone**: `runs-on: ubuntu-24.04` in `ci.yml` matches the server's Ubuntu
+  release, so Renovate doesn't update runner labels (a rule on `github-runners` in its configuration). It moves with
+  the server, by hand.
 - **linuxserver.io images are pinned by their `version-<app version>` tag** (`radarr:version-6.4.4.10685@sha256:…`),
   which always points at the newest build of that app version; Renovate reads it with a version scheme of its own
   (`packageRules` in its configuration) and never proposes the build tags (`6.4.4.10685-ls320`). With the
@@ -60,7 +78,8 @@ Each release carries a CycloneDX SBOM listing every service's image and digest
 - **Dependency review** ([`.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml))
   blocks a pull request that adds or changes a Python or Actions dependency with a known vulnerability of
   moderate severity or higher, or a license outside the allowlist.
-- The CI-only images in `run:` steps and the backup scripts' busybox image are pinned the same way and Renovate
+- The CI-only images in `run:` steps, the pre-commit config's actionlint image and the backup scripts' busybox
+  image are pinned the same way and Renovate
   proposes their new digests and versions too (a custom manager in its configuration); they merge automatically
   like the rest.
 - **Nothing on the host updates from a registry.** Auto-updaters such as Watchtower are not used: they would run
@@ -160,7 +179,8 @@ made after that backup. This repository change does not perform or verify live b
 migrations, and reverting an image pin alone does not establish migration reversibility.
 
 The tested newer autoheal digest still uses **Alpine 3.18.12, which is EOL**, so it was rejected and the
-existing pin remains. Its zero findings are unreliable evidence of security. Replacement or a supported
+existing pin remained at the time. (Renovate has since moved the pin to `d674ad9`, which is on the same Alpine
+3.18.12 base, checked with `cat /etc/alpine-release` in both digests.) Its zero findings are unreliable evidence of security. Replacement or a supported
 rebuild remains unresolved; no alternative was validated. Dozzle v11.4.2 showed no measured remediation
 benefit, so its previous pin remains. Recyclarr and socket-proxy had no distinct candidate.
 
@@ -192,8 +212,7 @@ with its reason in code scanning: Bazarr's `setuptools` (`PackageIndex` path tra
 `PackageIndex` or installs packages) and SABnzbd's `PyJWT` (six; installed as a requirement, but nothing in
 SABnzbd imports it; only oauthlib does, in code paths SABnzbd's notifications don't use). autoheal and
 socket-proxy were added after that scan; autoheal's only maintained tag is `latest` (its versioned tags stop at
-1.2.0 from 2021), so it's pinned as `latest@sha256:…` with a policy exception, and bumped by hand with the other
-hand-pinned images if Renovate doesn't propose new digests for it.
+1.2.0 from 2021), so it's pinned as `latest@sha256:…` with a policy exception, and Renovate proposes its new digests.
 
 ## Licenses
 

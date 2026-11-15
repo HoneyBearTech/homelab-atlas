@@ -14,7 +14,14 @@
   ],
 
   // Only the files listed in docs/dependencies.md.
-  enabledManagers: ["docker-compose", "pip_requirements", "github-actions", "gitlabci", "custom.regex"],
+  enabledManagers: ["docker-compose", "pip_requirements", "github-actions", "gitlabci", "pre-commit", "custom.regex"],
+
+  // Renovate's pre-commit manager is off by default; this turns it on for .pre-commit-config.yaml (the hook revs and
+  // the `additional_dependencies` of python hooks, i.e. shellcheck-py). Its image pin is read by the regex manager
+  // below, not here, so nothing is proposed twice.
+  "pre-commit": {
+    enabled: true,
+  },
 
   // Mondays from 06:00 UTC.
   timezone: "Etc/UTC",
@@ -35,6 +42,18 @@
   automergeStrategy: "squash",
   platformAutomerge: true,
 
+  // A new version (patch, minor or major) waits three days after its release before it is proposed, then merges as
+  // above: a release that is pulled or fixed within days never reaches the server. Fixes for vulnerability alerts
+  // skip the wait (`vulnerabilityAlerts` sets `minimumReleaseAge: null` by default), and so do rebuilds (see the
+  // `digest` rule below).
+  // A version update from a registry that reports no release date would be held back as pending forever
+  // (`minimumReleaseAgeBehaviour` defaults to "timestamp-required"); "timestamp-optional" lets it through without
+  // the wait, and versions that do have a date still wait.
+  // https://docs.renovatebot.com/configuration-options/#minimumreleaseage
+  // https://docs.renovatebot.com/configuration-options/#minimumreleaseagebehaviour
+  minimumReleaseAge: "3 days",
+  minimumReleaseAgeBehaviour: "timestamp-optional",
+
   // The check and test tools, pinned with hashes. Each pin in requirements-dev.txt is bumped in place with its
   // hashes; a tool that gains a new dependency of its own still needs a pip-compile run by hand (the pip-compile
   // manager can't read this file's header line).
@@ -45,9 +64,14 @@
   customManagers: [
     {
       // Images that no other manager reads, bumped by hand until now: the ones `docker run` starts in workflow
-      // steps (actionlint, gitleaks, Trivy) and the backup scripts' busybox (scripts/lib.sh).
+      // steps (actionlint, gitleaks, Trivy), the backup scripts' busybox (scripts/lib.sh) and the actionlint image
+      // the pre-commit hook runs (.pre-commit-config.yaml; its hook revs belong to the pre-commit manager).
       customType: "regex",
-      managerFilePatterns: ["/^\\.github/workflows/[^/]+\\.ya?ml$/", "/^scripts/[^/]+\\.sh$/"],
+      managerFilePatterns: [
+        "/^\\.github/workflows/[^/]+\\.ya?ml$/",
+        "/^scripts/[^/]+\\.sh$/",
+        "/^\\.pre-commit-config\\.ya?ml$/",
+      ],
       matchStrings: [
         "(?<depName>[a-z0-9][a-z0-9./-]*[a-z0-9]):(?<currentValue>[A-Za-z0-9][A-Za-z0-9._-]*)@(?<currentDigest>sha256:[0-9a-f]{64})",
       ],
@@ -56,6 +80,44 @@
   ],
 
   packageRules: [
+    {
+      // An image rebuild (a new digest under the same tag) doesn't wait: Docker Hub dates it by the tag's last push,
+      // so a tag rebuilt about weekly would restart the clock each time and never get through the Monday-only
+      // schedule (https://docs.renovatebot.com/key-concepts/minimum-release-age/#digest-updates). Rebuilds are mostly
+      // base-image security refreshes, and the smoke test and the required checks still gate them. Only images:
+      // a moved tag on a pre-commit hook or an Action is also a "digest" update, and keeps the 3-day wait.
+      matchDatasources: ["docker"],
+      matchUpdateTypes: ["digest"],
+      minimumReleaseAge: null,
+    },
+    {
+      // Pin each hook repo by commit SHA with its version in a comment (`rev: <sha> # frozen: v1.2.3`), like the
+      // Actions, and propose a new SHA when the tag moves.
+      matchManagers: ["pre-commit"],
+      pinDigests: true,
+    },
+    {
+      // A tool is pinned twice (requirements-dev.txt for CI and `make`, .pre-commit-config.yaml for the hooks):
+      // grouping usually moves both in one pull request. It is best-effort: Renovate leaves a member that hasn't
+      // waited out its 3 days out of an otherwise ready group, so the two can differ for a week, which is harmless
+      // (CI uses requirements-dev.txt).
+      matchPackageNames: ["ruff", "astral-sh/ruff-pre-commit"],
+      groupName: "ruff",
+    },
+    {
+      matchPackageNames: ["yamllint", "adrienverge/yamllint"],
+      groupName: "yamllint",
+    },
+    {
+      matchPackageNames: ["shellcheck-py"],
+      groupName: "shellcheck-py",
+    },
+    {
+      // The smoke test's `runs-on: ubuntu-24.04` (ci.yml) matches the server's Ubuntu release, so it moves with the
+      // server, by hand, not when GitHub offers a newer label.
+      matchDatasources: ["github-runners"],
+      enabled: false,
+    },
     {
       // linuxserver.io images are pinned by their `version-<app version>` tag (version-6.4.4.10685, version-v1.6.2),
       // which always points at the newest build of that app version: a new app version is a new tag, a rebuild is a

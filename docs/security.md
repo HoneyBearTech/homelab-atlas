@@ -54,12 +54,26 @@ restore, and that autoheal can still restart a container through socket-proxy wi
 
 | Service | Capabilities added back | Read-only root filesystem | Why |
 | --- | --- | --- | --- |
-| radarr, radarr4k, sonarr, sonarr4k, lidarr, bazarr, bazarr4k, sabnzbd | `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID`, `KILL` | no | The linuxserver.io init (s6) runs as root: it takes ownership of `/config` and the app's own directories for `PUID:PGID` (`CHOWN`; it must enter directories it doesn't own to do so, `DAC_OVERRIDE`), starts the app as that user (`SETUID`, `SETGID`) and signals it to stop (`KILL`; without it every stop waits for Docker's timeout and kills the app). Their root stays writable: s6-overlay runs its init from `/run`, which a tmpfs mounts without exec, and the init rewrites `/etc/passwd` for `PUID` |
+| radarr, radarr4k, sonarr, sonarr4k, lidarr, bazarr, bazarr4k, sabnzbd | `CHOWN`, `DAC_OVERRIDE`, `SETUID`, `SETGID`, `KILL` | no, tried again (see below) | The linuxserver.io init (s6) runs as root: it takes ownership of `/config` and the app's own directories for `PUID:PGID` (`CHOWN`; it must enter directories it doesn't own to do so, `DAC_OVERRIDE`), starts the app as that user (`SETUID`, `SETGID`) and signals it to stop (`KILL`; without it every stop waits for Docker's timeout and kills the app). Their root stays writable: s6-overlay runs its init from `/run`, which a tmpfs mounts without exec, and the init rewrites `/etc/passwd` for `PUID` |
 | recyclarr | none | yes (`/tmp` in memory) | Runs as `PUID:PGID` and writes only its config directory, and its crontab to `/tmp` |
 | seerr | none | yes (`/tmp` in memory) | Runs as `PUID:PGID` (Node under `init`) and writes only its config directory |
 | dozzle | none | yes (`/tmp`, `/data` in memory) | Reads the Docker socket and its certificate and key, all owned by root; writes only its address file to `/tmp` and the notification settings the Dozzle hub sends it to `/data`. The hub keeps those settings and sends them again each time it starts (an agent restarted while the hub runs has none until then) |
 | autoheal | none | yes | Only talks to socket-proxy |
 | socket-proxy | none | yes (`/run`, `/tmp` in memory) | Only reads the socket |
+
+Read-only for the linuxserver.io apps was tried again with the images pinned here (`read_only: true` and
+`tmpfs: [/run:exec]` on every one of them, in the smoke test). Their documentation says each image "can be run with a
+read-only container filesystem" (radarr, sonarr, lidarr, bazarr, sabnzbd), on a reasonable-endeavours basis, and
+[Running Containers Read-Only](https://docs.linuxserver.io/misc/read-only/) lists what it costs: `/run` must be a
+tmpfs with `exec`; `PUID` and `PGID` have no effect (the app runs as UID 911 and its permissions are applied to the
+`/config` mount); `UMASK` has no effect; Docker mods and custom services don't run; custom scripts are limited; and
+an app that writes to its working directory can't run read-only. None of the five needs another tmpfs. They all
+started healthy, with a banner saying exactly that, but the smoke test failed at its backup and restore round trip
+("restore changed the owner or mode of radarr's config.xml"), and the apps ran as UID 911 instead of `PUID`, so
+`/config` would be re-owned on a real host and `PUID:PGID` and `UMASK` (set in `.env`, and what lets the apps and the
+operator share `/media`) would stop applying. No app was switched: they stay writable until the image can run
+read-only as the configured user, which is also what the roadmap line waits for. socket-proxy already runs
+read-only (its documentation lists the same `/run` tmpfs).
 
 Each capability was found by starting the image without it: the app then fails to start, can't write its
 database, can't repair a `/config` with files owned by another user, or takes 30 seconds to stop and is killed.

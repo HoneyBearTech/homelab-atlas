@@ -68,10 +68,9 @@ read-only container filesystem" (radarr, sonarr, lidarr, bazarr, sabnzbd), on a 
 tmpfs with `exec`; `PUID` and `PGID` have no effect (the app runs as UID 911 and its permissions are applied to the
 `/config` mount); `UMASK` has no effect; Docker mods and custom services don't run; custom scripts are limited; and
 an app that writes to its working directory can't run read-only. None of the five needs another tmpfs. They all
-started healthy, with a banner saying exactly that, but the smoke test failed at its backup and restore round trip
-("restore changed the owner or mode of radarr's config.xml"), and the apps ran as UID 911 instead of `PUID`, so
-`/config` would be re-owned on a real host and `PUID:PGID` and `UMASK` (set in `.env`, and what lets the apps and the
-operator share `/media`) would stop applying. No app was switched: they stay writable until the image can run
+started healthy, with a banner saying exactly that, but they ran as UID 911 instead of `PUID`, so `/config` would be
+re-owned on a real host and `PUID:PGID` and `UMASK` (set in `.env`, and what lets the apps and the operator share
+`/media`) would stop applying. No app was switched: they stay writable until the image can run
 read-only as the configured user, which is also what the roadmap line waits for. socket-proxy already runs
 read-only (its documentation lists the same `/run` tmpfs).
 

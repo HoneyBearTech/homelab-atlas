@@ -46,7 +46,7 @@ If the media storage already holds files owned by particular ids, use the same o
 
 Install Docker Engine and the Compose plugin from Docker's own repository, following
 [docs.docker.com/engine/install/ubuntu](https://docs.docker.com/engine/install/ubuntu/) (Docker Engine 25 or
-later, Compose 2.24 or later). Add the user to the `docker` group, which is equivalent to root on the host, and
+later, Compose 2.27.2 or later). Add the user to the `docker` group, which is equivalent to root on the host, and
 log in again:
 
 ```sh

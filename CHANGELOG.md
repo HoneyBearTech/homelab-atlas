@@ -44,7 +44,8 @@ All notable changes to homelab-atlas are documented here. The format follows
   containers keep running as they are, but deploys stop updating them (Renovate's updates of those apps never reach
   them), and the nightly backup refuses to run, and reports the failure, until the line is there or those
   containers are removed. A profile name with a typo is caught the same way
-  ([docs/upgrading.md](docs/upgrading.md#optional-services-profiles)).
+  ([docs/upgrading.md](docs/upgrading.md#optional-services-profiles)). That check needs **Docker Compose 2.27.2 or
+  later** (it was 2.24): with an older one the backup fails and says so.
 - **Put the Dozzle certificate and key in `CONFIG_ROOT/dozzle/certs` before deploying this** (owned by root; the
   same pair on the Dozzle hub, which needs its own update: [docs/installing.md](docs/installing.md#dozzles-certificate)).
   Without them the Dozzle agent doesn't start. Once the agent has its pair, the hub reaches it only after it has

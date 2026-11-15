@@ -97,7 +97,8 @@ jobs:
   smoke:
     # A required check on main, like "Checks + tests", so an image that doesn't start can't be auto-merged.
     name: Stack smoke test
-    # Amd64, like the server, so the images are tested for the platform they run on.
+    # The server's Ubuntu release (24.04) and amd64, so the images are tested for the platform they run on. Renovate
+    # leaves the label alone (renovate.json5); it moves with the server, by hand.
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:

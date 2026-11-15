@@ -2,8 +2,8 @@
 # Written for bash 3.2 and later (macOS ships 3.2).
 # shellcheck shell=bash
 
-# Reads and writes the services' data in throwaway containers; pinned like every other image (bumped by hand, see
-# docs/dependencies.md).
+# Reads and writes the services' data in throwaway containers; pinned like every other image (Renovate proposes new
+# digests and versions, see docs/dependencies.md).
 # shellcheck disable=SC2034 # used by the scripts that source this file
 busybox=busybox:1.38.0@sha256:a46257e06c82ad85242d0d38077d0a52d9896389ca60a1a59d3463db586e5fa4
 

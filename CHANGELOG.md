@@ -8,9 +8,10 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ### Added
 
-- Renovate keeps `.pre-commit-config.yaml` current (hook versions and the actionlint image), waits three days after a
-  release before proposing an update (vulnerability fixes skip the wait), and leaves the smoke test's runner label
-  (`ubuntu-24.04`, the server's release) alone. The pre-commit `ruff` hook matches `requirements-dev.txt` (0.17.5).
+- Renovate keeps `.pre-commit-config.yaml` current (hook revs pinned by commit SHA, and the actionlint image),
+  moves each tool's two pins (`requirements-dev.txt` and the hook) in one pull request, waits three days after a
+  new version's release before proposing it (rebuilds and vulnerability fixes skip the wait), and leaves the smoke
+  test's runner label (`ubuntu-24.04`, the server's release) alone. The pre-commit `ruff` hook matches `requirements-dev.txt` (0.17.5).
   `docs/dependencies.md` now matches what Renovate does.
 - An optional `seerr.env` (template `seerr.env.example`, mode `600`, gitignored) for Seerr's database on a
   PostgreSQL server: Seerr reads its database settings, the password among them, only from its environment. Without

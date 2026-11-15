@@ -16,8 +16,8 @@
 # first; the containers, and the volumes and directories they mount, are created as needed. Uses `docker compose`
 # from the checkout, so the standard Compose variables select another project, as in scripts/backup.sh. Restore with
 # the COMPOSE_PROFILES the backup was taken with (its env/.env has it): it refuses to restore a service whose profile
-# isn't on, and names it, and one while COMPOSE_PROFILES names something that isn't a profile. A backup taken before
-# the profiles has no COMPOSE_PROFILES: it holds every service, so restore it with every profile on.
+# isn't on, and names it, and one while COMPOSE_PROFILES names something that isn't a profile. A backup with no
+# COMPOSE_PROFILES in its .env was taken before the profiles (with every service) or with the value set outside .env.
 #
 # Like scripts/backup.sh, it holds the pull agent's lock from the start (also while it asks), so no deploy starts or
 # recreates a service during the restore.
@@ -85,8 +85,8 @@ if [ -n "$inactive" ]; then
   if [ -n "$taken" ]; then
     how="as when the backup was taken ($taken, from $backup/env)"
   else
-    how="to every profile (COMPOSE_PROFILES=$every_profile): the backup has no COMPOSE_PROFILES, so it was taken"
-    how="$how before the profiles, with every service running"
+    how="to every profile (COMPOSE_PROFILES=$every_profile): the backup has no COMPOSE_PROFILES in its .env (taken"
+    how="$how before the profiles, or with COMPOSE_PROFILES set outside .env)"
   fi
   fail "the backup has data for services whose profile isn't on here:$inactive. Set COMPOSE_PROFILES in .env" \
     "$how, and run this again, or name the services to restore. Nothing changed."

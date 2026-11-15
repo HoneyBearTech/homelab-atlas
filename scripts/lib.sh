@@ -127,9 +127,15 @@ archive_name() {
 # their data out. check_profile_names and check_profile_containers fail, saying what to fix, in either case.
 
 # The names COMPOSE_PROFILES gives as Compose reads it (the environment, else the env files), one per line, trimmed
-# as Compose trims them; nothing when it isn't set.
+# as Compose trims them; nothing when it isn't set. Needs `docker compose config --environment` (Compose 2.27.2).
 profile_names() {
-  local env
+  local env help
+  help=$(docker compose config --help) || return 1
+  if ! grep -q -- '--environment' <<<"$help"; then
+    echo "error: this needs Docker Compose 2.27.2 or later (for 'docker compose config --environment');" \
+      "this is $(docker compose version --short 2>/dev/null || echo 'an older one'). Upgrade Docker Compose." >&2
+    return 1
+  fi
   env=$(docker compose config --environment) || return 1
   sed -n 's/^COMPOSE_PROFILES=//p' <<<"$env" | tail -n 1 | tr ',' '\n' |
     sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | grep -v '^$' || true
@@ -155,8 +161,13 @@ check_profile_names() {
 # Fails, naming them, if this Compose project has containers of services whose profile isn't on: services in
 # compose.yaml (in any profile) that Compose doesn't run with COMPOSE_PROFILES as it is.
 check_profile_containers() {
-  local project active every containers service profile members off="" named="" value
-  project=$(docker compose config | sed -n '1s/^name: //p') || return 1
+  local project active every containers service profile members off="" named="" value shown
+  # The project name from the JSON form, where it isn't quoted only when it needs to be (YAML quotes a name like 123).
+  project=$(docker compose config --format json | sed -n 's/^  "name": "\(.*\)",\{0,1\}$/\1/p') || return 1
+  if ! [[ $project =~ ^[a-z0-9][a-z0-9_-]*$ ]]; then
+    echo "error: couldn't read this Compose project's name (got '$project'), so its containers can't be checked" >&2
+    return 1
+  fi
   active=$(docker compose config --services) || return 1
   every=$(docker compose --profile '*' config --services) || return 1
   containers=$(docker ps --all --filter "label=com.docker.compose.project=$project" \
@@ -178,8 +189,9 @@ check_profile_containers() {
     done
   done
   value=$(profile_names | tr '\n' ',' | sed 's/,$//')
+  if [ -n "$value" ]; then shown="\"$value\""; else shown="empty or not set"; fi
   echo "error: containers of services whose profile isn't on are here:$named. COMPOSE_PROFILES is" \
-    "${value:+\"$value\"}${value:-empty or not set}, so Compose no longer manages them: deploys don't update them, and a" \
+    "$shown, so Compose no longer manages them: deploys don't update them, and a" \
     "backup would leave their data out. Add their profiles to COMPOSE_PROFILES in .env (every profile:" \
     "COMPOSE_PROFILES=$(docker compose config --profiles | tr '\n' ',' | sed 's/,$//')). If you turned a profile off" \
     "on purpose, remove its containers first: docker compose rm --stop --force$off (their data stays where it" \

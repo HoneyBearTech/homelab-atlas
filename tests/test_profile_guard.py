@@ -109,11 +109,47 @@ def test_backup_refuses_while_a_profile_with_containers_is_off(tmp_path: Path) -
 
 
 def test_a_typo_leaves_a_profile_off_and_is_caught_too(tmp_path: Path) -> None:
-    # Only the name check would catch "musik" if lidarr had no container; with one, both say what's wrong.
+    # "musik" leaves music off while lidarr has a container; the name check, which runs first, reports it.
     stack = Stack(tmp_path, compose_profiles="musik,requests")
     result = stack.run("backup.sh", str(tmp_path / "backup"))
     assert result.returncode == 1, result.stderr
     assert "musik" in error(result)
+    assert stack.log() == []
+
+
+def test_backup_names_each_service_left_off_by_a_partial_compose_profiles(tmp_path: Path) -> None:
+    services = {name: {"state": "running"} for name in ("radarr", "lidarr", "radarr4k", "sonarr4k")}
+    profile_of = {"lidarr": "music", "radarr4k": "4k", "sonarr4k": "4k"}
+    stack = Stack(tmp_path, services=services, profile_of=profile_of, compose_profiles="music")
+    result = stack.run("backup.sh", str(tmp_path / "backup"))
+    assert result.returncode == 1, result.stderr
+    assert error(result) == (
+        "error: containers of services whose profile isn't on are here: radarr4k (4k) sonarr4k (4k). "
+        'COMPOSE_PROFILES is "music", so Compose no longer manages them: deploys don\'t update them, and a backup '
+        "would leave their data out. Add their profiles to COMPOSE_PROFILES in .env (every profile: "
+        "COMPOSE_PROFILES=4k,music). If you turned a profile off on purpose, remove its containers first: "
+        "docker compose rm --stop --force radarr4k sonarr4k (their data stays where it is). "
+        "error: no backup taken; nothing was stopped"
+    )
+    assert not (tmp_path / "backup").exists()
+    assert stack.log() == []
+
+
+def test_backup_finds_the_containers_of_a_project_with_a_numeric_name(tmp_path: Path) -> None:
+    # YAML quotes such a name ("123"), which once made the label filter match nothing and the check pass.
+    stack = Stack(tmp_path, name="123")
+    result = stack.run("backup.sh", str(tmp_path / "backup"))
+    assert result.returncode == 1, result.stderr
+    assert "whose profile isn't on are here: lidarr (music) seerr (requests)" in error(result)
+
+
+def test_backup_says_which_compose_it_needs(tmp_path: Path) -> None:
+    stack = Stack(tmp_path, old_compose=True, compose_profiles="music,requests")
+    result = stack.run("backup.sh", str(tmp_path / "backup"))
+    assert result.returncode == 1, result.stderr
+    assert "needs Docker Compose 2.27.2 or later" in error(result)
+    assert "this is 2.20.3" in error(result)
+    assert "unknown flag" not in error(result)
     assert stack.log() == []
 
 
@@ -170,5 +206,5 @@ def test_restore_of_a_backup_from_before_the_profiles_says_to_turn_on_every_prof
     message = error(result)
     assert "whose profile isn't on here: lidarr." in message
     assert "Set COMPOSE_PROFILES in .env to every profile (COMPOSE_PROFILES=music,requests)" in message
-    assert "the backup has no COMPOSE_PROFILES, so it was taken before the profiles" in message
+    assert "the backup has no COMPOSE_PROFILES in its .env (taken before the profiles, or with" in message
     assert stack.log() == []

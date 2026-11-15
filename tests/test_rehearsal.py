@@ -1,7 +1,9 @@
-"""The steps scripts/rehearse-rebuild.sh takes from docs/rebuilding.md, through its --list mode (no Docker).
+"""The steps scripts/rehearse-rebuild.sh takes from docs/rebuilding.md, through its --list mode, and how it runs one,
+through its --run-step mode (no Docker).
 
 Each marked block of the doc is a step, in the doc's order, with the doc's host-specific values replaced by the
-rehearsal's own; unmarked blocks are never run.
+rehearsal's own; unmarked blocks are never run. A step stops at its first failing command, so a block with `&&` or
+`||` (which hide a failure on their left) is refused.
 """
 
 from __future__ import annotations
@@ -16,6 +18,17 @@ SCRIPT = ROOT / "scripts" / "rehearse-rebuild.sh"
 DOC = ROOT / "docs" / "rebuilding.md"
 BASH = shutil.which("bash") or "/bin/bash"
 MARKER = re.compile(r"^<!-- rehearse: ([a-z0-9-]+) -->\n```sh\n(.*?)^```$", re.MULTILINE | re.DOTALL)
+
+
+def run_step(tmp_path: Path, commands: str) -> subprocess.CompletedProcess[str]:
+    step = tmp_path / "step.sh"
+    step.write_text(commands, encoding="utf-8")
+    return subprocess.run(  # noqa: S603 # our own script
+        [BASH, str(SCRIPT), "--run-step", str(step)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
 
 
 def listing(doc: Path | None = None) -> subprocess.CompletedProcess[str]:
@@ -42,7 +55,7 @@ def minimal_doc(tmp_path: Path, extra: str = "", restore: str = "scripts/restore
         "rsync -rlpt backup-host:/volume1/<folder>/<date>-<time>/ <you>@<the new host>:restore/\n```\n\n"
         "```sh\nsudo apt install -y git   # not marked: never run\n```\n\n"
         "<!-- rehearse: checkout -->\n\n```sh\n"
-        "git clone https://github.com/HoneyBearTech/homelab-atlas.git && cd homelab-atlas\ngit checkout vX.Y.Z\n```\n\n"
+        "git clone https://github.com/HoneyBearTech/homelab-atlas.git\ncd homelab-atlas\ngit checkout vX.Y.Z\n```\n\n"
         "<!-- rehearse: directories -->\n```sh\nmkdir -p config\n```\n\n"
         f"<!-- rehearse: restore -->\n```sh\n{restore}\n```\n{extra}",
         encoding="utf-8",
@@ -133,3 +146,40 @@ def test_a_placeholder_the_rehearsal_cant_fill_fails(tmp_path: Path) -> None:
     result = listing(minimal_doc(tmp_path, restore="scripts/restore.sh /path/to/backup <the service>"))
     assert result.returncode == 1
     assert "placeholder the rehearsal can't fill: <the service>" in result.stderr
+
+
+def test_and_in_a_marked_block_is_refused(tmp_path: Path) -> None:
+    result = listing(minimal_doc(tmp_path, restore="scripts/restore.sh /path/to/backup && docker compose ps"))
+    assert result.returncode == 1
+    assert 'step "restore" has "&&" or "||"' in result.stderr
+    assert "put each command on its own line" in result.stderr
+    assert "rebuilding.md:" in result.stderr
+
+
+def test_or_in_a_marked_block_is_refused(tmp_path: Path) -> None:
+    result = listing(minimal_doc(tmp_path, extra="\n<!-- rehearse: check -->\n```sh\ndocker compose ps || true\n```\n"))
+    assert result.returncode == 1
+    assert 'step "check" has "&&" or "||"' in result.stderr
+
+
+def test_and_or_in_an_unmarked_block_is_left_alone(tmp_path: Path) -> None:
+    result = listing(minimal_doc(tmp_path, extra="\n```sh\nsudo apt update && sudo apt full-upgrade -y\n```\n"))
+    assert result.returncode == 0, result.stderr
+
+
+def test_a_failing_first_command_fails_the_step(tmp_path: Path) -> None:
+    result = run_step(tmp_path, "false\necho reached\n")
+    assert result.returncode != 0
+    assert "reached" not in result.stdout
+
+
+def test_a_settings_file_that_isnt_there_fails_the_step(tmp_path: Path) -> None:
+    result = run_step(tmp_path, ". ./.env\nmkdir -p made\necho reached\n")
+    assert result.returncode != 0
+    assert "reached" not in result.stdout
+
+
+def test_an_optional_copy_is_skipped_when_the_file_isnt_there(tmp_path: Path) -> None:
+    result = run_step(tmp_path, 'if [ -f "$HOME/absent" ]; then cp "$HOME/absent" .; fi\necho reached\n')
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "reached\n"

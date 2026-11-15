@@ -9,10 +9,15 @@
 #   scripts/rehearse-rebuild.sh            the whole rehearsal
 #   scripts/rehearse-rebuild.sh --list     only print the steps it would take from the doc, as it would run them
 #                                          (no Docker needed)
+#   scripts/rehearse-rebuild.sh --run-step FILE
+#                                          only run the commands in FILE as a step runs, in a throwaway home
+#                                          directory (for the tests; no Docker needed)
 #
 # The commands of the rebuild come from docs/rebuilding.md itself, so the doc can't drift from what works: each
 # fenced sh block right after a `<!-- rehearse: NAME -->` line is a step, run in the doc's order as a bash script with
-# `set -euo pipefail` (a failure in the middle of an `a && b` line doesn't stop a script: write that as `(a && b)`).
+# `set -euo pipefail`. Such a script doesn't stop at a failing command on the left of `&&` or `||`, so a marked block
+# with either is refused: each command goes on its own line, and one that only applies sometimes is written as
+# `if [ -f FILE ]; then ...; fi`.
 # Steps that need a real host (installing the OS and Docker, the NAS mount, verifying a release, the password manager,
 # the apps' own screens, the pull agent) aren't marked, and the rehearsal does without them or puts a stand-in in
 # their place (see below). The doc is read from the working tree; everything else comes from the last commit, which
@@ -55,7 +60,7 @@ fail() {
 }
 
 # Writes each marked step of doc $1 into directory $2 as <NN>-<name>.sh, in the doc's order; fails on a marker that
-# isn't followed by a sh fenced block, a block that never ends, or two steps with one name.
+# isn't followed by a sh fenced block, a block that never ends, two steps with one name, or `&&` or `||` in a step.
 extract_steps() {
   awk -v dir="$2" '
     function fail(msg) {
@@ -65,6 +70,11 @@ extract_steps() {
     }
     in_block {
       if ($0 ~ /^```[[:space:]]*$/) { in_block = 0; close(file); next }
+      if ($0 ~ /&&|[|][|]/) {
+        fail("step \"" step "\" has \"&&\" or \"||\", and a step does not stop at a failing command on the left of" \
+          " either: put each command on its own line, and write one that only applies sometimes as" \
+          " if [ -f FILE ]; then ...; fi")
+      }
       print > file
       next
     }
@@ -75,6 +85,7 @@ extract_steps() {
       file = sprintf("%s/%02d-%s.sh", dir, n, pending)
       printf "" > file
       in_block = 1
+      step = pending
       pending = ""
       next
     }
@@ -142,12 +153,31 @@ prepare_steps() {
   done
 }
 
+# Runs step file $1 as the doc's steps run: a bash script with `set -euo pipefail` (after the prelude file $4), with
+# home directory $2, in the directory named in file $3, which it then updates to the directory the step left.
+exec_step() {
+  HOME=$2 bash -c 'set -euo pipefail; shopt -s inherit_errexit 2>/dev/null || true
+    . "$1"; cd "$(cat "$2")"; . "$3"; pwd >"$2"' step "$4" "$3" "$1"
+}
+
 commit=$(git -C "$root" rev-parse HEAD)
 
 usage() {
-  echo "usage: $0 [--list [DOC]]" >&2
+  echo "usage: $0 [--list [DOC] | --run-step FILE]" >&2
   exit 2
 }
+
+# The commands in FILE, run as a step: in a throwaway home directory, which is also where they start. For the tests.
+if [ "${1:-}" = --run-step ]; then
+  [ $# -eq 2 ] || usage
+  work=$(mktemp -d)
+  trap 'rm -rf "$work"' EXIT
+  mkdir "$work/home"
+  echo "$work/home" >"$work/cwd"
+  : >"$work/prelude.sh"
+  exec_step "$2" "$work/home" "$work/cwd" "$work/prelude.sh" </dev/null
+  exit 0
+fi
 
 # The steps as they would run, each after a "--- <name>" line, with the temporary directory shown as $work and the
 # backup's name as YYYYMMDD-HHMMSS; DOC (default docs/rebuilding.md) is for the tests. Needs no Docker.
@@ -426,8 +456,7 @@ run_step() {
   echo "==> docs/rebuilding.md, step \"$name\", on the $machine:"
   sed 's/^/    /' "$file"
   status=0
-  HOME=$home bash -c 'set -euo pipefail; shopt -s inherit_errexit 2>/dev/null || true; . "$1"; cd "$(cat "$2")"
-    . "$3"; pwd >"$2"' step "$work/prelude.sh" "$work/$machine.cwd" "$file" <"$work/answers" || status=$?
+  exec_step "$file" "$home" "$work/$machine.cwd" "$work/prelude.sh" <"$work/answers" || status=$?
   [ "$status" -eq 0 ] || fail "step \"$name\" of docs/rebuilding.md failed (exit $status)"
 }
 

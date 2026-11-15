@@ -19,8 +19,10 @@ the backup directory as it was written on the old host, and copy that to the new
 <!-- rehearse: decrypt -->
 ```sh
 rsync -rlpt backup-host:/volume1/<folder>/<date>-<time>/ ~/sealed/
-(cd ~/sealed && sha256sum -c --quiet SHA256SUMS)
-(umask 077 && age -d -i atlas-backup.key ~/sealed/backup.tar.age | tar -x -C ~)   # ~/<date>-<time>/
+cd ~/sealed
+sha256sum -c --quiet SHA256SUMS   # stop here if it fails
+cd -
+(umask 077; age -d -i atlas-backup.key ~/sealed/backup.tar.age | tar -x -C ~)   # ~/<date>-<time>/
 rsync -rlpt ~/<date>-<time>/ <you>@<the new host>:restore/
 rm -rf ~/sealed ~/<date>-<time>
 ```
@@ -70,12 +72,17 @@ a file there.
 
 <!-- rehearse: checkout -->
 ```sh
-git clone https://github.com/HoneyBearTech/homelab-atlas.git && cd homelab-atlas
+git clone https://github.com/HoneyBearTech/homelab-atlas.git
+cd homelab-atlas
 git checkout vX.Y.Z      # the release in the backup's VERSION, or newer; verify it (verifying-releases.md)
-cp /path/to/backup/env/.env .env && chmod 600 .env
-cp /path/to/backup/env/autoheal.env autoheal.env && chmod 600 autoheal.env   # if the backup has one
-cp /path/to/backup/env/backup.env backup.env && chmod 600 backup.env         # if the backup has one
-cp /path/to/backup/env/seerr.env seerr.env && chmod 600 seerr.env            # if the backup has one
+cp /path/to/backup/env/.env .env
+chmod 600 .env
+for file in autoheal.env backup.env seerr.env; do   # each one the backup has
+  if [ -f "/path/to/backup/env/$file" ]; then
+    cp "/path/to/backup/env/$file" "$file"
+    chmod 600 "$file"
+  fi
+done
 ```
 
 A server that follows `main` ([upgrading.md](upgrading.md#following-main)) stays on `main` here instead
@@ -94,11 +101,13 @@ create them owned by root:
 
 <!-- rehearse: directories -->
 ```sh
-. ./.env && mkdir -p "$SABNZBD_INCOMPLETE_PATH" "$CONFIG_ROOT"/radarr/scripts "$CONFIG_ROOT"/radarr4k/scripts
+. ./.env
+mkdir -p "$SABNZBD_INCOMPLETE_PATH" "$CONFIG_ROOT"/radarr/scripts "$CONFIG_ROOT"/radarr4k/scripts
 for app in radarr radarr4k sonarr sonarr4k lidarr bazarr bazarr4k sabnzbd recyclarr seerr; do
   mkdir -p "$CONFIG_ROOT/$app/config"
 done
-docker compose config --quiet && docker compose pull
+docker compose config --quiet
+docker compose pull
 ```
 
 Put the Dozzle agent's certificate and key back from your password manager, owned by root, as
@@ -140,9 +149,11 @@ installation on the same machine as the smoke test is, and takes the nightly bac
 with an encrypted copy, in the format above, on a stand-in backup server. Then it throws the stack, its data, its
 settings and the backup on the host away and follows this page from a clean clone: every fenced block right after a
 `<!-- rehearse: name -->` comment (invisible on GitHub) runs in order, as a bash script that stops at the first failing
-command. It checks that every service is healthy, that each data mount holds what was backed up, that each app kept
-its API key, and that the settings files are the ones backed up. A step that no longer works fails the rehearsal, so
-keep the marked blocks runnable; leave a block unmarked if it only works on a real host.
+command. Such a script doesn't stop at a failing command on the left of `&&` or `||`, so the rehearsal refuses a
+marked block with either: put each command on its own line, and write one that only applies sometimes as
+`if [ -f ... ]; then ...; fi`. It checks that every service is healthy, that each data mount holds what was backed
+up, that each app kept its API key, and that the settings files are the ones backed up. A step that no longer works
+fails the rehearsal, so keep the marked blocks runnable; leave a block unmarked if it only works on a real host.
 
 The rehearsal stands in for what only a real host has, and changes nothing else in the marked steps: the clone and the
 release come from the commit under test, a local directory is the backup server, and the copy and the age key are its

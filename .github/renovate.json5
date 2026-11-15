@@ -14,7 +14,14 @@
   ],
 
   // Only the files listed in docs/dependencies.md.
-  enabledManagers: ["docker-compose", "pip_requirements", "github-actions", "gitlabci", "custom.regex"],
+  enabledManagers: ["docker-compose", "pip_requirements", "github-actions", "gitlabci", "pre-commit", "custom.regex"],
+
+  // Renovate's pre-commit manager is off by default; this turns it on for .pre-commit-config.yaml (the hook revs and
+  // the `additional_dependencies` of python hooks, i.e. shellcheck-py). Its image pin is read by the regex manager
+  // below, not here, so nothing is proposed twice.
+  "pre-commit": {
+    enabled: true,
+  },
 
   // Mondays from 06:00 UTC.
   timezone: "Etc/UTC",
@@ -35,6 +42,19 @@
   automergeStrategy: "squash",
   platformAutomerge: true,
 
+  // Every update waits three days after its release before it is proposed, then merges as above: a release that is
+  // pulled or fixed within days never reaches the server. Fixes for vulnerability alerts skip the wait
+  // (`vulnerabilityAlerts` sets `minimumReleaseAge: null` by default).
+  // Some updates have no release timestamp to age: a rebuilt image under the same tag (a digest-only update, such as
+  // autoheal:latest or a linuxserver.io rebuild), and any registry that doesn't report one. The default,
+  // `minimumReleaseAgeBehaviour: "timestamp-required"`, holds those back as pending, and with the default
+  // `internalChecksFilter: "strict"` they would never be proposed. "timestamp-optional" lets them through
+  // without the wait, so rebuilds keep arriving; updates that do have a timestamp still wait.
+  // https://docs.renovatebot.com/configuration-options/#minimumreleaseage
+  // https://docs.renovatebot.com/configuration-options/#minimumreleaseagebehaviour
+  minimumReleaseAge: "3 days",
+  minimumReleaseAgeBehaviour: "timestamp-optional",
+
   // The check and test tools, pinned with hashes. Each pin in requirements-dev.txt is bumped in place with its
   // hashes; a tool that gains a new dependency of its own still needs a pip-compile run by hand (the pip-compile
   // manager can't read this file's header line).
@@ -45,9 +65,14 @@
   customManagers: [
     {
       // Images that no other manager reads, bumped by hand until now: the ones `docker run` starts in workflow
-      // steps (actionlint, gitleaks, Trivy) and the backup scripts' busybox (scripts/lib.sh).
+      // steps (actionlint, gitleaks, Trivy), the backup scripts' busybox (scripts/lib.sh) and the actionlint image
+      // the pre-commit hook runs (.pre-commit-config.yaml; its hook revs belong to the pre-commit manager).
       customType: "regex",
-      managerFilePatterns: ["/^\\.github/workflows/[^/]+\\.ya?ml$/", "/^scripts/[^/]+\\.sh$/"],
+      managerFilePatterns: [
+        "/^\\.github/workflows/[^/]+\\.ya?ml$/",
+        "/^scripts/[^/]+\\.sh$/",
+        "/^\\.pre-commit-config\\.ya?ml$/",
+      ],
       matchStrings: [
         "(?<depName>[a-z0-9][a-z0-9./-]*[a-z0-9]):(?<currentValue>[A-Za-z0-9][A-Za-z0-9._-]*)@(?<currentDigest>sha256:[0-9a-f]{64})",
       ],
@@ -56,6 +81,12 @@
   ],
 
   packageRules: [
+    {
+      // The smoke test's `runs-on: ubuntu-24.04` (ci.yml) matches the server's Ubuntu release, so it moves with the
+      // server, by hand, not when GitHub offers a newer label.
+      matchDatasources: ["github-runners"],
+      enabled: false,
+    },
     {
       // linuxserver.io images are pinned by their `version-<app version>` tag (version-6.4.4.10685, version-v1.6.2),
       // which always points at the newest build of that app version: a new app version is a new tag, a rebuild is a

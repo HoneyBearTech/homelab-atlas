@@ -228,18 +228,24 @@ export COMPOSE_PROJECT_NAME=$project
 # A state directory that doesn't exist: the scripts never take, or wait for, a real pull agent's deploy lock.
 export HOMELAB_PULL_STATE_DIR=$work/homelab-pull
 # Each host's compose.yaml, with the isolation override (no fixed names, no published ports, any address range).
-use_host() { export COMPOSE_FILE=$1/compose.yaml:$work/override.yaml; }
+host=""
+use_host() {
+  host=$1
+  export COMPOSE_FILE=$1/compose.yaml:$work/override.yaml
+}
 
-compose() { docker compose "$@"; }
+# Compose for the current host, wherever it runs from: its settings come from that host's .env, never from one in the
+# caller's directory.
+compose() { docker compose --project-directory "$host" "$@"; }
 
 networks=()
 cleanup() {
   status=$?
-  if [ "$status" -ne 0 ] && [ -n "${COMPOSE_FILE:-}" ] && [ -f "${COMPOSE_FILE%%:*}" ]; then
+  if [ "$status" -ne 0 ] && [ -n "$host" ] && [ -f "$host/compose.yaml" ]; then
     compose ps --all || true
     compose logs --no-color --tail 50 || true
   fi
-  if [ -n "${COMPOSE_FILE:-}" ] && [ -f "${COMPOSE_FILE%%:*}" ]; then
+  if [ -n "$host" ] && [ -f "$host/compose.yaml" ]; then
     compose down --remove-orphans --timeout 30 >/dev/null 2>&1 || true
   fi
   # Whatever Compose didn't remove (a host's checkout may be gone): only what is labelled with this project.
@@ -352,7 +358,8 @@ chmod 600 "$old/.env" "$old/autoheal.env" "$old/seerr.env" "$old/backup.env"
 # Every directory a service bind-mounts, made by the user the apps run as (PUID), as the install docs have it.
 while IFS= read -r source; do
   case $source in "$work"/*) mkdir -p "$source" ;; esac
-done < <(cd "$old" && COMPOSE_FILE=$old/compose.yaml docker compose config | sed -n 's/^ *source: //p')
+done < <(COMPOSE_FILE=$old/compose.yaml docker compose --project-directory "$old" config |
+  sed -n 's/^ *source: //p')
 while IFS='=' read -r key value; do
   case $key in
     *_NETWORK)
@@ -431,6 +438,7 @@ for network in "${networks[@]+"${networks[@]}"}"; do docker network rm "$network
 networks=()
 docker run --rm --network none -v "$work:/work" "$busybox" rm -rf /work/old-host /work/srv </dev/null
 unset COMPOSE_FILE
+host=""
 [ ! -e "$work/old-host" ] && [ ! -e "$work/srv" ] || fail "the old host's files are still there"
 [ -z "$(docker ps --all --quiet --filter "label=com.docker.compose.project=$project")" ] ||
   fail "the old host's containers are still there"

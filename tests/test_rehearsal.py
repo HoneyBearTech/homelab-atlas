@@ -183,3 +183,10 @@ def test_an_optional_copy_is_skipped_when_the_file_isnt_there(tmp_path: Path) ->
     result = run_step(tmp_path, 'if [ -f "$HOME/absent" ]; then cp "$HOME/absent" .; fi\necho reached\n')
     assert result.returncode == 0, result.stderr
     assert result.stdout == "reached\n"
+
+
+def test_every_compose_call_outside_the_steps_names_the_hosts_directory() -> None:
+    # Otherwise Compose would read a .env in the caller's directory, such as a real installation's.
+    for number, line in enumerate(SCRIPT.read_text(encoding="utf-8").splitlines(), start=1):
+        if "docker compose" in line and not line.lstrip().startswith("#"):
+            assert "--project-directory" in line, f"{SCRIPT.name}:{number}: {line}"

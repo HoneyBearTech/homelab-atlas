@@ -33,7 +33,8 @@ file changes with them, in the same pull request.
 
 ## Later
 
-- Read-only root filesystems for the linuxserver.io apps, if their images ever allow it.
+- Read-only root filesystems for the linuxserver.io apps, if their images ever allow it. Checked November 2026:
+  they start read-only, but then ignore `PUID`, `PGID` and `UMASK` ([security.md](security.md#hardening)).
 - Optional services as Compose profiles, so a smaller installation can leave them out.
 
 ## Security and project health

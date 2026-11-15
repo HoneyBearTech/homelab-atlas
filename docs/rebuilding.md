@@ -4,7 +4,9 @@ How to bring the stack back on a new or wiped machine from a backup made by `scr
 ([upgrading.md](upgrading.md#backing-up)), with every app's settings, history and API keys as they were. The
 backup and restore scripts run end to end in CI on every change (the smoke test backs up the running stack,
 changes it, restores it and checks the result, and copies a scheduled backup, plain and encrypted with age, to a
-stand-in backup server).
+stand-in backup server). This page itself is rehearsed every week and on every change to it or to the scripts: on a
+fresh machine, the rehearsal runs its marked steps in order and checks the result
+([below](#what-the-rehearsal-covers)).
 
 You need: the backup directory (copied off the old host), **the age private key** it was encrypted to if the copies
 off the host are encrypted (`BACKUP_AGE_RECIPIENT`), access to the media storage, and this repository.
@@ -14,9 +16,10 @@ the machine that holds the age private key, never on the backup server or the ne
 (a copy that was cut off has no `SHA256SUMS`, which is sent last: take the one before), then decrypt it, which gives
 the backup directory as it was written on the old host, and copy that to the new host:
 
+<!-- rehearse: decrypt -->
 ```sh
 rsync -rlpt backup-host:/volume1/<folder>/<date>-<time>/ ~/sealed/
-cd ~/sealed && sha256sum -c --quiet SHA256SUMS && cd -
+(cd ~/sealed && sha256sum -c --quiet SHA256SUMS)
 (umask 077 && age -d -i atlas-backup.key ~/sealed/backup.tar.age | tar -x -C ~)   # ~/<date>-<time>/
 rsync -rlpt ~/<date>-<time>/ <you>@<the new host>:restore/
 rm -rf ~/sealed ~/<date>-<time>
@@ -65,6 +68,7 @@ a file there.
 
 ## 4. The repository and settings
 
+<!-- rehearse: checkout -->
 ```sh
 git clone https://github.com/HoneyBearTech/homelab-atlas.git && cd homelab-atlas
 git checkout vX.Y.Z      # the release in the backup's VERSION, or newer; verify it (verifying-releases.md)
@@ -88,6 +92,7 @@ of the old source path in the manifest. Never point `CONFIG_ROOT` into `/var/lib
 ([installing.md](installing.md#where-data-lives)). Create the host directories as the `PUID` user, so Docker doesn't
 create them owned by root:
 
+<!-- rehearse: directories -->
 ```sh
 . ./.env && mkdir -p "$SABNZBD_INCOMPLETE_PATH" "$CONFIG_ROOT"/radarr/scripts "$CONFIG_ROOT"/radarr4k/scripts
 for app in radarr radarr4k sonarr sonarr4k lidarr bazarr bazarr4k sabnzbd recyclarr seerr; do
@@ -102,6 +107,7 @@ restore can't create the agent's container.
 
 ## 5. Restore and start
 
+<!-- rehearse: restore -->
 ```sh
 scripts/restore.sh /path/to/backup    # verifies SHA256SUMS, creates the containers, asks first
 docker compose up -d --wait           # waits until every service reports healthy
@@ -123,3 +129,33 @@ should be found. Check Recyclarr's log after its next run (`docker compose logs 
   password manager (step 4).
 - **Other machines' view of this one**: if the host's address changed, update whatever calls these apps by
   address (the indexer manager, the media server, a reverse proxy, dashboards).
+
+## What the rehearsal covers
+
+The "Rebuild rehearsal" workflow (`.github/workflows/rehearsal.yml`, weekly, on demand, and on pull requests that
+change this page, `scripts/`, `compose.yaml` or `.env.example`) runs `scripts/rehearse-rebuild.sh` on a fresh
+Ubuntu 24.04 machine; locally, `scripts/rehearse-rebuild.sh` does the same (it needs Docker, age and rsync, and
+`--list` prints the steps it would run). It starts the whole stack with throwaway settings, isolated from any
+installation on the same machine as the smoke test is, and takes the nightly backup (`scripts/scheduled-backup.sh`)
+with an encrypted copy, in the format above, on a stand-in backup server. Then it throws the stack, its data, its
+settings and the backup on the host away and follows this page from a clean clone: every fenced block right after a
+`<!-- rehearse: name -->` comment (invisible on GitHub) runs in order, as a bash script that stops at the first failing
+command. It checks that every service is healthy, that each data mount holds what was backed up, that each app kept
+its API key, and that the settings files are the ones backed up. A step that no longer works fails the rehearsal, so
+keep the marked blocks runnable; leave a block unmarked if it only works on a real host.
+
+The rehearsal stands in for what only a real host has, and changes nothing else in the marked steps: the clone and the
+release come from the commit under test, a local directory is the backup server, and the copy and the age key are its
+own. The media storage is an empty directory, and the Dozzle agent's certificate and key come back from where it kept
+them. The script's header lists each substitution.
+
+It doesn't cover, and you check by hand on a real rebuild:
+
+- **Installing the system and Docker** (steps 1 and 2): the rehearsal machine comes with both.
+- **The NAS mount** (step 3), its `/etc/fstab` line, and that the media's layout matches the old host's.
+- **The real backup server**, the SSH key and alias to reach it, and **the real age key** from your password manager.
+- **Verifying the release** (`verifying-releases.md`): the rehearsal checks out the commit it tests.
+- **The password manager**, for the Dozzle agent's certificate and key.
+- **The apps' own screens** (System → Status, root folders), and Recyclarr's next run.
+- **The pull agent** for a server that follows `main`, the scheduled backup's systemd units, and the other host
+  settings listed above.

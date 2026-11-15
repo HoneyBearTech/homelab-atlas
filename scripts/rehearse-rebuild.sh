@@ -501,7 +501,7 @@ done
 # ---- Checks ----------------------------------------------------------------------------------------------------------
 echo "==> Checking the rebuilt host"
 [ "$(git -C "$new" rev-parse HEAD)" = "$commit" ] || fail "the new host's checkout isn't at $commit"
-[ "$(compose config --services)" = "$services" ] ||
+[ "$(compose config --services | sort)" = "$(sort <<<"$services")" ] ||
   fail "the new host doesn't run the services the old one did (its COMPOSE_PROFILES, from the backup's .env)"
 for service in $services; do
   id=$(compose ps --all --quiet "$service")

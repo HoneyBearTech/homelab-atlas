@@ -349,11 +349,12 @@ printf 'BACKUP_DIR=%s\nBACKUP_KEEP=1\nBACKUP_REMOTE=%s\nBACKUP_AGE_RECIPIENT=%s\
   "$work/backup-server/atlas-backups" "$recipient" >"$old/backup.env"
 chmod 600 "$old/.env" "$old/autoheal.env" "$old/seerr.env" "$old/backup.env"
 
-# Project-scoped container names, no published ports, and whatever address range Docker picks for the stack's network.
+# Project-scoped container names, no published ports, and whatever address range Docker picks for the stack's network,
+# for the services of every profile.
 {
   echo "services:"
-  for service in $(COMPOSE_FILE=$old/compose.yaml docker compose --project-directory "$old" config --no-interpolate \
-    --services); do
+  for service in $(COMPOSE_FILE=$old/compose.yaml docker compose --project-directory "$old" --profile '*' config \
+    --no-interpolate --services); do
     printf '  %s:\n    container_name: !reset null\n    ports: !reset []\n' "$service"
   done
   printf 'networks:\n  default:\n    ipam: !reset {}\n'
@@ -362,7 +363,7 @@ chmod 600 "$old/.env" "$old/autoheal.env" "$old/seerr.env" "$old/backup.env"
 # Every directory a service bind-mounts, made by the user the apps run as (PUID), as the install docs have it.
 while IFS= read -r source; do
   case $source in "$work"/*) mkdir -p "$source" ;; esac
-done < <(COMPOSE_FILE=$old/compose.yaml docker compose --project-directory "$old" config |
+done < <(COMPOSE_FILE=$old/compose.yaml docker compose --project-directory "$old" --profile '*' config |
   sed -n 's/^ *source: //p')
 while IFS='=' read -r key value; do
   case $key in
@@ -374,10 +375,14 @@ while IFS='=' read -r key value; do
 done <"$old/.env"
 
 (cd "$old" && compose config --quiet)
+# The services the old host runs: the core ones and those of the profiles its .env (COMPOSE_PROFILES, from
+# .env.example) turns on, which must be all of them.
 services=$(cd "$old" && compose config --services)
+missing=$(comm -13 <(sort <<<"$services") <(cd "$old" && compose --profile '*' config --services | sort) | tr '\n' ' ')
+[ -z "$missing" ] || fail "the rehearsal starts every service, but COMPOSE_PROFILES in .env.example leaves out: $missing"
 echo "Pulling the images"
 for attempt in 1 2 3 4; do
-  if (cd "$old" && COMPOSE_PARALLEL_LIMIT=4 compose pull --quiet --policy missing); then break; fi
+  if (cd "$old" && COMPOSE_PARALLEL_LIMIT=4 compose --profile '*' pull --quiet --policy missing); then break; fi
   [ "$attempt" -lt 4 ] || fail "couldn't pull the images after $attempt attempts"
   echo "Pull failed (attempt $attempt); retrying in $((attempt * 20))s"
   sleep $((attempt * 20))
@@ -496,7 +501,9 @@ done
 # ---- Checks ----------------------------------------------------------------------------------------------------------
 echo "==> Checking the rebuilt host"
 [ "$(git -C "$new" rev-parse HEAD)" = "$commit" ] || fail "the new host's checkout isn't at $commit"
-for service in $(compose config --services); do
+[ "$(compose config --services)" = "$services" ] ||
+  fail "the new host doesn't run the services the old one did (its COMPOSE_PROFILES, from the backup's .env)"
+for service in $services; do
   id=$(compose ps --all --quiet "$service")
   [ -n "$id" ] || fail "$service has no container on the new host"
   state=$(docker inspect --format '{{.State.Status}}/{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$id")

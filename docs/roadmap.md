@@ -37,7 +37,9 @@ file changes with them, in the same pull request.
 
 - Read-only root filesystems for the linuxserver.io apps, if their images ever allow it. Checked November 2026:
   they start read-only, but then ignore `PUID`, `PGID` and `UMASK` ([security.md](security.md#hardening)).
-- Optional services as Compose profiles, so a smaller installation can leave them out.
+- Done: optional services as Compose profiles (`4k`, `music`, `requests`, `logs`, `autoheal`), so a smaller
+  installation can leave them out ([installing.md](installing.md)); the backup refuses to run while
+  `COMPOSE_PROFILES` is missing or mistyped.
 
 ## Security and project health
 

@@ -29,7 +29,9 @@ file changes with them, in the same pull request.
 - Done: each app's config in a directory on the host (`CONFIG_ROOT`) instead of a Docker volume, for simpler
   backups and rebuilds.
 - Done: backups and restores hold off the pull agent's deploys while they run.
-- Rehearse the documented rebuild ([rebuilding.md](rebuilding.md)) on a scratch host.
+- Done: the documented rebuild is rehearsed in CI on a fresh runner every week and on every change to it
+  ([rebuilding.md](rebuilding.md#what-the-rehearsal-covers)); only the NAS mount, the real backup server, the
+  password manager and the apps' own screens still need a real host.
 
 ## Later
 

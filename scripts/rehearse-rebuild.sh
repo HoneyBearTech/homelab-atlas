@@ -17,7 +17,8 @@
 # fenced sh block right after a `<!-- rehearse: NAME -->` line is a step, run in the doc's order as a bash script with
 # `set -euo pipefail`. Such a script doesn't stop at a failing command on the left of `&&` or `||`, so a marked block
 # with either is refused: each command goes on its own line, and one that only applies sometimes is written as
-# `if [ -f FILE ]; then ...; fi`. The steps run with a home directory in the rehearsal's temporary directory (the key
+# `if [ -f FILE ]; then ...; fi`. A command as an `if`/`while` condition, `! command` and `$(command)` inside another
+# command hide a failure too and aren't refused; docs/rebuilding.md asks that marked blocks avoid them. The steps run with a home directory in the rehearsal's temporary directory (the key
 # holder's, below, or the new host's), never the caller's; Docker still uses the caller's configuration.
 # Steps that need a real host (installing the OS and Docker, the NAS mount, verifying a release, the password manager,
 # the apps' own screens, the pull agent) aren't marked, and the rehearsal does without them or puts a stand-in in

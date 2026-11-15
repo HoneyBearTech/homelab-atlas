@@ -36,6 +36,8 @@ jobs:
       # come with a Docker Hub entry of its own (x64 does), and the Dozzle agent and the socket proxy get the socket.
       # The images of every Compose profile: the rehearsal starts every service.
       - name: Pull the stack's images
+        # `shell: bash` runs the step with pipefail, so a failing `config --images` fails it instead of pulling nothing.
+        shell: bash
         run: |
           trap 'docker logout' EXIT
           {

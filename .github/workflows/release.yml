@@ -31,7 +31,8 @@ jobs:
         with:
           python-version: "3.15"
 
-      # The release must meet the same policy as main: every image pinned by digest, nothing privileged.
+      # The release must meet the same policy as main: every image pinned by digest, nothing privileged. Both the
+      # check and the SBOM cover every profile (--profile '*'), whichever an installation turns on.
       - name: Policy check and SBOM
         env:
           TAG: ${{ github.ref_name }}
@@ -42,7 +43,7 @@ jobs:
             exit 1
           fi
           cp .env.example .env
-          docker compose config --format json > compose.json
+          docker compose --profile '*' config --format json > compose.json
           python scripts/check_compose.py compose.json --sbom "homelab-atlas-${version}.cdx.json"
 
       - name: Source archive and checksums

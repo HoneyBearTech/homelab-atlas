@@ -83,7 +83,8 @@ jobs:
           coverage report
 
       # The stack itself: the Compose file resolves with the example settings, and every service meets the
-      # policy (pinned by digest, nothing privileged; scripts/check_compose.py). Skipped until compose.yaml exists.
+      # policy (pinned by digest, nothing privileged; scripts/check_compose.py), in every profile (--profile '*'),
+      # whichever an installation turns on. Skipped until compose.yaml exists.
       - name: Compose file and policy
         run: |
           if [ ! -f compose.yaml ]; then
@@ -91,8 +92,8 @@ jobs:
             exit 0
           fi
           cp .env.example .env
-          docker compose config --quiet
-          docker compose config --format json | python scripts/check_compose.py
+          docker compose --profile '*' config --quiet
+          docker compose --profile '*' config --format json | python scripts/check_compose.py
 
   smoke:
     # A required check on main, like "Checks + tests", so an image that doesn't start can't be auto-merged.
@@ -125,15 +126,18 @@ jobs:
           else
             echo "::notice::No Docker Hub token; pulling anonymously"
           fi
-          { docker compose --env-file .env.example config --images; sed -n 's/^busybox=//p' scripts/lib.sh; } |
-            sort -u | while read -r image; do
-              for attempt in 1 2 3 4; do
-                if docker pull --quiet "$image"; then break; fi
-                if [ "$attempt" -eq 4 ]; then exit 1; fi
-                echo "Pull of $image failed (attempt $attempt); retrying in $((attempt * 20))s"
-                sleep $((attempt * 20))
-              done
+          # Every profile's images: the first smoke test runs them all.
+          {
+            docker compose --env-file .env.example --profile '*' config --images
+            sed -n 's/^busybox=//p' scripts/lib.sh
+          } | sort -u | while read -r image; do
+            for attempt in 1 2 3 4; do
+              if docker pull --quiet "$image"; then break; fi
+              if [ "$attempt" -eq 4 ]; then exit 1; fi
+              echo "Pull of $image failed (attempt $attempt); retrying in $((attempt * 20))s"
+              sleep $((attempt * 20))
             done
+          done
 
       - name: No Docker Hub login left
         run: |

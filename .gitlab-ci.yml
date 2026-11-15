@@ -46,15 +46,16 @@ mirror:
     - git fetch --no-tags "$MIRROR_SOURCE" "refs/heads/main:refs/heads/main" "refs/tags/*:refs/tags/*"
     - git push "$CI_SERVER_URL/$CI_PROJECT_PATH.git" "refs/heads/main:refs/heads/main" "refs/tags/*:refs/tags/*"
 
-# docker compose config needs only the CLI, not a daemon; the resolved file goes to the policy check.
+# docker compose config needs only the CLI, not a daemon; the resolved file, with every profile (--profile '*'), goes
+# to the policy check.
 compose-config:
   extends: .checks
   stage: config
   image: docker:29.9.3-cli@sha256:5a7af0dcb0e46c803efe9b45371dd21cb500e5b4453250394ac6f06d49b6e6f1
   script:
     - cp .env.example .env
-    - docker compose config --quiet
-    - docker compose config --format json > compose.resolved.json
+    - docker compose --profile '*' config --quiet
+    - docker compose --profile '*' config --format json > compose.resolved.json
   artifacts:
     paths: [compose.resolved.json]
     expire_in: 1 day

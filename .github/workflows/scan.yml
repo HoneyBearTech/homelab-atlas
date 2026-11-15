@@ -28,7 +28,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # One entry per distinct image (radarr and radarr4k share one). The name is the image's last path
+      # One entry per distinct image of every profile (radarr and radarr4k share one). The name is the image's last path
       # segment, which keeps each image's code scanning category stable across version bumps.
       - name: List the images in compose.yaml
         id: list
@@ -39,7 +39,7 @@ jobs:
             exit 0
           fi
           cp .env.example .env
-          matrix=$(docker compose config --images | sort -u | jq -R -s -c '
+          matrix=$(docker compose --profile '*' config --images | sort -u | jq -R -s -c '
             split("\n") | map(select(length > 0))
             | map({image: ., name: (split("@")[0] | split(":")[0] | split("/")[-1])})')
           echo "$matrix" | jq .

@@ -81,10 +81,12 @@
 
   packageRules: [
     {
-      // A rebuild (a new digest under the same tag) doesn't wait: Docker Hub dates it by the tag's last push, so a tag
-      // rebuilt about weekly would restart the clock each time and never get through the Monday-only schedule
-      // (https://docs.renovatebot.com/key-concepts/minimum-release-age/#digest-updates). Rebuilds are mostly
-      // base-image security refreshes, and the smoke test and the required checks still gate them.
+      // An image rebuild (a new digest under the same tag) doesn't wait: Docker Hub dates it by the tag's last push,
+      // so a tag rebuilt about weekly would restart the clock each time and never get through the Monday-only
+      // schedule (https://docs.renovatebot.com/key-concepts/minimum-release-age/#digest-updates). Rebuilds are mostly
+      // base-image security refreshes, and the smoke test and the required checks still gate them. Only images:
+      // a moved tag on a pre-commit hook or an Action is also a "digest" update, and keeps the 3-day wait.
+      matchDatasources: ["docker"],
       matchUpdateTypes: ["digest"],
       minimumReleaseAge: null,
     },
@@ -96,7 +98,9 @@
     },
     {
       // A tool is pinned twice (requirements-dev.txt for CI and `make`, .pre-commit-config.yaml for the hooks):
-      // one pull request moves both, so they never disagree.
+      // grouping usually moves both in one pull request. It is best-effort: Renovate leaves a member that hasn't
+      // waited out its 3 days out of an otherwise ready group, so the two can differ for a week, which is harmless
+      // (CI uses requirements-dev.txt).
       matchPackageNames: ["ruff", "astral-sh/ruff-pre-commit"],
       groupName: "ruff",
     },

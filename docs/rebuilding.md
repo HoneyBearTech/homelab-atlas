@@ -91,13 +91,19 @@ A server that follows `main` ([upgrading.md](upgrading.md#following-main)) stays
 A backup without a `VERSION` file was made by 0.3.1 or earlier, in the older archive format: check out v0.3.1 to
 restore it.
 
+The backup's `.env` has the `COMPOSE_PROFILES` it was taken with: keep it, so the restore finds the services of
+every profile in the backup ([installing.md](installing.md#optional-services)); `scripts/restore.sh` refuses a
+service whose profile is off, and names it.
+
 Edit `.env` if the new host's paths differ (`MEDIA_ROOT`, `CONFIG_ROOT`, `SABNZBD_INCOMPLETE_PATH`). Older backups
 made before the `CONFIG_ROOT` layout was introduced may still contain `APPDATA_ROOT` or
 `RECYCLARR_CONFIG_PATH`; those legacy settings are not read by this Compose stack. Remove them, set `CONFIG_ROOT`
 as in `.env.example`, and restore places each archived mount at the matching current container path, independent
 of the old source path in the manifest. Never point `CONFIG_ROOT` into `/var/lib/docker/volumes`
 ([installing.md](installing.md#where-data-lives)). Create the host directories as the `PUID` user, so Docker doesn't
-create them owned by root:
+create them owned by root. The loop lists every app; leave out those whose profile is off (`radarr4k`, `sonarr4k`
+and `bazarr4k` without `4k`, `lidarr` without `music`, `seerr` without `requests`, and `radarr4k/scripts` without
+`4k`):
 
 <!-- rehearse: directories -->
 ```sh
@@ -110,8 +116,8 @@ docker compose config --quiet
 docker compose pull
 ```
 
-Put the Dozzle agent's certificate and key back from your password manager, owned by root, as
-[installing.md](installing.md#dozzles-certificate) describes: they aren't in the backup, and without them the
+With the `logs` profile, put the Dozzle agent's certificate and key back from your password manager, owned by root,
+as [installing.md](installing.md#dozzles-certificate) describes: they aren't in the backup, and without them the
 restore can't create the agent's container.
 
 ## 5. Restore and start

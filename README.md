@@ -33,7 +33,9 @@ Docker Compose stack for Atlas, the homelab media automation server running the 
 Radarr and Sonarr (regular and 4K instances), Lidarr, Bazarr (regular and 4K), SABnzbd, Recyclarr and Seerr (requests), plus
 a Dozzle agent (container logs, for the homelab's Dozzle) and autoheal (restarts an app that turns unhealthy), all from their upstream images ([architecture](docs/architecture.md),
 ports in [interfaces](docs/interfaces.md#services-and-ports)). The indexer manager, the torrent client and the
-media server run on other hosts.
+media server run on other hosts. Radarr, Sonarr, Bazarr, SABnzbd and Recyclarr always run; the 4K instances,
+Lidarr, Seerr, the Dozzle agent and autoheal are optional Compose profiles, all turned on in `.env.example`
+([installing](docs/installing.md#optional-services)).
 
 Every image is pinned by tag **and** digest. New versions arrive as Renovate pull requests that CI checks
 before they're merged. The maintainer's server follows `main`: a pull agent there applies each merge within a couple

@@ -45,6 +45,21 @@ nightly backup copied to another machine, encrypted with age when `BACKUP_AGE_RE
 [installing.md](installing.md#scheduled-backups) describes.
 On a server with the pull agent, the backup first takes the agent's deploy lock ([Following `main`](#following-main)).
 
+## Optional services (profiles)
+
+Every service except Radarr, Sonarr, Bazarr, SABnzbd and Recyclarr is in a Compose profile and runs only when
+`COMPOSE_PROFILES` in `.env` names it ([installing.md](installing.md#optional-services)). An installation from
+before the profiles has no such line. **Existing installations: add `COMPOSE_PROFILES` to `.env` before pulling
+this change** (before checking out the release that brings it, or, on a server that follows `main`, before it's
+merged), with every profile to keep running everything:
+
+```
+COMPOSE_PROFILES=4k,music,requests,logs,autoheal
+```
+
+Without it Compose manages the core services only: the other containers keep running as they are, but no deploy
+updates them any more, and the nightly backup leaves their data out.
+
 ## Upgrading
 
 ```sh

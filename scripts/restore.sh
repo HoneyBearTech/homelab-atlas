@@ -14,7 +14,10 @@
 # of a Docker volume restores into the directory that replaced it): a container created from an older compose.yaml
 # is recreated first, and a directory that doesn't exist yet is created. On a new host, restore .env from DIR/env
 # first; the containers, and the volumes and directories they mount, are created as needed. Uses `docker compose`
-# from the checkout, so the standard Compose variables select another project, as in scripts/backup.sh.
+# from the checkout, so the standard Compose variables select another project, as in scripts/backup.sh. Restore with
+# the COMPOSE_PROFILES the backup was taken with (its env/.env has it): it refuses to restore a service whose profile
+# isn't on, and names it, and one while COMPOSE_PROFILES names something that isn't a profile. A backup with no
+# COMPOSE_PROFILES in its .env was taken before the profiles (with every service) or with the value set outside .env.
 #
 # Like scripts/backup.sh, it holds the pull agent's lock from the start (also while it asks), so no deploy starts or
 # recreates a service during the restore.
@@ -51,9 +54,13 @@ echo "Verifying $backup/SHA256SUMS"
 grep -q ' MANIFEST$' "$backup/SHA256SUMS" || fail "SHA256SUMS doesn't cover the MANIFEST"
 
 # The archives to restore, from the MANIFEST, for the services asked for (or all). Its names are checked before
-# they're used: an archive is a plain file in DIR, a mount an absolute container path.
+# they're used: an archive is a plain file in DIR, a mount an absolute container path. A service of a profile that is
+# off (not in COMPOSE_PROFILES) is refused, unless it isn't among the services asked for.
+check_profile_names || fail "nothing changed"
 known=" $(docker compose config --services | tr '\n' ' ') "
+every=" $(docker compose --profile '*' config --services | tr '\n' ' ') "
 entries=()
+inactive=""
 while IFS=$'\t' read -r archive service mount _; do
   case $archive in '#'* | '') continue ;; esac
   if [[ ! "$archive" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*\.tar\.gz$ ]] || [ ! -f "$backup/$archive" ]; then
@@ -62,11 +69,28 @@ while IFS=$'\t' read -r archive service mount _; do
   if [[ ! "$mount" =~ ^/[A-Za-z0-9_.@/-]+$ ]] || [[ "$mount" == *..* || "$mount" == *docker.sock ]]; then
     fail "$archive has an unusable mount path: $mount"
   fi
-  if [[ "$known" != *" $service "* ]]; then
+  if [[ "$every" != *" $service "* ]]; then
     fail "$archive belongs to $service, which isn't in compose.yaml"
   fi
-  if [ $# -eq 0 ] || [[ " $* " == *" $service "* ]]; then entries+=("$archive	$service	$mount"); fi
+  if [ $# -eq 0 ] || [[ " $* " == *" $service "* ]]; then
+    if [[ "$known" != *" $service "* ]]; then
+      case " $inactive " in *" $service "*) ;; *) inactive="$inactive $service" ;; esac
+    fi
+    entries+=("$archive	$service	$mount")
+  fi
 done <"$backup/MANIFEST"
+if [ -n "$inactive" ]; then
+  taken=$(grep -rhs '^COMPOSE_PROFILES=' "$backup/env" | tail -n 1 || true)
+  every_profile=$(docker compose config --profiles | tr '\n' ',' | sed 's/,$//')
+  if [ -n "$taken" ]; then
+    how="as when the backup was taken ($taken, from $backup/env)"
+  else
+    how="to every profile (COMPOSE_PROFILES=$every_profile): the backup has no COMPOSE_PROFILES in its .env (taken"
+    how="$how before the profiles, or with COMPOSE_PROFILES set outside .env)"
+  fi
+  fail "the backup has data for services whose profile isn't on here:$inactive. Set COMPOSE_PROFILES in .env" \
+    "$how, and run this again, or name the services to restore. Nothing changed."
+fi
 if [ ${#entries[@]} -eq 0 ]; then
   fail "nothing to restore in $backup${*:+ for $*}"
 fi

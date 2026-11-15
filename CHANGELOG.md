@@ -39,6 +39,13 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ### Upgrading
 
+- **Add `COMPOSE_PROFILES=4k,music,requests,logs,autoheal` to `.env` before deploying this** (or only the profiles
+  you use; see below). Without it Compose manages only Radarr, Sonarr, Bazarr, SABnzbd and Recyclarr: the other
+  containers keep running as they are, but deploys stop updating them (Renovate's updates of those apps never reach
+  them), and the nightly backup refuses to run, and reports the failure, until the line is there or those
+  containers are removed. A profile name with a typo is caught the same way
+  ([docs/upgrading.md](docs/upgrading.md#optional-services-profiles)). That check needs **Docker Compose 2.27.2 or
+  later** (it was 2.24): with an older one the backup fails and says so.
 - **Put the Dozzle certificate and key in `CONFIG_ROOT/dozzle/certs` before deploying this** (owned by root; the
   same pair on the Dozzle hub, which needs its own update: [docs/installing.md](docs/installing.md#dozzles-certificate)).
   Without them the Dozzle agent doesn't start. Once the agent has its pair, the hub reaches it only after it has
@@ -109,6 +116,18 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ### Changed
 
+- **The optional services are Compose profiles**, turned on by `COMPOSE_PROFILES` in `.env`: `4k` (Radarr 4K,
+  Sonarr 4K, Bazarr 4K), `music` (Lidarr), `requests` (Seerr), `logs` (the Dozzle agent) and `autoheal` (autoheal
+  and its socket proxy). Radarr, Sonarr, Bazarr, SABnzbd and Recyclarr always run. `.env.example` turns on every
+  profile, so a new installation runs the whole stack as before. The policy check, the image pre-pull, the image
+  scan and the release SBOM cover every profile, whichever an installation runs. Backups and restores follow
+  `COMPOSE_PROFILES`: restore with the value the backup was taken with, and `scripts/restore.sh` refuses, naming
+  it, a service whose profile is off (for a backup from before the profiles, which has no `COMPOSE_PROFILES`, it
+  says to turn on every profile). Both refuse a name in `COMPOSE_PROFILES` that isn't a profile, and
+  `scripts/backup.sh` refuses to run, before it stops anything, while a service whose profile is off still has a
+  container, so a missing or mistyped `COMPOSE_PROFILES` can't make the nightly backups leave data out while they
+  report success and rotate the complete ones away. The smoke test runs twice in its job: with every profile, then with the core
+  services only (`SMOKE_PROFILES`) ([docs/installing.md](docs/installing.md#optional-services)).
 - **Renovate replaces Dependabot for version updates.** `.github/dependabot.yml` and the Dependabot auto-merge
   workflow are gone; Renovate (`.github/renovate.json5`) proposes the same updates on the same Monday schedule and
   merges patch, minor and major updates and image rebuilds once every required check passes, as before. It also

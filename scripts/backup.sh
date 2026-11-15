@@ -14,7 +14,11 @@
 # `git describe`), and SHA256SUMS, all readable only by the user who ran it: the archives hold every app's API keys
 # and logins. Copy it off the host (scripts/scheduled-backup.sh does). Restore with scripts/restore.sh. It runs
 # `docker compose` from the checkout, so the standard Compose variables (COMPOSE_PROJECT_NAME, COMPOSE_FILE,
-# COMPOSE_ENV_FILES) select another project, as the smoke test does.
+# COMPOSE_ENV_FILES) select another project, as the smoke test does. It backs up the services Compose runs: the core
+# ones and those of the profiles COMPOSE_PROFILES (in .env) turns on. Restore with the same COMPOSE_PROFILES. It
+# refuses to run, before it stops or writes anything, while COMPOSE_PROFILES names something that isn't a profile or
+# leaves out the profile of a service that still has a container here (a missing or mistyped COMPOSE_PROFILES), so a
+# backup never silently leaves a service's data out (and the scheduled backup reports the failure).
 #
 # On a host where the pull agent (homelab-pull) deploys the stack, it first takes the agent's lock, waiting up to 30
 # minutes for a deploy in progress, and holds it until it exits, so no deploy starts a service it has stopped.
@@ -26,6 +30,12 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
 deploy_lock
 dest=${1:-backups/$(date +%Y%m%d-%H%M%S)}
+# Before anything is written: a backup that silently left out a service whose profile is off by mistake would look
+# complete, and the scheduled backup would then rotate the last complete ones away.
+if ! check_profile_names || ! check_profile_containers; then
+  echo "error: no backup taken; nothing was stopped" >&2
+  exit 1
+fi
 # pigz compresses on every core; gzip on one is several times slower on large archives.
 compress=$(command -v pigz || command -v gzip)
 
@@ -37,7 +47,8 @@ umask 077
 mkdir -p "$dest/env"
 dest=$(cd "$dest" && pwd)
 
-# Every service needs a container (running or stopped) to read its mounts from.
+# Every service of the active profiles (COMPOSE_PROFILES) needs a container (running or stopped) to read its mounts
+# from; a service of a profile that is off isn't backed up.
 services=()
 for service in $(docker compose config --services); do
   if [ -z "$(docker compose ps --all --quiet "$service")" ]; then

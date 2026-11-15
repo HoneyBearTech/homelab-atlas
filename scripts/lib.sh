@@ -120,3 +120,81 @@ archive_name() {
   local path=${2#/}
   printf '%s--%s.tar.gz' "$1" "${path//\//_}"
 }
+
+# The optional services are Compose profiles, turned on by COMPOSE_PROFILES (in .env, or the environment). Compose
+# ignores a name there that isn't a profile without a word, and stops managing the containers of a profile that is
+# left out, which go on running: deploys no longer update them, and a backup of the services Compose runs would leave
+# their data out. check_profile_names and check_profile_containers fail, saying what to fix, in either case.
+
+# The names COMPOSE_PROFILES gives as Compose reads it (the environment, else the env files), one per line, trimmed
+# as Compose trims them; nothing when it isn't set. Needs `docker compose config --environment` (Compose 2.27.2).
+profile_names() {
+  local env help
+  help=$(docker compose config --help) || return 1
+  if ! grep -q -- '--environment' <<<"$help"; then
+    echo "error: this needs Docker Compose 2.27.2 or later (for 'docker compose config --environment');" \
+      "this is $(docker compose version --short 2>/dev/null || echo 'an older one'). Upgrade Docker Compose." >&2
+    return 1
+  fi
+  env=$(docker compose config --environment) || return 1
+  sed -n 's/^COMPOSE_PROFILES=//p' <<<"$env" | tail -n 1 | tr ',' '\n' |
+    sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | grep -v '^$' || true
+}
+
+# Fails unless every name in COMPOSE_PROFILES is a profile compose.yaml defines, or `*`.
+check_profile_names() {
+  local names name profiles bad=""
+  names=$(profile_names) || return 1
+  profiles=$(docker compose config --profiles) || return 1
+  while IFS= read -r name; do
+    if [ -z "$name" ] || [ "$name" = "*" ]; then continue; fi
+    if ! grep -qxF -- "$name" <<<"$profiles"; then bad="$bad $name"; fi
+  done <<<"$names"
+  if [ -n "$bad" ]; then
+    echo "error: COMPOSE_PROFILES names what isn't a profile in compose.yaml:$bad (its profiles:" \
+      "$(tr '\n' ' ' <<<"$profiles" | sed 's/ $//')). Compose ignores such a name, so the services of the profile" \
+      "meant don't run, aren't updated and aren't backed up. Fix COMPOSE_PROFILES in .env." >&2
+    return 1
+  fi
+}
+
+# Fails, naming them, if this Compose project has containers of services whose profile isn't on: services in
+# compose.yaml (in any profile) that Compose doesn't run with COMPOSE_PROFILES as it is.
+check_profile_containers() {
+  local project active every containers service profile members off="" named="" value shown
+  # The project name from the JSON form, where it isn't quoted only when it needs to be (YAML quotes a name like 123).
+  project=$(docker compose config --format json | sed -n 's/^  "name": "\(.*\)",\{0,1\}$/\1/p') || return 1
+  if ! [[ $project =~ ^[a-z0-9][a-z0-9_-]*$ ]]; then
+    echo "error: couldn't read this Compose project's name (got '$project'), so its containers can't be checked" >&2
+    return 1
+  fi
+  active=$(docker compose config --services) || return 1
+  every=$(docker compose --profile '*' config --services) || return 1
+  containers=$(docker ps --all --filter "label=com.docker.compose.project=$project" \
+    --filter label=com.docker.compose.oneoff=False --format '{{.Label "com.docker.compose.service"}}') || return 1
+  while IFS= read -r service; do
+    if [ -z "$service" ] || ! grep -qxF -- "$service" <<<"$every" || grep -qxF -- "$service" <<<"$active"; then
+      continue
+    fi
+    off="$off $service"
+  done < <(sort -u <<<"$containers")
+  if [ -z "$off" ]; then return 0; fi
+  for service in $off; do
+    for profile in $(docker compose config --profiles); do
+      members=$(docker compose --profile "$profile" config --services) || return 1
+      if grep -qxF -- "$service" <<<"$members"; then
+        named="$named $service ($profile)"
+        break
+      fi
+    done
+  done
+  value=$(profile_names | tr '\n' ',' | sed 's/,$//')
+  if [ -n "$value" ]; then shown="\"$value\""; else shown="empty or not set"; fi
+  echo "error: containers of services whose profile isn't on are here:$named. COMPOSE_PROFILES is" \
+    "$shown, so Compose no longer manages them: deploys don't update them, and a" \
+    "backup would leave their data out. Add their profiles to COMPOSE_PROFILES in .env (every profile:" \
+    "COMPOSE_PROFILES=$(docker compose config --profiles | tr '\n' ',' | sed 's/,$//')). If you turned a profile off" \
+    "on purpose, remove its containers first: docker compose rm --stop --force$off (their data stays where it" \
+    "is)." >&2
+  return 1
+}

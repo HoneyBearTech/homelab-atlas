@@ -1,10 +1,18 @@
-"""A stand-in for the `docker` CLI, enough of it for scripts/backup.sh, for tests/test_backup_stop.py.
+"""A stand-in for the `docker` CLI, enough of it for scripts/backup.sh (tests/test_backup_stop.py) and for the start
+of scripts/restore.sh (tests/test_profiles.py).
 
 The stack is in the JSON file $FAKE_DOCKER_STATE: its services, each `running`, `exited` or `dying` (a stop failed and
 the container exits at `exits_at`, a time.time() value), plus the services whose stop fails (`fail_stop`: seconds
 until the container exits after all) and that fail to start (`fail_start`). Every service has one data mount,
 /config. `compose stop` and `compose start` are appended to `log` with the container's state at the time, so a test
 can tell whether a start came before or after the container had exited.
+
+Compose profiles: `profile_of` maps a service to its profile (a service without one always runs), and
+`compose_profiles` is COMPOSE_PROFILES as Compose reads it (missing: not set). `compose config --services` lists the
+services Compose runs with that value (or with every profile, for `--profile '*'`), and `docker ps` lists the
+containers of every service in `containers` (default: every service) when its label filter names the project (`name`,
+default `fake`). The services in `inactive` are left out of `compose config --services` whatever their profile.
+`old_compose` stands for a Compose older than 2.27.2, without `config --environment`.
 
 A failed stop behaves as Docker does when a process can't exit (stuck on an NFS write): the command fails, and the
 container keeps running until it exits on its own; `compose start` skips a container that is still running.
@@ -41,10 +49,52 @@ def service_of(container: str) -> str:
     return container.removeprefix("id-")
 
 
+def active(stack: dict, flags: list[str]) -> list[str]:
+    """The services Compose runs: those without a profile, and those of the profiles turned on."""
+    on = set(flags or [p.strip() for p in stack.get("compose_profiles", "").split(",")])
+    profile_of = stack.get("profile_of", {})
+    inactive = set(stack.get("inactive", ()))
+    return [
+        s
+        for s in stack["services"]
+        if "*" in on or (s not in inactive and (s not in profile_of or profile_of[s] in on))
+    ]
+
+
+def config(stack: dict, args: list[str], profiles: list[str]) -> int:
+    if "--help" in args:
+        print("Usage:  docker compose config [OPTIONS] [SERVICE...]")
+        if not stack.get("old_compose"):
+            print("      --environment             Print environment used for interpolation.")
+    elif "--environment" in args:
+        if stack.get("old_compose"):
+            print("unknown flag: --environment", file=sys.stderr)
+            return 1
+        if "compose_profiles" in stack:
+            print(f"COMPOSE_PROFILES={stack['compose_profiles']}")
+    elif "--profiles" in args:
+        print("\n".join(sorted(set(stack.get("profile_of", {}).values()))))
+    elif "--services" in args:
+        print("\n".join(active(stack, profiles)))
+    elif "json" in args:
+        print(json.dumps({"name": stack.get("name", "fake"), "services": {}}, indent=2))
+    else:
+        # YAML quotes a name that would otherwise read as a number, as Compose does (name: "123").
+        name = stack.get("name", "fake")
+        print(f'name: "{name}"' if name.isdigit() else f"name: {name}")
+    return 0
+
+
 def compose(stack: dict, args: list[str]) -> int:
+    profiles = []
+    while args[0] == "--profile":
+        profiles.append(args[1])
+        args = args[2:]
     command, rest = args[0], [arg for arg in args[1:] if not arg.startswith("-")]
     if command == "config":
-        print("\n".join(stack["services"]))
+        return config(stack, args[1:], profiles)
+    if command == "version":
+        print("2.20.3" if stack.get("old_compose") else "2.27.2")
     elif command == "ps" and "--services" in args:
         # --status running: a dying container still runs.
         print("\n".join(s for s in stack["services"] if state(stack, s) in {"running", "dying"}))
@@ -118,6 +168,12 @@ def main(args: list[str]) -> int:
     if args[0] == "inspect":
         return inspect(stack, args[1:])
     if args[:2] == ["network", "inspect"]:
+        return 0
+    if args[0] == "ps":
+        # Only `docker ps --all --filter label=... --format <the service label>` is used.
+        project = f"label=com.docker.compose.project={stack.get('name', 'fake')}"
+        if project in args:
+            print("\n".join(stack.get("containers", stack["services"])))
         return 0
     if args[0] == "run":
         if "tar" in args:

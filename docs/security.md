@@ -50,7 +50,8 @@ non-empty reason:
 What each service runs with, beyond the policy. Every service has `cap_drop: [ALL]` and
 `no-new-privileges:true`, and every service whose image allows it has a read-only root filesystem. The smoke test
 proves each one still starts healthy with data directories owned by `PUID:PGID` as on a host, survives a backup and
-restore, and that autoheal can still restart a container through socket-proxy with these settings.
+restore, and that autoheal can still restart a container through socket-proxy with these settings. It runs once
+with every optional profile on and once with the core services only; the policy check covers every profile.
 
 | Service | Capabilities added back | Read-only root filesystem | Why |
 | --- | --- | --- | --- |

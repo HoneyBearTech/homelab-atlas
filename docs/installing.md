@@ -5,7 +5,8 @@ The [quick start](quick-start.md) is the short version of this page.
 ## Requirements
 
 - Linux on amd64 (the reference is Ubuntu 24.04 LTS) with Docker Engine and the Compose v2 plugin
-  (Docker Engine 25 or later and Compose 2.24 or later, for the health checks' `start_interval`).
+  (Docker Engine 25 or later and Compose 2.27.2 or later: the health checks' `start_interval` needs 2.24, and the
+  backup's check of `COMPOSE_PROFILES` needs `docker compose config --environment`, from 2.27.2).
 - A user in the `docker` group to run `docker compose`. Membership is equivalent to root on the host, so keep
   that group small.
 - One directory for `MEDIA_ROOT` that holds **both downloads and the library on the same filesystem**, so the
@@ -35,6 +36,10 @@ $CONFIG_ROOT/
   recyclarr/config/  seerr/config/  dozzle/certs/
 ```
 
+Only the folders of the services you run are needed ([Optional services](#optional-services)): without the `4k`
+profile, leave out `radarr4k`, `sonarr4k` and `bazarr4k`; without `music`, `lidarr`; without `requests`, `seerr`;
+without `logs`, `dozzle/certs`.
+
 > **Warning: never point a path setting into `/var/lib/docker/volumes`, and don't keep app data in named Docker
 > volumes.** `docker volume prune`, `docker system prune --volumes` and Portainer's "remove unused volumes" delete
 > every volume that no container mounts *as a volume*, including one whose `_data` folder a service bind-mounts
@@ -58,13 +63,14 @@ as `PUID:PGID` without capabilities, can't write to that.
 
 1. Clone the repository (or download a release's source archive and verify it,
    [verifying-releases.md](verifying-releases.md)).
-2. Create `.env` from `.env.example` (mode `600`) and set every value. Optionally create `autoheal.env` from
+2. Create `.env` from `.env.example` (mode `600`) and set every value; `COMPOSE_PROFILES` picks the optional
+   services, every one of them as it comes ([below](#optional-services)). Optionally create `autoheal.env` from
    `autoheal.env.example` (mode `600`) with a webhook URL for restart notices, and `seerr.env` from
    `seerr.env.example` (mode `600`) to keep Seerr's database on a PostgreSQL server ([interfaces.md](interfaces.md)).
 3. Create the host directories as the `PUID` user (`MEDIA_ROOT`, `SABNZBD_INCOMPLETE_PATH` and each folder under
-   `CONFIG_ROOT` in the layout above; the [quick start](quick-start.md) has the commands), and put the Dozzle
-   agent's certificate and key in `CONFIG_ROOT/dozzle/certs` as root ([below](#dozzles-certificate)), then
-   `docker compose up -d`.
+   `CONFIG_ROOT` in the layout above, for the services you run; the [quick start](quick-start.md) has the
+   commands), and, with the `logs` profile, put the Dozzle agent's certificate and key in `CONFIG_ROOT/dozzle/certs`
+   as root ([below](#dozzles-certificate)), then `docker compose up -d`.
 
 **Adopting existing containers.** If the apps already run on the host (for example from a Portainer stack), copy
 each app's config into its config directory (Recyclarr's into `CONFIG_ROOT/recyclarr/config`, Radarr's scripts into
@@ -81,6 +87,38 @@ should be `PUID:PGID`):
 
 The old volumes aren't touched: remove them (`docker volume rm`) once the apps run from their config
 directories.
+
+### Optional services
+
+Radarr, Sonarr, Bazarr, SABnzbd and Recyclarr always run. The other services are in Compose profiles, and run only
+when `COMPOSE_PROFILES` in `.env` names their profile:
+
+| Profile | Services |
+| --- | --- |
+| `4k` | Radarr 4K, Sonarr 4K, Bazarr 4K (`radarr4k`, `sonarr4k`, `bazarr4k`) |
+| `music` | Lidarr (`lidarr`) |
+| `requests` | Seerr (`seerr`) |
+| `logs` | the Dozzle agent (`dozzle`) |
+| `autoheal` | autoheal and its socket proxy (`autoheal`, `socket-proxy`) |
+
+`.env.example` turns on every profile (`COMPOSE_PROFILES=4k,music,requests,logs,autoheal`): take one out to not
+run its services. A missing or empty `COMPOSE_PROFILES` runs the core services only. Compose reads the setting
+itself, so `docker compose up -d`, `pull` and `ps` and the backup and restore scripts all act on the services it
+turns on. Taking a profile out doesn't stop the containers it already started: remove them yourself, such as
+`docker compose rm --stop --force radarr4k sonarr4k bazarr4k` for `4k`. Their data stays in `CONFIG_ROOT`.
+
+Seerr and Recyclarr are set up with the 4K instances ([below](#connecting-the-apps)). Without `4k`, remove the 4K
+Radarr and Sonarr servers from Seerr (Settings → Services) and the `radarr4k` and `sonarr4k` instances from
+`recyclarr.yml`, or Seerr's 4K requests and Recyclarr's syncs of those instances fail.
+
+**Backups follow the profiles.** `scripts/backup.sh` backs up the services that run, so a backup taken with a
+profile off has no data for its services. It refuses to run, before it stops anything, while a service whose
+profile is off still has a container (a profile taken out of `COMPOSE_PROFILES` by mistake, or a missing
+`COMPOSE_PROFILES`), and while `COMPOSE_PROFILES` names something that isn't a profile (a typo such as `musik`,
+which Compose itself ignores): it names the services and the profiles, and the scheduled backup reports the
+failure. Removing a turned-off profile's containers, as above, lets it run again. **Restore with the `COMPOSE_PROFILES` the backup was taken with** (the
+backup's `env/.env` has it): `scripts/restore.sh` refuses a service in the backup whose profile is off, and names
+it.
 
 ### Connecting the apps
 

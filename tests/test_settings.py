@@ -9,6 +9,8 @@ CONFIG_ROOT = "${CONFIG_ROOT:?set CONFIG_ROOT in .env}"
 # Host sources that aren't an app's own data: the media and download roots, and the Docker socket (policy exceptions).
 SHARED = ("${MEDIA_ROOT:?set MEDIA_ROOT in .env}:", "${SABNZBD_INCOMPLETE_PATH:?set SABNZBD_INCOMPLETE_PATH in .env}:")
 SOCKET = "/var/run/docker.sock:/var/run/docker.sock:ro"
+# Settings Compose itself reads from .env, which compose.yaml doesn't use: the optional services' profiles.
+COMPOSE_OWN = {"COMPOSE_PROFILES"}
 
 
 def read(path: str) -> str:
@@ -24,8 +26,8 @@ def test_every_setting_is_in_env_example_and_interfaces() -> None:
     example = set(re.findall(r"^([A-Z][A-Z0-9_]*)=", read(".env.example"), re.MULTILINE))
     table = re.findall(r"^\| (`[A-Z][^|]*) \|", read("docs/interfaces.md"), re.MULTILINE)
     documented = {name for cell in table for name in re.findall(r"`([A-Z][A-Z0-9_]*)`", cell)}
-    assert used == example
-    assert used <= documented
+    assert used == example - COMPOSE_OWN
+    assert used | COMPOSE_OWN <= documented
 
 
 def test_each_app_keeps_its_config_in_a_directory_under_config_root() -> None:

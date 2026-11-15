@@ -23,6 +23,12 @@ upstream images, pinned by digest.
 The 4K instances are separate containers with their own config and library folders, so 4K and regular
 releases are managed independently.
 
+Radarr, Sonarr, Bazarr, SABnzbd and Recyclarr always run. The other services are optional, in Compose profiles
+that `COMPOSE_PROFILES` in `.env` turns on: `4k` (the 4K instances), `music` (Lidarr), `requests` (Seerr), `logs`
+(Dozzle) and `autoheal` (autoheal with socket-proxy); `.env.example` turns on all of them
+([installing.md](installing.md#optional-services)). The policy check, the image scan and the release SBOM cover
+every profile, whichever an installation runs.
+
 ## Actors and actions
 
 | Actor | Does |

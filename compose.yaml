@@ -11,6 +11,9 @@
 # org.honeybeartech.atlas.backup.exclude label lists.
 # Every image is pinned as name:tag@sha256:<digest>; Renovate proposes updates (patch, minor and major ones and
 # rebuilds merge automatically once CI passes). scripts/check_compose.py enforces the policy (docs/security.md#policy).
+# Radarr, Sonarr, Bazarr, SABnzbd and Recyclarr always run; every other service is in a profile (profiles:) and runs
+# only when COMPOSE_PROFILES in .env names it (docs/installing.md#optional-services). A service may depend only on
+# one that runs whenever it does. Checks, scans and the SBOM read every profile (--profile '*').
 
 name: homelab-atlas
 
@@ -77,6 +80,7 @@ services:
 
   radarr4k:
     <<: *linuxserver
+    profiles: [4k]
     image: lscr.io/linuxserver/radarr:version-6.4.4.10685@sha256:51a9ac2a9eb47afc833541e5fd6c11b86eb9f810694c22fa2429e3078e9194b2
     container_name: radarr4k
     restart: unless-stopped
@@ -121,6 +125,7 @@ services:
 
   sonarr4k:
     <<: *linuxserver
+    profiles: [4k]
     image: lscr.io/linuxserver/sonarr:version-4.0.20.3014@sha256:673dc4609a5672bc8e46069c86ffcea283a86b48d34a6c93d8da8c24a1b87571
     container_name: sonarr4k
     restart: unless-stopped
@@ -143,6 +148,7 @@ services:
   # --- Music ----------------------------------------------------------------------------------------------------
   lidarr:
     <<: *linuxserver
+    profiles: [music]
     image: lscr.io/linuxserver/lidarr:version-3.1.6.5079@sha256:a91ef0642c15c9bd7c4260fee98fa99972c61601e37c8a96411d6a9cf0e9ad40
     container_name: lidarr
     restart: unless-stopped
@@ -184,6 +190,7 @@ services:
 
   bazarr4k:
     <<: *linuxserver
+    profiles: [4k]
     image: lscr.io/linuxserver/bazarr:version-v1.6.2@sha256:832820dec70bce9e912c6eee7a95baf6551e03dbc63325a7208daaa455423752
     container_name: bazarr4k
     restart: unless-stopped
@@ -260,6 +267,7 @@ services:
   # (SQLite) unless seerr.env points it at a PostgreSQL server.
   seerr:
     <<: *hardened
+    profiles: [requests]
     image: ghcr.io/seerr-team/seerr:v3.5.2@sha256:aadee014b40e28cf9aa4928bc9d1183a6eb08f8c44d543cddc9efdcb16549be2
     container_name: seerr
     restart: unless-stopped
@@ -299,6 +307,7 @@ services:
   # Dozzle image, which anyone can use.
   dozzle:
     <<: *hardened
+    profiles: [logs]
     image: amir20/dozzle:v11.4.1@sha256:915a5acf91b01bb4d11de1fde7e30d55646211240269e4404c03a6f71c5fc91e
     container_name: dozzle
     restart: unless-stopped
@@ -333,6 +342,7 @@ services:
   # restart and stop containers and nothing else. Optional restart notices go to a webhook from autoheal.env.
   autoheal:
     <<: *hardened
+    profiles: [autoheal]
     image: willfarrell/autoheal:latest@sha256:d674ad98d23dc3f1871156aaebec0826bd04a159daff79841fc8615af7615fa1
     container_name: autoheal
     restart: unless-stopped
@@ -371,6 +381,7 @@ services:
   # other POST are refused.
   socket-proxy:
     <<: *hardened
+    profiles: [autoheal]
     image: lscr.io/linuxserver/socket-proxy:3.4.7@sha256:823dda971e9a3951257eb251586a804199819fe1587c35faa43adc7b52a2ff16
     container_name: socket-proxy
     restart: unless-stopped

@@ -14,7 +14,8 @@
 # `git describe`), and SHA256SUMS, all readable only by the user who ran it: the archives hold every app's API keys
 # and logins. Copy it off the host (scripts/scheduled-backup.sh does). Restore with scripts/restore.sh. It runs
 # `docker compose` from the checkout, so the standard Compose variables (COMPOSE_PROJECT_NAME, COMPOSE_FILE,
-# COMPOSE_ENV_FILES) select another project, as the smoke test does.
+# COMPOSE_ENV_FILES) select another project, as the smoke test does. It backs up the services Compose runs: the core
+# ones and those of the profiles COMPOSE_PROFILES (in .env) turns on. Restore with the same COMPOSE_PROFILES.
 #
 # On a host where the pull agent (homelab-pull) deploys the stack, it first takes the agent's lock, waiting up to 30
 # minutes for a deploy in progress, and holds it until it exits, so no deploy starts a service it has stopped.
@@ -37,7 +38,8 @@ umask 077
 mkdir -p "$dest/env"
 dest=$(cd "$dest" && pwd)
 
-# Every service needs a container (running or stopped) to read its mounts from.
+# Every service of the active profiles (COMPOSE_PROFILES) needs a container (running or stopped) to read its mounts
+# from; a service of a profile that is off isn't backed up.
 services=()
 for service in $(docker compose config --services); do
   if [ -z "$(docker compose ps --all --quiet "$service")" ]; then

@@ -1,0 +1,62 @@
+name: Rebuild rehearsal
+
+# Follows docs/rebuilding.md on a fresh machine (scripts/rehearse-rebuild.sh): the stack starts with throwaway
+# settings, takes the nightly backup with an encrypted copy off the host, is thrown away, and is rebuilt from a clean
+# clone with the commands marked in the doc, then must be healthy with its data and settings back. Weekly, on demand,
+# and on pull requests that change the doc or what it runs. Not a required check: a failure means the doc or the
+# scripts need fixing, and the doc says what the rehearsal can't cover.
+on:
+  pull_request:
+    paths:
+      - "docs/rebuilding.md"
+      - "scripts/**"
+      - "compose.yaml"
+      - ".env.example"
+      - ".github/workflows/rehearsal.yml"
+  schedule:
+    - cron: "0 5 * * 4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rehearsal:
+    name: Rebuild from docs/rebuilding.md
+    # The server's release and platform, like the smoke test.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Anonymous pulls (no secrets here), each retried: the registries sometimes answer "toomanyrequests", which is
+      # the registry, not the stack. Logged out at the end either way, before any image starts: a runner image can
+      # come with a Docker Hub entry of its own (x64 does), and the Dozzle agent and the socket proxy get the socket.
+      - name: Pull the stack's images
+        run: |
+          trap 'docker logout' EXIT
+          { docker compose --env-file .env.example config --images; sed -n 's/^busybox=//p' scripts/lib.sh; } |
+            sort -u | while read -r image; do
+              for attempt in 1 2 3 4; do
+                if docker pull --quiet "$image"; then break; fi
+                if [ "$attempt" -eq 4 ]; then exit 1; fi
+                echo "Pull of $image failed (attempt $attempt); retrying in $((attempt * 20))s"
+                sleep $((attempt * 20))
+              done
+            done
+
+      - name: No Docker Hub login left
+        run: |
+          if grep -q 'index.docker.io' "$HOME/.docker/config.json" 2>/dev/null; then
+            echo "::error::still logged in to Docker Hub"
+            exit 1
+          fi
+
+      # The scheduled backup encrypts its copy off the host with age and copies it with rsync.
+      - name: Install age and rsync
+        run: sudo apt-get update --quiet && sudo apt-get install --yes --no-install-recommends age rsync
+
+      - name: Rehearse the rebuild
+        run: scripts/rehearse-rebuild.sh

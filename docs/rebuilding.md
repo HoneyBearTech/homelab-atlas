@@ -93,7 +93,12 @@ restore it.
 
 The backup's `.env` has the `COMPOSE_PROFILES` it was taken with: keep it, so the restore finds the services of
 every profile in the backup ([installing.md](installing.md#optional-services)); `scripts/restore.sh` refuses a
-service whose profile is off, and names it.
+service whose profile is off, and names it. **A backup taken before the profiles has no `COMPOSE_PROFILES` in
+`env/.env`**: it holds every service, so add every profile to `.env` before restoring it:
+
+```
+COMPOSE_PROFILES=4k,music,requests,logs,autoheal
+```
 
 Edit `.env` if the new host's paths differ (`MEDIA_ROOT`, `CONFIG_ROOT`, `SABNZBD_INCOMPLETE_PATH`). Older backups
 made before the `CONFIG_ROOT` layout was introduced may still contain `APPDATA_ROOT` or

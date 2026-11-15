@@ -111,7 +111,11 @@ Radarr and Sonarr servers from Seerr (Settings → Services) and the `radarr4k` 
 `recyclarr.yml`, or Seerr's 4K requests and Recyclarr's syncs of those instances fail.
 
 **Backups follow the profiles.** `scripts/backup.sh` backs up the services that run, so a backup taken with a
-profile off has no data for its services. **Restore with the `COMPOSE_PROFILES` the backup was taken with** (the
+profile off has no data for its services. It refuses to run, before it stops anything, while a service whose
+profile is off still has a container (a profile taken out of `COMPOSE_PROFILES` by mistake, or a missing
+`COMPOSE_PROFILES`), and while `COMPOSE_PROFILES` names something that isn't a profile (a typo such as `musik`,
+which Compose itself ignores): it names the services and the profiles, and the scheduled backup reports the
+failure. Removing a turned-off profile's containers, as above, lets it run again. **Restore with the `COMPOSE_PROFILES` the backup was taken with** (the
 backup's `env/.env` has it): `scripts/restore.sh` refuses a service in the backup whose profile is off, and names
 it.
 

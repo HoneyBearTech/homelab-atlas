@@ -57,8 +57,17 @@ merged), with every profile to keep running everything:
 COMPOSE_PROFILES=4k,music,requests,logs,autoheal
 ```
 
-Without it Compose manages the core services only: the other containers keep running as they are, but no deploy
-updates them any more, and the nightly backup leaves their data out.
+Without it Compose manages the core services only. The other containers keep running as they are, but **deploys
+stop updating them**: Renovate's updates of those apps never reach them, and neither does any other change to them.
+**The backup then refuses to run** (and the scheduled backup reports the failure to its push monitor) rather than
+silently leave their data out: `scripts/backup.sh` fails before it stops anything, naming the services whose
+profile is off and the line to add. A name in `COMPOSE_PROFILES` that isn't a profile, such as `musik` for
+`music`, which Compose ignores without a word, is caught the same way. If you turn a profile off on purpose, remove
+its containers, and the backup runs again without them; for `4k`:
+
+```sh
+docker compose rm --stop --force radarr4k sonarr4k bazarr4k   # their data stays in CONFIG_ROOT
+```
 
 ## Upgrading
 

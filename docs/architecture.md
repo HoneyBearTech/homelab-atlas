@@ -28,7 +28,7 @@ releases are managed independently.
 | Actor | Does |
 | --- | --- |
 | Maintainer | Merges pull requests (a merge deploys), tags releases, configures each app in its web UI |
-| Renovate | Opens a pull request when an image (tag and digest), a check tool, a pre-commit hook or an Action has a new version; patch, minor and major updates and image rebuilds (same tag, new digest) are auto-merged once the checks pass (a new version waits 3 days after its release; rebuilds and security fixes don't) |
+| Renovate | Opens a pull request when an image (tag and digest), a check tool, a pre-commit hook or an Action has a new version; patch, minor and major updates and image rebuilds (same tag, new digest) are auto-merged once the checks pass (a new version waits 3 days after its release; image rebuilds and security fixes don't) |
 | CI | Lints, scans for secrets, tests the checker, resolves the Compose file and enforces the policy on every pull request |
 | Pull agent | On the maintainer's server, about every 90 seconds: fetches `main` and, when it moved, fast-forwards the checkout and runs `docker compose pull` and `docker compose up -d` (it lives in the maintainer's private orchestration repository); skips its run while `scripts/backup.sh` or `scripts/restore.sh` holds its deploy lock |
 | Release workflow | On a version tag: checks the policy, writes the SBOM, signs the checksums, publishes the GitHub Release |
@@ -56,7 +56,7 @@ the media server run outside this stack.
 ## How changes reach the host
 
 1. Renovate (or the maintainer) opens a pull request that changes an image's tag and digest, or only its digest
-   (a rebuild of the same version). A new version is proposed three days after its release; a rebuild isn't held back.
+   (a rebuild of the same version). A new version is proposed three days after its release; an image rebuild isn't held back.
 2. CI resolves the Compose file and runs the policy check; the maintainer reads the app's release notes.
 3. The pull request is squash-merged (automatically for Renovate's patch, minor and major updates and rebuilds,
    once every check passes, with the nightly backup behind them; by the maintainer for anything else).

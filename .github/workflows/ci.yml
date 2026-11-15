@@ -101,7 +101,8 @@ jobs:
     # The server's Ubuntu release (24.04) and amd64, so the images are tested for the platform they run on. Renovate
     # leaves the label alone (renovate.json5); it moves with the server, by hand.
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # Two runs of the smoke test: every profile, then the core services only.
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -152,6 +153,14 @@ jobs:
 
       # Every service from compose.yaml, started with throwaway directories and volumes, must report healthy
       # within five minutes, and survive a backup and restore (scripts/smoke-test.sh). Logs of every service are
-      # printed if one doesn't. Passes with a notice while there is no compose.yaml.
-      - name: Start the stack and wait until every service is healthy
+      # printed if one doesn't. Passes with a notice while there is no compose.yaml. Run with every profile on,
+      # then again with none (the core services only, which must work without any optional one).
+      - name: Start the stack and wait until every service is healthy (every profile)
+        env:
+          SMOKE_PROFILES: "*"
+        run: scripts/smoke-test.sh
+
+      - name: Start the stack and wait until every service is healthy (core services only)
+        env:
+          SMOKE_PROFILES: ""
         run: scripts/smoke-test.sh

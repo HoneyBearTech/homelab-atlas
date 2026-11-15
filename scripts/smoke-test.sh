@@ -9,6 +9,10 @@
 # autoheal), and remove everything it created. CI runs it on every change; `make smoke` runs it locally. Without a
 # compose.yaml there is nothing to test, and it says so and passes.
 #
+# It runs the services of every Compose profile, or those SMOKE_PROFILES names (a COMPOSE_PROFILES value: comma-
+# separated, `*` for every profile, empty for the services without a profile only); CI runs it with every profile and
+# again with none.
+#
 # It stays away from any real installation on the same Docker host: its own Compose project, settings from
 # .env.example with every directory (*_ROOT, *_PATH; so CONFIG_ROOT, with the apps' config directories, too) moved
 # into a temporary directory, every volume and network name (*_VOLUME, *_NETWORK) and name prefix (*_PREFIX)
@@ -22,6 +26,7 @@ set -euo pipefail
 
 project=homelab-atlas-smoke
 timeout=${SMOKE_TIMEOUT:-300}
+profiles=${SMOKE_PROFILES-*}
 root=$(cd "$(dirname "$0")/.." && pwd)
 # shellcheck source=scripts/lib.sh
 . "$root/scripts/lib.sh"
@@ -108,10 +113,14 @@ while IFS= read -r line; do
       value=$(free_subnet "${subnets[@]+"${subnets[@]}"}")
       subnets+=("$value")
       ;;
+    COMPOSE_PROFILES) continue ;;
     *) value=${line#*=} ;;
   esac
   printf '%s=%s\n' "$key" "$value"
 done <<<"$settings" >"$work/env"
+# The profiles under test, for this script and for scripts/backup.sh and scripts/restore.sh.
+printf 'COMPOSE_PROFILES=%s\n' "$profiles" >>"$work/env"
+echo "Profiles: ${profiles:-none (only the services without a profile)}"
 
 # Every folder a service bind-mounts from those directories (CONFIG_ROOT/<app>/config and the folders beside it)
 # exists before anything starts, as the install docs have the operator create them, so it gets the owner below:
@@ -167,15 +176,17 @@ done <"$work/env"
 
 # Project-scoped container names, no published ports and no env files, so the test can't collide with anything
 # already running on the host or read a real secret; the health checks run inside the containers and need neither.
-stack_services=$(COMPOSE_FILE=$root/compose.yaml docker compose config --no-interpolate --services)
+# For the services of every profile, so none is left with its fixed name or ports whichever profiles are on.
+stack_services=$(COMPOSE_FILE=$root/compose.yaml docker compose --profile '*' config --no-interpolate --services)
 has_autoheal=false
+active_services=$(COMPOSE_FILE=$root/compose.yaml docker compose config --services)
+if grep -qx autoheal <<<"$active_services"; then has_autoheal=true; fi
 {
   echo "services:"
   for service in $stack_services; do
     printf '  %s:\n    container_name: !reset null\n    ports: !reset []\n    env_file: !reset []\n' "$service"
-    if [ "$service" = autoheal ]; then has_autoheal=true; fi
   done
-  # A container that turns unhealthy on demand (a file in its tmpfs), for autoheal to restart.
+  # A container that turns unhealthy on demand (a file in its tmpfs), for autoheal to restart, when autoheal runs.
   if $has_autoheal; then
     cat <<YAML
   autoheal-test:

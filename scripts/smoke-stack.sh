@@ -7,8 +7,16 @@
 
 # The Dozzle agent: a throwaway certificate and key, made with `dozzle generate-certs` as on the host and owned by root
 # as there; then that the agent loaded them, accepts a hub presenting them and refuses one presenting the pair built
-# into every Dozzle image, and that it keeps the notification settings such a hub sends it as it starts.
+# into every Dozzle image, and that it keeps the notification settings such a hub sends it as it starts. Skipped when
+# the agent's profile (logs) isn't among those under test.
 dozzle_service=dozzle
+
+# Whether the Dozzle agent runs in this test (its profile is on).
+dozzle_runs() {
+  local services
+  services=$(compose config --services)
+  grep -qx "$dozzle_service" <<<"$services"
+}
 
 # The Dozzle image compose.yaml pins.
 dozzle_image() { compose config --images "$dozzle_service"; }
@@ -18,6 +26,10 @@ dozzle_certs() { echo "$(sed -n 's/^CONFIG_ROOT=//p' "$work/env")/dozzle/certs";
 
 smoke_prepare() {
   local certs
+  if ! dozzle_runs; then
+    echo "The Dozzle agent's profile is off; skipping its certificate"
+    return 0
+  fi
   certs=$(dozzle_certs)
   # CONFIG_ROOT belongs to PUID, who may not be the caller: the folder is made as root, inside CONFIG_ROOT (a missing
   # folder Docker Desktop creates for a mount would be in its VM, not on the Mac). generate-certs writes the key with
@@ -40,6 +52,10 @@ dozzle_settings_log() { compose logs --no-color "$dozzle_service" | grep "notifi
 
 smoke_check() {
   local logs out before
+  if ! dozzle_runs; then
+    echo "The Dozzle agent's profile is off; skipping its checks"
+    return 0
+  fi
   logs=$(compose logs --no-color "$dozzle_service")
   [[ $logs == *"Loaded custom dozzle certificate and key"* ]] ||
     fail "the Dozzle agent didn't load its certificate and key"

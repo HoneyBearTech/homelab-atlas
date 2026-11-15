@@ -152,8 +152,8 @@ they don't remove the bugs.
 - **Keep the apps' ports reachable from the LAN only.** The stack doesn't enforce this: `compose.yaml` publishes
   every port on all of the host's addresses, IPv4 and IPv6, and Docker-published ports bypass host firewalls such
   as `ufw` ([installing.md](installing.md#running-it-securely)). It's the operator's job, at the router or a
-  firewall in front of the host. For row 5's request-smuggling flaws this is the only mitigation: they act in the
-  web server before any login.
+  firewall in front of the host. Row 5's request-smuggling flaws act in the web server before any login, so only
+  this and a reverse proxy that rejects ambiguous requests (below) mitigate them.
 - **Turn on each app's Forms login** ([installing.md](installing.md#running-it-securely)). It protects the apps'
   pages and API, not the web server underneath.
 - **Enable only trusted indexers and subtitle providers**, and send SABnzbd's notifications only to `https://`

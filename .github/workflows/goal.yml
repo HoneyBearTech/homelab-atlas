@@ -1,0 +1,62 @@
+# Runs each check of agents/GOAL.md on the main branch, as a check named "goal: <milestone>".
+# Harness reads those to show how far the project is from its goal. Add what your checks need (a toolchain, a cache)
+# to the goal job's steps.
+name: goal
+on:
+  push:
+    branches: ["main"]
+permissions:
+  contents: read
+concurrency:
+  group: goal
+  cancel-in-progress: false
+jobs:
+  rows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      rows: ${{ steps.read.outputs.rows }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: read
+        run: |
+          node - <<'JS' >> "$GITHUB_OUTPUT"
+          const rows = new Map()
+          for (const line of require('fs').readFileSync('agents/GOAL.md', 'utf8').split(/\r?\n/)) {
+            if (line.length > 1000) continue
+            const row = line.trim(), cell = row.slice(0, -1).trimEnd(), open = cell.lastIndexOf('\x60', cell.length - 2)
+            const head = cell.slice(0, open).trimEnd(), named = head.slice(1, -1).trim()
+            if (!row.startsWith('|') || !row.endsWith('|') || !cell.endsWith('\x60')) continue
+            if (open < 0 || !head.endsWith('|')) continue
+            const milestone = /[\r\u2028\u2029]/.test(named) ? '' : named.replace(/\s+/g, ' ')
+            const check = cell.slice(open + 1, -1).trim()
+            if (!milestone || !check || milestone.length > 100 || rows.has(milestone)) continue
+            rows.set(milestone, { milestone, check })
+            if (rows.size >= 100) break
+          }
+          console.log('rows=' + JSON.stringify([...rows.values()]))
+          JS
+  goal:
+    needs: rows
+    if: needs.rows.outputs.rows != '[]'
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        include: ${{ fromJSON(needs.rows.outputs.rows) }}
+    name: "goal: ${{ matrix.milestone }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The checks run the repo's own tools (make lint test check), which need the Python CI uses.
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.15"
+      - run: bash -eo pipefail -c "$CHECK"
+        env:
+          CHECK: ${{ matrix.check }}

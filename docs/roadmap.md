@@ -49,6 +49,13 @@ file changes with them, in the same pull request.
 - Keep the OpenSSF Best Practices **Silver** badge (Passing and Silver reached in October 2026) and
   **OSPS Baseline** Levels 1 and 2 (met).
 - Signed releases with checksums, SBOM and SLSA provenance, as every release so far has had.
+- Move Radarr and Sonarr to their .NET 10 releases (Radarr 7, Sonarr 5) once those are stable: Radarr bundles
+  .NET 8, out of support since 10 November 2026, and Sonarr .NET 6, out of support since November 2024. Watch for
+  a Lidarr release that does the same; checked November 2026, it has none
+  ([dependencies.md](dependencies.md#current-findings)).
+- Dismiss the ImageSharp TIFF decoder alerts once a stable Radarr, Sonarr and Lidarr release restricts ImageSharp's
+  decoders (upstream's fix, so far only in their prereleases); until then they stay open
+  ([dependencies.md](dependencies.md#current-findings)).
 
 ## What homelab-atlas will not do
 

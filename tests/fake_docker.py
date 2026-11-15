@@ -1,10 +1,12 @@
-"""A stand-in for the `docker` CLI, enough of it for scripts/backup.sh, for tests/test_backup_stop.py.
+"""A stand-in for the `docker` CLI, enough of it for scripts/backup.sh (tests/test_backup_stop.py) and for the start
+of scripts/restore.sh (tests/test_profiles.py).
 
 The stack is in the JSON file $FAKE_DOCKER_STATE: its services, each `running`, `exited` or `dying` (a stop failed and
 the container exits at `exits_at`, a time.time() value), plus the services whose stop fails (`fail_stop`: seconds
 until the container exits after all) and that fail to start (`fail_start`). Every service has one data mount,
 /config. `compose stop` and `compose start` are appended to `log` with the container's state at the time, so a test
-can tell whether a start came before or after the container had exited.
+can tell whether a start came before or after the container had exited. The services listed in `inactive` belong to
+a Compose profile that is off: `compose config` leaves them out unless it's given `--profile '*'`.
 
 A failed stop behaves as Docker does when a process can't exit (stuck on an NFS write): the command fails, and the
 container keeps running until it exits on its own; `compose start` skips a container that is still running.
@@ -42,9 +44,14 @@ def service_of(container: str) -> str:
 
 
 def compose(stack: dict, args: list[str]) -> int:
+    every = False
+    while args[0] == "--profile":
+        every = every or args[1] == "*"
+        args = args[2:]
     command, rest = args[0], [arg for arg in args[1:] if not arg.startswith("-")]
     if command == "config":
-        print("\n".join(stack["services"]))
+        inactive = set() if every else set(stack.get("inactive", ()))
+        print("\n".join(s for s in stack["services"] if s not in inactive))
     elif command == "ps" and "--services" in args:
         # --status running: a dying container still runs.
         print("\n".join(s for s in stack["services"] if state(stack, s) in {"running", "dying"}))

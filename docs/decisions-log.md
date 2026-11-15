@@ -3,6 +3,37 @@
 Decisions about how homelab-atlas is built and maintained, newest first. Each entry says what was decided, why,
 and what was considered and rejected.
 
+## 2026-11-15: Triage of the open image-scan alerts (trivy-triage, #108)
+
+**Decided:**
+
+- **Dismiss only what isn't reachable.** 114 of the 468 alerts are dismissed as "won't fix", each with the reason
+  in [dependencies.md](dependencies.md#current-findings) and what would make it reachable. The 334 that are
+  plausibly reachable stay open, although #108 asked for every alert to be fixed or dismissed: dismissing them
+  would hide a real risk.
+- **Updates come through Renovate**, not hand-made pull requests: the Sonarr rebuild on 16 November and Dozzle
+  v11.4.3 on 23 November (after its three-day wait).
+- **Every "not reachable" reason was checked twice**, independently, against the advisory and the app's source at
+  the pinned version, before anything was dismissed.
+- **The six PyJWT dismissals of 7 October get corrected comments**: oauthlib does import `jwt`, on demand, for RSA
+  signing; SABnzbd never reaches it.
+
+**Accepted risk:** the .NET 8 runtime in Radarr and Lidarr (out of support since 10 November 2026) and the .NET 6
+runtime in Sonarr stay until stable releases move to .NET 10. Running the prerelease lines was rejected: they are
+new major versions, untested here.
+
+**Review findings that changed the triage:** Lidarr keeps a cover's file extension, so a TIFF cover reaches
+ImageSharp's TIFF encoders (12 alerts kept open, not dismissed); SABnzbd's urllib3 memory-exhaustion alert is as
+reachable as Bazarr's (kept open); the mitigation list no longer claims the stack keeps the apps on the LAN, or
+that a login stops flaws in the web server.
+
+**Rejected review findings:**
+
+- *Re-check row 6 (Sonarr's .NET 6) advisory by advisory.* The row stays open either way; the out-of-support
+  runtime is the real issue.
+- *T8: one Bazarr selector includes a season number.* An integer can't carry the escapes the flaw needs.
+- *Narrow the table's long rows.* A Markdown table row can't be wrapped.
+
 ## 2026-11-15: The project goal as checks
 
 **Decided:** the goal ("Keep the server's stack pinned, tested, updated automatically and rebuildable from this

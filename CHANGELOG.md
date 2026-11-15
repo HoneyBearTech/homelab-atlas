@@ -13,6 +13,14 @@ All notable changes to homelab-atlas are documented here. The format follows
   before proposing it (image rebuilds and vulnerability fixes skip the wait), and leaves the smoke test's runner
   label (`ubuntu-24.04`, the server's release) alone. The pre-commit `ruff` hook matches `requirements-dev.txt`
   (0.17.5). `docs/dependencies.md` now matches what Renovate does.
+- A rehearsal of the documented rebuild (`scripts/rehearse-rebuild.sh`, workflow "Rebuild rehearsal": weekly, on
+  demand, and on pull requests that change `docs/rebuilding.md`, `scripts/`, `compose.yaml` or `.env.example`; not
+  a required check). On a fresh Ubuntu 24.04 machine it starts the stack with throwaway settings, takes the nightly
+  backup with an encrypted copy off the host, throws everything away, then runs the steps marked in
+  `docs/rebuilding.md` from a clean clone and checks that every service is healthy with its data, API keys and
+  settings back. The commands come from the doc itself, so a step that stops working fails the rehearsal; what only
+  a real host can check (the NAS mount, the real backup server and key, the apps' screens) is listed in
+  [docs/rebuilding.md](docs/rebuilding.md#what-the-rehearsal-covers).
 - An optional `seerr.env` (template `seerr.env.example`, mode `600`, gitignored) for Seerr's database on a
   PostgreSQL server: Seerr reads its database settings, the password among them, only from its environment. Without
   the file nothing changes (SQLite, as before); the nightly backup copies it with the other settings files. Moving

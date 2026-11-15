@@ -53,9 +53,14 @@ file changes with them, in the same pull request.
   .NET 8, out of support since 10 November 2026, and Sonarr .NET 6, out of support since November 2024. Watch for
   a Lidarr release that does the same; checked November 2026, it has none
   ([dependencies.md](dependencies.md#current-findings)).
-- Dismiss the ImageSharp TIFF decoder alerts once a stable Radarr, Sonarr and Lidarr release restricts ImageSharp's
-  decoders (upstream's fix, so far only in their prereleases); until then they stay open
+- Dismiss the ImageSharp TIFF alerts once a stable Radarr, Sonarr and Lidarr release restricts ImageSharp's
+  decoders and encoders (upstream's fix, so far only in their prereleases); until then they stay open
   ([dependencies.md](dependencies.md#current-findings)).
+- Publish each port on a host address set in `.env` instead of on all of the host's addresses, the Dozzle agent's
+  7007 included, so the apps can be kept to the LAN by the stack itself and not only by the network in front of it.
+- Memory limits for the services, so one app that runs out of memory can't take the host's memory with it.
+- Start Seerr without npm's update check (`NPM_CONFIG_UPDATE_NOTIFIER=false`, or `node` directly instead of
+  `npm start`), so it doesn't contact the npm registry on every start; check it against the image first.
 
 ## What homelab-atlas will not do
 

@@ -196,12 +196,14 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ### Security
 
-- The image-scan findings were triaged again on 15 November 2026: of the 468 open alerts, 20 are fixed by a
-  Sonarr rebuild and Dozzle v11.4.3 (Renovate's next run proposes both; the Dozzle hub has to move with the agent),
-  127 are dismissed as not reachable here, each with its reason, and 321 stay open until upstream ships fixes.
-  Most of those are in the .NET runtimes that Radarr and Lidarr (.NET 8) and Sonarr (.NET 6) bundle, both out of
-  support; only the apps' prereleases move to .NET 10. Keep the apps on the LAN with their logins on, and use only
-  trusted indexers and subtitle providers ([docs/dependencies.md](docs/dependencies.md#current-findings)).
+- **The image-scan findings were triaged again on 15 November 2026.** Of the 468 open alerts, 20 are fixed by a
+  Sonarr rebuild (Renovate proposes it on 16 November) and Dozzle v11.4.3 (on 23 November, after its three-day
+  wait; the Dozzle hub has to move with the agent). 114 are dismissed as not reachable here, each with its reason,
+  and 334 stay open until upstream ships fixes. Most of those are in the .NET runtimes bundled into Radarr and
+  Lidarr (.NET 8) and Sonarr (.NET 6), both out of support. Radarr 7 and Sonarr 5, still prereleases, move to
+  .NET 10; Lidarr has no release that does. The stack publishes every port on all of the host's addresses, so keep
+  them reachable from the LAN only at the router or firewall, turn on each app's login, and use only trusted
+  indexers and subtitle providers ([docs/dependencies.md](docs/dependencies.md#current-findings)).
 - **The Dozzle agent no longer accepts the certificate built into every Dozzle image.** Dozzle v11.3.4 warned that
   the agent used that pair, which every copy of the image ships, so anyone on the LAN with a Dozzle image could
   connect to its port and read every container's log or control Docker through it. The agent now reads a pair of

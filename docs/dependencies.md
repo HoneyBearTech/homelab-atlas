@@ -110,23 +110,25 @@ image was scanned again with the same Trivy version and flags, and the counts ma
 Sonarr and Bazarr share one image with their 4K service, so each of their alerts is counted once. Reachability was
 judged from each image's contents and the app's source at the pinned version.
 
-- **20 are fixed by an update** that already exists (rows 1 and 2). Renovate proposes both on its next run
-  (Monday, 16 November 2026), and they merge after the smoke test like any other update.
-- **127 are dismissed as not reachable** in this stack, as "won't fix" in code scanning, each with its row's
+- **20 are fixed by an update** that already exists (rows 1 and 2), and the updates merge after the smoke test like
+  any other. Renovate proposes the Sonarr rebuild on its next run (Monday, 16 November 2026). Dozzle v11.4.3 was
+  released on 13 November, so its three-day wait ends after that run: Renovate proposes it on Monday,
+  23 November (on the 16th it may offer v11.4.2, which doesn't fix row 2).
+- **114 are dismissed as not reachable** in this stack, as "won't fix" in code scanning, each with its row's
   reason and a link to this section. A dismissed alert can be reopened: the row says what would make it reachable.
-- **321 stay open.** They are plausibly reachable and no stable release fixes them yet; they close as the apps ship
+- **334 stay open.** They are plausibly reachable and no stable release fixes them yet; they close as the apps ship
   fixes. The mitigation for them is below.
 
 | # | Image | Package | Alerts | Outcome | Why |
 | ---: | --- | --- | ---: | --- | --- |
-| 1 | Sonarr | `krb5-libs`, `libxslt` | 19 | Fixed by update | A rebuild of `version-4.0.20.3014` on Alpine 3.24.4 ships krb5 1.22.3 and libxslt 1.1.43-r4. Scanned: 56 alerts to 37, none new. |
-| 2 | Dozzle | `golang.org/x/net` | 1 | Fixed by update | Dozzle v11.4.3 (scanned: no findings). The Dozzle hub on the other host must move to v11.4.3 too: the agent stays on the hub's version (`compose.yaml`). |
-| 3 | Radarr | `krb5-libs` | 16 | Dismissed: not reachable | The flaws are in the Kerberos KDC, kadmind, NegoEx and RPCSEC_GSS. The image has only the client libraries, no NegoEx mechanism in `/etc/gss/mech`, and Radarr never accepts GSSAPI logins. Radarr's newest build (8 November) predates the Alpine fix, which Lidarr's pinned build and the Sonarr rebuild in row 1 already have; a Radarr rebuild would fix it. |
-| 4 | Radarr | `libxslt` | 3 | Dismissed: not reachable | Only xmlstarlet links it, and the image runs xmlstarlet only to read Radarr's own `config.xml`. Nothing processes untrusted XML or XSLT with it. Fixed by the same Radarr rebuild. |
-| 5 | Radarr, Lidarr | .NET 8.0.27 runtime and ASP.NET Core | 292 (146 each) | Open | 22 advisories, 2 of them critical request smuggling (CVE-2026-88092, CVE-2026-70188). Kestrel serves the published web ports, and the apps' HTTP client fetches from indexers and metadata servers with Brotli decompression and HTTP/2 on, so the Brotli out-of-bounds write (GHSA-p3jp-9v83-76w9) and the HTTP/2 flood (CVE-2026-50651) are reachable from any server the app fetches from. Fixed in .NET 8.0.32 to 8.0.34; no stable Radarr or Lidarr release ships them. |
-| 6 | Sonarr | .NET 6.0.13 runtime and ASP.NET Core, `System.Text.Json` | 7 | Open | The same exposure as row 5. The Sonarr rebuild in row 1 keeps them. |
-| 7 | Radarr, Lidarr, Sonarr | `SixLabors.ImageSharp` 3.1.12 (CVE-2026-106110, -106113, -106115) | 54 (18 each) | Dismissed: not reachable | The flaws are in TIFF encoding and HistogramEqualization. The apps use ImageSharp only to resize posters: load, resize, save as JPEG. |
-| 8 | Radarr, Lidarr, Sonarr | `SixLabors.ImageSharp` 3.1.12 (CVE-2026-106118) | 18 (6 each) | Open | A heap out-of-bounds write in the tiled fax TIFF decoder. The apps load images with ImageSharp's default configuration, which decodes whatever a metadata or cover-art server returns, TIFF included. No setting turns that off. |
+| 1 | Sonarr | `krb5-libs`, `libxslt` | 19 | Fixed by update | A rebuild of `version-4.0.20.3014` ships krb5-libs 1.22.3-r0 and libxslt 1.1.43-r4 (the pinned build has 1.22.2-r1 and 1.1.43-r3). Scanned: 56 alerts to 37, none new. |
+| 2 | Dozzle | `golang.org/x/net` | 1 | Fixed by update | Dozzle v11.4.3 (scanned: no findings); Renovate proposes it on 23 November. The Dozzle hub on the other host must move to v11.4.3 too: the agent stays on the hub's version (`compose.yaml`). |
+| 3 | Radarr | `krb5-libs` | 16 | Dismissed: not reachable | The flaws are in the Kerberos KDC, kadmind, NegoEx and RPCSEC_GSS. The package also ships the KDC's and kadmind's libraries, but the image has no `krb5kdc` or `kadmind` binary to load them, no `/etc/gss` (so no NegoEx mechanism), and Radarr never accepts GSSAPI logins. Radarr's newest build (8 November) has the older packages, which Lidarr's pinned build and the Sonarr rebuild in row 1 have already replaced; a Radarr rebuild would fix it. |
+| 4 | Radarr | `libxslt` | 3 | Dismissed: not reachable | xmlstarlet, `xsltproc` and libexslt link it, but the image runs only xmlstarlet, to read Radarr's own `config.xml`. Nothing processes untrusted XML or XSLT. Fixed by the same Radarr rebuild. |
+| 5 | Radarr, Lidarr | .NET 8.0.27 runtime and ASP.NET Core | 292 (146 each) | Open | 22 advisories, 2 of them critical request smuggling in the web server (CVE-2026-88092, CVE-2026-70188), which acts before any login. The apps' HTTP client fetches from indexers and metadata servers with Brotli decompression and HTTP/2 on, so the Brotli out-of-bounds write (GHSA-p3jp-9v83-76w9) and the HTTP/2 flood (CVE-2026-50651) are reachable from any server the app fetches from. Fixed in .NET 8.0.29 to 8.0.34; no stable Radarr or Lidarr release ships them. **The most urgent open group** (below). |
+| 6 | Sonarr | .NET 6.0.13 runtime and ASP.NET Core, `System.Text.Json` | 7 | Open | Kept open without a per-advisory check: two are in ASP.NET Core Identity (CVE-2023-33170, CVE-2025-24070), which Sonarr doesn't use. The real issue is the runtime: .NET 6 has been out of support since November 2024, and these 7 are only what Trivy reports. The Sonarr rebuild in row 1 keeps them. |
+| 7 | Radarr, Lidarr, Sonarr | `SixLabors.ImageSharp` 3.1.12: CVE-2026-106113 in all three; CVE-2026-106110 and -106115 in Radarr and Sonarr | 42 (18, 6, 18) | Dismissed: not reachable | The flaws are in HistogramEqualization, which none of the apps runs, and in the TIFF fax encoders. Radarr and Sonarr only load, resize and save posters as JPEG (or PNG, for logos), never TIFF. |
+| 8 | Radarr, Lidarr, Sonarr | `SixLabors.ImageSharp` 3.1.12: CVE-2026-106118 in all three; CVE-2026-106110 and -106115 in Lidarr | 30 (6, 18, 6) | Open | CVE-2026-106118 is a heap out-of-bounds write in the tiled fax TIFF decoder. The apps load images with ImageSharp's default configuration, which decodes whatever a metadata or cover-art server returns, TIFF included. Lidarr also keeps the image URL's extension for the resized file, and ImageSharp picks the encoder from it, so a `.tif` cover is decoded and re-encoded as TIFF: that reaches the fax encoder flaws (CVE-2026-106110, -106115). No setting turns either off. |
 | 9 | Radarr, Lidarr, Sonarr | `System.Security.Cryptography.Pkcs` 8.0.1 | 16 (5, 5, 6) | Dismissed: not reachable | The flaw is in `SignedCms.CheckSignature`, which none of the apps calls: they only send email and never verify S/MIME signatures. |
 | 10 | Bazarr, SABnzbd | `certifi` 2026.6.17 | 2 (critical) | Open | The bundle trusts emSign roots whose intermediate keys were compromised. Bazarr's HTTP client trusts it, and SABnzbd points `SSL_CERT_FILE` at it for all of its TLS (Usenet servers and indexers). An attack needs someone on the network path holding one of those keys. Bazarr's development line (v1.6.3-beta) has the fix; no stable release yet. |
 | 11 | Bazarr, SABnzbd | `oauthlib` 3.3.1 | 4 | Dismissed: not reachable | Both flaws are in OAuth 2 server-side token and device-code endpoints. Both apps use oauthlib only as a client, through Apprise's Twitter notifier. |
@@ -134,22 +136,34 @@ judged from each image's contents and the app's source at the pinned version.
 | 13 | Bazarr | `msgpack` | 1 | Dismissed: not reachable | Bazarr's SignalR client and Socket.IO server use JSON; nothing deserializes MessagePack from untrusted input. |
 | 14 | Bazarr | `soupsieve` (CVE-2026-126191) | 1 | Dismissed: not reachable | The flaw needs an attacker-supplied CSS selector; Bazarr's subtitle providers use only fixed selectors in its code. |
 | 15 | Bazarr | `soupsieve` (CVE-2026-126190) | 1 | Open | Denial of service only: selectors with descendant combinators run on HTML from subtitle sites. |
-| 16 | Bazarr | `urllib3` (CVE-2026-97687) | 1 | Dismissed: not reachable | It needs an HTTPS proxy, and this stack configures none for Bazarr. Setting an HTTPS proxy in Bazarr makes it reachable: reopen it then. |
-| 17 | Bazarr | `urllib3` (CVE-2026-97689) | 1 | Open | Memory exhaustion from a malicious subtitle-provider server. With the `autoheal` profile on, autoheal restarts Bazarr if it stops answering its health check. |
-| 18 | SABnzbd | `urllib3` (CVE-2026-97687, -97689) | 2 | Dismissed: not reachable | In SABnzbd only the HTTP client inside Apprise uses urllib3, for the notification services the operator picks, with no HTTPS proxy. SABnzbd's own downloads don't use it. An HTTPS proxy or an untrusted notification service would make them reachable. |
-| 19 | SABnzbd | `PyJWT` | 1 | Dismissed: not reachable | The flaw is in `PyJWK` and `PyJWKClient`, which nothing in SABnzbd uses. Only oauthlib imports `jwt`, on demand, in OAuth 2 code SABnzbd never calls. |
+| 16 | Bazarr | `urllib3` (CVE-2026-97687) | 1 | Dismissed: not reachable | It needs an HTTPS proxy. Bazarr's settings allow only HTTP and SOCKS proxies, and this stack sets no `HTTPS_PROXY`. An `https://` value in `HTTPS_PROXY` would make it reachable: reopen it then. |
+| 17 | Bazarr, SABnzbd | `urllib3` (CVE-2026-97689) | 2 | Open | Memory exhaustion from a chunked response: in Bazarr from a subtitle-provider server, in SABnzbd from any notification service Apprise sends to, a redirect it returns, or anyone on the network path to an `http://` one. `compose.yaml` sets no memory limits, so nothing in the stack contains it. |
+| 18 | SABnzbd | `urllib3` (CVE-2026-97687) | 1 | Dismissed: not reachable | It needs an HTTPS proxy for the requests library inside Apprise, SABnzbd's only use of urllib3, and this stack sets none. An `https://` value in `HTTPS_PROXY` would make it reachable. |
+| 19 | SABnzbd | `PyJWT` | 1 | Dismissed: not reachable | The flaw is in `PyJWK` and `from_jwk`, which nothing in SABnzbd uses. Only oauthlib imports `jwt`, on demand, for RSA signing (OAuth 1) and RS256 tokens (OAuth 2), and never through `PyJWK`; Apprise's Twitter notifier, SABnzbd's only use of oauthlib, signs with HMAC-SHA1. |
 | 20 | Seerr | `nodemailer` 7.0.13 and 9.1.1 | 6 | Dismissed: not reachable | Seerr sends mail with its own nodemailer 10.2.1. The 7.0.13 copy (from email-templates) and the 9.1.1 copy (from preview-email) are never used: Seerr passes its own transport and turns previews off. This covers CVE-2026-90776, whose reachability the 13 November snapshot left open. |
-| 21 | Seerr | `brace-expansion`, `ip-address`, `pacote` (2), `picomatch`, `sigstore` | 10 | Dismissed: not reachable | Part of the npm CLI in the Node.js base image. npm only starts Seerr (`npm start`) and never installs, fetches or verifies packages at run time. |
+| 21 | Seerr | `brace-expansion`, `ip-address`, `pacote` (2), `picomatch`, `sigstore` | 10 | Dismissed: not reachable | Part of the npm CLI in the Node.js base image. npm only starts Seerr (`npm start`), and on each start its update check fetches the registry's manifest for `npm@latest`. That fixed lookup never resolves git specs (pacote), verifies signatures (sigstore), expands outside globs (picomatch, brace-expansion) or goes through a SOCKS proxy (ip-address); npm never installs anything. |
 | 22 | Recyclarr | `git`, `git-init-template` | 6 | Dismissed: not reachable | Recyclarr runs only `git init`, `fetch`, `status` and `reset --hard` on its guide repositories; it never merges, clones submodules or uses fast-import. |
 | 23 | Recyclarr | `libexpat` | 4 | Dismissed: not reachable | Only git links it, for WebDAV push (`http-push`), which Recyclarr never uses. |
-| | | **Total** | **468** | | 20 fixed by update, 127 dismissed, 321 open. |
+| | | **Total** | **468** | | 20 fixed by update, 114 dismissed, 334 open. |
 
-**Mitigation for the open findings** (rows 5, 6, 8, 10, 15 and 17). Keep every web UI on the LAN only, with each
-app's Forms login on ([installing.md](installing.md#running-it-securely)). Enable only trusted indexers and
-subtitle providers: several of these flaws are triggered by what those servers send back. Any reverse proxy put in
-front of an app must reject ambiguous requests (for example, both `Content-Length` and `Transfer-Encoding`), so
-the request-smuggling flaws in row 5 can't pass through it. There is no configuration mitigation for the ImageSharp
-TIFF decoder (row 8). These limit who and what can reach the apps; they don't remove the bugs.
+**Mitigation for the open findings** (rows 5, 6, 8, 10, 15 and 17). These limit who and what can reach the apps;
+they don't remove the bugs.
+
+- **Keep the apps' ports reachable from the LAN only.** The stack doesn't enforce this: `compose.yaml` publishes
+  every port on all of the host's addresses, IPv4 and IPv6, and Docker-published ports bypass host firewalls such
+  as `ufw` ([installing.md](installing.md#running-it-securely)). It's the operator's job, at the router or a
+  firewall in front of the host. For row 5's request-smuggling flaws this is the only mitigation: they act in the
+  web server before any login.
+- **Turn on each app's Forms login** ([installing.md](installing.md#running-it-securely)). It protects the apps'
+  pages and API, not the web server underneath.
+- **Enable only trusted indexers and subtitle providers**, and send SABnzbd's notifications only to `https://`
+  services: rows 15 and 17 are triggered by what those servers send back.
+- **Any reverse proxy put in front of an app must reject ambiguous requests** (for example, both `Content-Length`
+  and `Transfer-Encoding`), so the request-smuggling flaws in row 5 can't pass through it.
+- **No configuration mitigation** exists for row 8 (ImageSharp's TIFF decoder, and Lidarr's TIFF encoders) or for
+  row 5's Brotli out-of-bounds write (GHSA-p3jp-9v83-76w9). The Brotli flaw is memory corruption triggered by a
+  response from the metadata servers the apps use, which the operator doesn't choose, which makes row 5 the most
+  urgent open group. It goes when Radarr and Lidarr ship a newer runtime.
 
 **Runtimes out of support.** Radarr and Lidarr bundle .NET 8.0.27; .NET 8 went out of support on 10 November 2026,
 and 8.0.34 was its last patch. Sonarr bundles .NET 6.0.13, out of support since 12 November 2024; Trivy reports
@@ -158,14 +172,16 @@ Radarr 7 and Sonarr 5. Lidarr has no release that does (its development build, 3
 Running prereleases here is out of scope; the [roadmap](roadmap.md#security-and-project-health) tracks the move to
 the stable .NET 10 releases.
 
-**ImageSharp.** Upstream's fix (8 October 2026, in Radarr, Sonarr and Lidarr) restricts ImageSharp's decoders to
-JPEG, PNG and WebP. It is only in the prerelease lines, and it keeps ImageSharp 3.1.12 and suppresses the advisories,
-so the scan will keep reporting row 8 after a stable release ships it. Row 8 is dismissed once that release is
-pinned.
+**ImageSharp.** Upstream's fix (8 October 2026, in Radarr, Sonarr and Lidarr) restricts ImageSharp's decoders and
+encoders to JPEG, PNG and WebP. It is only in the prerelease lines, and it keeps ImageSharp 3.1.12 and suppresses
+the advisories, so the scan will keep reporting row 8 after a stable release ships it. Row 8 is dismissed once that
+release is pinned.
 
 **The October PyJWT dismissals.** The six SABnzbd PyJWT alerts dismissed on 7 October 2026 say that no library in
-the image imports `jwt`. oauthlib does, on demand, in OAuth 2 code that SABnzbd never calls, so they stay
-dismissed; the earlier triage below has the right wording, and row 19 uses it.
+the image imports `jwt`. oauthlib does, on demand, for RSA signing (OAuth 1) and RS256 tokens (OAuth 2); SABnzbd's
+only use of oauthlib, Apprise's Twitter notifier, signs with HMAC-SHA1 and never reaches either. So they stay
+dismissed, and their comments are corrected to say so when this triage's dismissals are made. Row 19 uses the same
+reasoning.
 
 ### Current-image scan snapshot — 13 November 2026 UTC
 

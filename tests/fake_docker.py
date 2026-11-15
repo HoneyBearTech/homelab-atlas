@@ -5,8 +5,13 @@ The stack is in the JSON file $FAKE_DOCKER_STATE: its services, each `running`, 
 the container exits at `exits_at`, a time.time() value), plus the services whose stop fails (`fail_stop`: seconds
 until the container exits after all) and that fail to start (`fail_start`). Every service has one data mount,
 /config. `compose stop` and `compose start` are appended to `log` with the container's state at the time, so a test
-can tell whether a start came before or after the container had exited. The services listed in `inactive` belong to
-a Compose profile that is off: `compose config` leaves them out unless it's given `--profile '*'`.
+can tell whether a start came before or after the container had exited.
+
+Compose profiles: `profile_of` maps a service to its profile (a service without one always runs), and
+`compose_profiles` is COMPOSE_PROFILES as Compose reads it (missing: not set). `compose config --services` lists the
+services Compose runs with that value (or with every profile, for `--profile '*'`), and `docker ps` lists the
+containers of every service in `containers` (default: every service). The services in `inactive` are left out of
+`compose config --services` whatever their profile.
 
 A failed stop behaves as Docker does when a process can't exit (stuck on an NFS write): the command fails, and the
 container keeps running until it exits on its own; `compose start` skips a container that is still running.
@@ -43,15 +48,38 @@ def service_of(container: str) -> str:
     return container.removeprefix("id-")
 
 
+def active(stack: dict, flags: list[str]) -> list[str]:
+    """The services Compose runs: those without a profile, and those of the profiles turned on."""
+    on = set(flags or [p.strip() for p in stack.get("compose_profiles", "").split(",")])
+    profile_of = stack.get("profile_of", {})
+    inactive = set(stack.get("inactive", ()))
+    return [
+        s
+        for s in stack["services"]
+        if "*" in on or (s not in inactive and (s not in profile_of or profile_of[s] in on))
+    ]
+
+
+def config(stack: dict, args: list[str], profiles: list[str]) -> None:
+    if "--environment" in args:
+        if "compose_profiles" in stack:
+            print(f"COMPOSE_PROFILES={stack['compose_profiles']}")
+    elif "--profiles" in args:
+        print("\n".join(sorted(set(stack.get("profile_of", {}).values()))))
+    elif "--services" in args:
+        print("\n".join(active(stack, profiles)))
+    else:
+        print("name: fake")
+
+
 def compose(stack: dict, args: list[str]) -> int:
-    every = False
+    profiles = []
     while args[0] == "--profile":
-        every = every or args[1] == "*"
+        profiles.append(args[1])
         args = args[2:]
     command, rest = args[0], [arg for arg in args[1:] if not arg.startswith("-")]
     if command == "config":
-        inactive = set() if every else set(stack.get("inactive", ()))
-        print("\n".join(s for s in stack["services"] if s not in inactive))
+        config(stack, args[1:], profiles)
     elif command == "ps" and "--services" in args:
         # --status running: a dying container still runs.
         print("\n".join(s for s in stack["services"] if state(stack, s) in {"running", "dying"}))
@@ -125,6 +153,10 @@ def main(args: list[str]) -> int:
     if args[0] == "inspect":
         return inspect(stack, args[1:])
     if args[:2] == ["network", "inspect"]:
+        return 0
+    if args[0] == "ps":
+        # Only `docker ps --all --filter label=... --format <the service label>` is used.
+        print("\n".join(stack.get("containers", stack["services"])))
         return 0
     if args[0] == "run":
         if "tar" in args:

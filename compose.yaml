@@ -376,9 +376,9 @@ services:
 
   # The only service with the Docker socket besides Dozzle. It answers on an internal network with no published
   # port, and passes on only what autoheal needs: listing and inspecting containers, restarting or stopping them
-  # (CONTAINERS, ALLOW_RESTARTS) and the daemon's read-only information, which autoheal reads once at start (INFO).
-  # Creating, starting or deleting containers, exec, images, volumes and every
-  # other POST are refused.
+  # (CONTAINERS, ALLOW_RESTARTS) and the daemon's information, which autoheal reads once at start (INFO). That call is
+  # read-only but reveals host details (kernel, OS, daemon proxy settings, plugins), not container environments.
+  # Creating, starting or deleting containers, exec, images, volumes and every other POST are refused.
   socket-proxy:
     <<: *hardened
     profiles: [autoheal]

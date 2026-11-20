@@ -203,7 +203,7 @@ unchanged throughout scanning. Exact post-update inventory (tags may move; these
 - **radarr**: `lscr.io/linuxserver/radarr:version-6.4.4.10685@sha256:51a9ac2a9eb47afc833541e5fd6c11b86eb9f810694c22fa2429e3078e9194b2`
 - **lidarr**: `lscr.io/linuxserver/lidarr:version-3.1.6.5079@sha256:a91ef0642c15c9bd7c4260fee98fa99972c61601e37c8a96411d6a9cf0e9ad40`
 - **seerr**: `ghcr.io/seerr-team/seerr:v3.5.2@sha256:aadee014b40e28cf9aa4928bc9d1183a6eb08f8c44d543cddc9efdcb16549be2`
-- **autoheal**: `willfarrell/autoheal:latest@sha256:e7f42d5365c7c4490dd0cafc2858bb9fd2d64a274448d2de2bb5c386f1af7a0f`
+- **autoheal** (history: the image scanned then, since replaced by `ghcr.io/tmknight/docker-autoheal:0.14.1@sha256:783c39074238202750c75719f5b0762c03b2a7331056719b598b9506316c27c1`, whose results come with the next scheduled scan): `willfarrell/autoheal:latest@sha256:e7f42d5365c7c4490dd0cafc2858bb9fd2d64a274448d2de2bb5c386f1af7a0f`
 - **sonarr**: `lscr.io/linuxserver/sonarr:version-4.0.20.3014@sha256:673dc4609a5672bc8e46069c86ffcea283a86b48d34a6c93d8da8c24a1b87571`
 - **bazarr**: `lscr.io/linuxserver/bazarr:version-v1.6.2@sha256:832820dec70bce9e912c6eee7a95baf6551e03dbc63325a7208daaa455423752`
 - **sabnzbd**: `lscr.io/linuxserver/sabnzbd:version-5.1.3@sha256:b356d0a9b22db584e9005364ec4e752dfc081ce501b7145e9a5c0bb38e4d1ba4`
@@ -216,7 +216,7 @@ unchanged throughout scanning. Exact post-update inventory (tags may move; these
 | Radarr | 273 | 272 | 194 | 194 |
 | Lidarr | 273 | 247 | 194 | 175 |
 | Seerr | 353 | 60 | 151 | 16 |
-| Autoheal | 0 | 0 | 0 | 0 |
+| Autoheal (willfarrell, since replaced) | 0 | 0 | 0 | 0 |
 | Sonarr | 145 | 94 | 61 | 56 |
 | Bazarr | 40 | 18 | 23 | 8 |
 | SABnzbd | 27 | 26 | 13 | 13 |

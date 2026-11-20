@@ -10,9 +10,11 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 - autoheal is now `ghcr.io/tmknight/docker-autoheal` 0.14.1 (pinned by digest, run as `65534:65534`) instead of
   `willfarrell/autoheal`, whose Alpine 3.18 base is end of life. The opt-in label is `autoheal.monitor.enable:
-  "true"` (was `autoheal: "true"`), and `socket-proxy` also answers `GET /info` (read-only; `INFO: 1`). The `latest`
+  "true"` (was `autoheal: "true"`), and `socket-proxy` also answers `GET /info` (`INFO: 1`; read-only, but it reveals host details such as the kernel, OS and daemon settings). The `latest`
   policy exception is gone. **Upgrading:** rename `WEBHOOK_URL` to `AUTOHEAL_WEBHOOK_URL` in `autoheal.env`;
-  until then restarts happen without a notice, and the notice now starts with the Docker host's name
+  until then restarts happen without a notice, and the notice now starts with the Docker host's name. **Deploying
+  restarts every monitored service once** (the label change recreates the 12 monitored services besides
+  `socket-proxy`, with unchanged images): a short interruption, after which autoheal watches them again
   ([upgrading](docs/upgrading.md#replacing-autoheal-the-autoheal-profile)). Closes #109.
 
 ### Added

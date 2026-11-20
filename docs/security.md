@@ -95,7 +95,7 @@ The Docker health check only marks a container unhealthy; something has to resta
 `tmknight/docker-autoheal` was proven end to end behind this stack's socket proxy, read-only, hardened and as a
 non-root user: it restarted only the labelled unhealthy container and posted the Discord-style webhook.
 `deunhealth` was rejected for the missing events API, webhook and stop timeout. Both autoheal tools have one
-maintainer. The one added call is `GET /info`, read-only daemon information (`INFO: 1` on the proxy).
+maintainer. The one added call is `GET /info` (`INFO: 1` on the proxy): read-only, but it reveals host details (kernel, OS, the daemon's proxy settings and plugins), not container environments.
 
 ## What it doesn't protect
 
@@ -116,7 +116,7 @@ maintainer. The one added call is `GET /info`, read-only daemon information (`IN
   in `compose.yaml`); keep its port on the LAN.
 - **autoheal's reach.** autoheal never holds the socket: `socket-proxy` does (the second allowed exception) and
   passes on only listing, inspecting, restarting and stopping containers and `GET /info` (read-only daemon
-  information, which autoheal reads once at start and can't run without), on an internal network with no
+  information that reveals host details (kernel, OS, daemon settings, plugins) but no container environment, which autoheal reads once at start and can't run without), on an internal network with no
   published port. Whoever controls autoheal or the proxy can still stop any container on the host and read
   containers' settings, including their environment; this stack keeps no secrets in environment variables.
 - **Restart loops.** autoheal restarts an unhealthy app every few minutes for as long as it stays unhealthy;

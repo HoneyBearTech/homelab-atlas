@@ -8,6 +8,8 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ### Changed
 
+- Renovate's periodic refresh of the whole `requirements-dev.txt` is off, so tool updates can't skip the three-day
+  wait: the tools move one at a time through ordinary updates, which wait.
 - autoheal is now `ghcr.io/tmknight/docker-autoheal` 0.14.1 (pinned by digest, run as `65534:65534`) instead of
   `willfarrell/autoheal`, whose Alpine 3.18 base is end of life. The opt-in label is `autoheal.monitor.enable:
   "true"` (was `autoheal: "true"`), and `socket-proxy` also answers `GET /info` (`INFO: 1`; read-only, but it reveals host details such as the kernel, OS and daemon settings). The `latest`

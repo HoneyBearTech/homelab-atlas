@@ -34,13 +34,16 @@ A new image or tool must:
 Each release carries a CycloneDX SBOM listing every service's image and digest
 ([verifying-releases.md](verifying-releases.md)). To update the pinned Python tools, edit
 `requirements-dev.in` if needed and run `pip-compile --generate-hashes --strip-extras requirements-dev.in`.
+Renovate does the same for updates: it re-locks `requirements-dev.txt` with that command (read from the file's
+header), so a tool's new dependencies and all hashes come with the pull request.
 
 ## Tracking dependencies
 
 - **Renovate** ([`.github/renovate.json5`](../.github/renovate.json5)) checks weekly (Mondays, 06:00 to 10:00 UTC)
-  for new image versions in the Compose file, new tool versions, new Action versions, new pre-commit hook versions
-  and new digests of the images that workflow steps, the pre-commit config and the backup scripts run, and opens a
-  pull request for each. It reads `compose.yaml`, `requirements-dev.txt`, the workflows, `.gitlab-ci.yml`,
+  for new image versions in the Compose file, new tool versions (re-locking `requirements-dev.txt` with
+  pip-compile), new Action versions, new pre-commit hook versions and new digests of the images that workflow
+  steps, the pre-commit config and the backup scripts run, and opens a pull request for each. It reads
+  `compose.yaml`, `requirements-dev.txt`, the workflows, `.gitlab-ci.yml`,
   `.pre-commit-config.yaml` and `scripts/*.sh`, and nothing else. Its commits are made through
   GitHub's API, so they're signed, and carry a DCO sign-off. Dependabot alerts stay on; Dependabot no longer opens
   version updates.

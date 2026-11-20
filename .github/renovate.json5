@@ -14,7 +14,7 @@
   ],
 
   // Only the files listed in docs/dependencies.md.
-  enabledManagers: ["docker-compose", "pip_requirements", "github-actions", "gitlabci", "pre-commit", "custom.regex"],
+  enabledManagers: ["docker-compose", "pip-compile", "github-actions", "gitlabci", "pre-commit", "custom.regex"],
 
   // Renovate's pre-commit manager is off by default; this turns it on for .pre-commit-config.yaml (the hook revs and
   // the `additional_dependencies` of python hooks, i.e. shellcheck-py). Its image pin is read by the regex manager
@@ -54,10 +54,12 @@
   minimumReleaseAge: "3 days",
   minimumReleaseAgeBehaviour: "timestamp-optional",
 
-  // The check and test tools, pinned with hashes. Each pin in requirements-dev.txt is bumped in place with its
-  // hashes; a tool that gains a new dependency of its own still needs a pip-compile run by hand (the pip-compile
-  // manager can't read this file's header line).
-  pip_requirements: {
+  // The check and test tools: requirements-dev.in lists them, requirements-dev.txt pins them with hashes. The
+  // pip-compile manager reads the command in the header of requirements-dev.txt (`pip-compile --generate-hashes
+  // --strip-extras requirements-dev.in`) and re-runs it for each update, so a new dependency of a tool is locked
+  // too. Its pattern matches the generated file, which names the .in file as its source. The pip_requirements
+  // manager is off, so the same pins aren't also bumped in place.
+  "pip-compile": {
     managerFilePatterns: ["/^requirements-dev\\.txt$/"],
   },
 

@@ -4,6 +4,7 @@ What each piece of planned work shipped, newest first.
 
 | Date | Job | What shipped | Pull request |
 | --- | --- | --- | --- |
+| 2026-11-20 | renovate-lock-refresh | Renovate's periodic refresh of the whole `requirements-dev.txt` is off, so tool updates can't skip the three-day wait | [#122](https://github.com/HoneyBearTech/homelab-atlas/pull/122) |
 | 2026-11-20 | atlas-open-issues, #111 | ruff checks for Python 3.15, the version CI runs | [#118](https://github.com/HoneyBearTech/homelab-atlas/pull/118) |
 | 2026-11-20 | atlas-open-issues, #110 | Renovate re-locks `requirements-dev.txt` with its pip-compile manager (standard header; in-place bumps off), so new tool dependencies and hashes come with the update | [#119](https://github.com/HoneyBearTech/homelab-atlas/pull/119) |
 | 2026-11-20 | atlas-open-issues, #112 | The smoke test and the rebuild rehearsal share one copy of their throwaway-stack setup in `scripts/lib.sh`; behaviour unchanged | [#120](https://github.com/HoneyBearTech/homelab-atlas/pull/120) |

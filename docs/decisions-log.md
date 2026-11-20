@@ -3,6 +3,23 @@
 Decisions about how homelab-atlas is built and maintained, newest first. Each entry says what was decided, why,
 and what was considered and rejected.
 
+## 2026-11-20: Renovate's lock-file refresh is off (renovate-lock-refresh, #122)
+
+**Decided:** `lockFileMaintenance` is turned off for the pip-compile manager in `.github/renovate.json5`.
+
+**Why:** the manager turns that refresh on by default. It re-runs pip-compile for the whole of `requirements-dev.txt`
+and picks the newest version of every tool, with no release dates, so it skipped the three-day wait and then merged
+by itself like every update here. The gap was found while homelab-hyperion moved to Renovate (homelab-hyperion#75),
+and it existed here since #119.
+
+**Accepted:** indirect dependencies of the tools now move only when a tool update re-locks the file.
+
+**Rejected:** keeping the refresh and holding it for the maintainer: tool updates already arrive one at a time, with
+the wait, and the refresh added nothing those don't.
+
+**Review findings:** none. The change was checked against Renovate itself: before it, the refresh produced an update;
+after, none, and ordinary tool updates keep the wait, their groups and automatic merging.
+
 ## 2026-11-20: The four open issues (atlas-open-issues, #117)
 
 The repo's coordinator had assigned #109 to #112 on 15 November, but no work had started; this job took them

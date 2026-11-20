@@ -44,10 +44,7 @@ work=$(mktemp -d)
 
 # The settings come from the generated env file only, never from the caller's environment. The Compose variables
 # also point scripts/backup.sh and scripts/restore.sh at this project.
-settings=$(grep -E '^[A-Z][A-Z0-9_]*=' "$root/.env.example" || true)
-while IFS='=' read -r key _; do
-  if [ -n "$key" ]; then unset "$key"; fi
-done <<<"$settings"
+read_settings
 unset COMPOSE_PROFILES
 export COMPOSE_PROJECT_NAME=$project
 export COMPOSE_FILE=$root/compose.yaml:$work/override.yaml
@@ -66,33 +63,14 @@ cleanup() {
   compose down --remove-orphans --timeout 30 || true
   docker volume ls -q --filter "label=com.docker.compose.project=$project" |
     xargs -r docker volume rm >/dev/null || true
-  for network in "${networks[@]+"${networks[@]}"}"; do docker network rm "$network" >/dev/null || true; done
+  for network in "${created_networks[@]+"${created_networks[@]}"}"; do docker network rm "$network" >/dev/null || true; done
   # Services that run as root leave root-owned files in the throwaway directories; remove them as root too.
   docker run --rm --network none -v "$work:/work" "$busybox" find /work -mindepth 1 -delete </dev/null || true
   rm -rf "$work"
   exit "$status"
 }
-networks=()
+created_networks=()
 trap cleanup EXIT
-
-# An address range (a /28) that no Docker network on the host uses, nor any range given as an argument, from
-# 172.16.0.0/16: outside Docker's default address pools (172.17-31.0.0/16, 192.168.0.0/16), so a network Compose
-# creates meanwhile can't be given it.
-free_subnet() {
-  # shellcheck disable=SC2046 # one network id per word
-  docker network inspect --format '{{range .IPAM.Config}}{{.Subnet}} {{end}}' $(docker network ls -q) |
-    python3 -I -c '
-import ipaddress, sys
-used = [ipaddress.ip_network(s) for s in sys.stdin.read().split() + sys.argv[1:] if "." in s]
-for n in range(255, -1, -1):
-    candidate = ipaddress.ip_network(f"172.16.{n}.0/28")
-    if not any(candidate.overlaps(u) for u in used):
-        print(candidate)
-        break
-else:
-    sys.exit("no free /28 in 172.16.0.0/16")' "$@"
-}
-subnets=()
 
 data_dirs=()
 while IFS= read -r line; do
@@ -105,13 +83,12 @@ while IFS= read -r line; do
       data_dirs+=("$value")
       ;;
     *_PREFIX) value=${project}_ ;;
-    *_VOLUME) value=${project}_$(echo "$key" | tr 'A-Z_' 'a-z-') ;;
-    *_NETWORK) value=${project}_$(echo "$key" | tr 'A-Z_' 'a-z-') ;;
+    *_VOLUME) value=$(throwaway_name "$key") ;;
+    *_NETWORK) value=$(throwaway_name "$key") ;;
     # A network's address range, which the stack fixes (for a firewall rule), mustn't overlap one already on the host.
     # (The stack network's own is dropped below all the same: a /28 is too small for its services.)
     *_SUBNET)
-      value=$(free_subnet "${subnets[@]+"${subnets[@]}"}")
-      subnets+=("$value")
+      next_subnet
       ;;
     COMPOSE_PROFILES) continue ;;
     *) value=${line#*=} ;;
@@ -165,14 +142,7 @@ for dir in "${data_dirs[@]+"${data_dirs[@]}"}"; do
 done
 
 # Networks the stack expects to exist (external ones, named by *_NETWORK settings) are created for the test only.
-while IFS='=' read -r key value; do
-  case $key in
-    *_NETWORK)
-      docker network create "$value" >/dev/null
-      networks+=("$value")
-      ;;
-  esac
-done <"$work/env"
+create_networks "$work/env"
 
 # Project-scoped container names, no published ports and no env files, so the test can't collide with anything
 # already running on the host or read a real secret; the health checks run inside the containers and need neither.
@@ -184,7 +154,8 @@ if grep -qx autoheal <<<"$active_services"; then has_autoheal=true; fi
 {
   echo "services:"
   for service in $stack_services; do
-    printf '  %s:\n    container_name: !reset null\n    ports: !reset []\n    env_file: !reset []\n' "$service"
+    override_service "$service"
+    printf '    env_file: !reset []\n'
   done
   # A container that turns unhealthy on demand (a file in its tmpfs), for autoheal to restart, when autoheal runs.
   if $has_autoheal; then
@@ -214,9 +185,7 @@ YAML
       - $config_root/$follow_leader/config/smoke-follower:/follow:ro
 YAML
   fi
-  # The stack's network gets whatever address range Docker picks, not a fixed one: the installation on this host may
-  # be using that range, and two networks can't share one.
-  printf 'networks:\n  default:\n    ipam: !reset {}\n'
+  override_network
 } >"$work/override.yaml"
 
 compose config --quiet
@@ -313,7 +282,7 @@ else
   }
   if [ -n "$follow_leader" ]; then follow_marker backed-up; fi
   "$root/scripts/backup.sh" "$work/backup"
-  for network in "${networks[@]+"${networks[@]}"}"; do
+  for network in "${created_networks[@]+"${created_networks[@]}"}"; do
     grep -Eq "^$network"$'\t'"[0-9a-f.:]+/[0-9]+"$'\t' "$work/backup/NETWORKS" ||
       fail "the backup's NETWORKS doesn't record the address range of $network"
   done

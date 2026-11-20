@@ -1,4 +1,5 @@
-# Helpers shared by backup.sh, restore.sh and smoke-test.sh, which source this file; it isn't run on its own.
+# Helpers shared by backup.sh, restore.sh, smoke-test.sh and rehearse-rebuild.sh, which source this file; it isn't run
+# on its own.
 # Written for bash 3.2 and later (macOS ships 3.2).
 # shellcheck shell=bash
 
@@ -198,3 +199,67 @@ check_profile_containers() {
     "is)." >&2
   return 1
 }
+
+# What smoke-test.sh and rehearse-rebuild.sh, which run the stack with throwaway settings, share. They set $project, and
+# keep $created_networks (the networks they create, which they remove on exit) themselves.
+# shellcheck disable=SC2154 # project comes from the script that sources this file
+
+# Sets $settings to the settings .env.example lists (KEY=value lines) and unsets each of them, so the settings come
+# from the generated env files only, never from the caller's environment.
+read_settings() {
+  local key
+  # shellcheck disable=SC2034 # used by the scripts that source this file
+  settings=$(grep -E '^[A-Z][A-Z0-9_]*=' "$root/.env.example" || true)
+  while IFS='=' read -r key _; do
+    if [ -n "$key" ]; then unset "$key"; fi
+  done <<<"$settings"
+}
+
+# The name of the volume or network a setting names, of this project's own: <project>_<the setting, lower case, with
+# hyphens>.
+throwaway_name() { echo "${project}_$(echo "$1" | tr 'A-Z_' 'a-z-')"; }
+
+# An address range (a /28) that no Docker network on the host uses, nor any range given as an argument, from
+# 172.16.0.0/16: outside Docker's default address pools (172.17-31.0.0/16, 192.168.0.0/16), so a network Compose
+# creates meanwhile can't be given it.
+free_subnet() {
+  # shellcheck disable=SC2046 # one network id per word
+  docker network inspect --format '{{range .IPAM.Config}}{{.Subnet}} {{end}}' $(docker network ls -q) |
+    python3 -I -c '
+import ipaddress, sys
+used = [ipaddress.ip_network(s) for s in sys.stdin.read().split() + sys.argv[1:] if "." in s]
+for n in range(255, -1, -1):
+    candidate = ipaddress.ip_network(f"172.16.{n}.0/28")
+    if not any(candidate.overlaps(u) for u in used):
+        print(candidate)
+        break
+else:
+    sys.exit("no free /28 in 172.16.0.0/16")' "$@"
+}
+subnets=()
+
+# Sets $value to a free address range that no range chosen before (in $subnets) overlaps.
+next_subnet() {
+  value=$(free_subnet "${subnets[@]+"${subnets[@]}"}")
+  subnets+=("$value")
+}
+
+# Creates the networks the stack expects to exist (external ones, named by the *_NETWORK settings in env file $1) and
+# adds them to $created_networks.
+create_networks() {
+  local key value
+  while IFS='=' read -r key value; do
+    case $key in
+      *_NETWORK)
+        docker network create "$value" >/dev/null
+        created_networks+=("$value")
+        ;;
+    esac
+  done <"$1"
+}
+
+# The lines of a Compose override file: a service's project-scoped container name and no published ports (so nothing
+# collides with what already runs on the host), and the stack network's address range, which is whatever Docker picks,
+# not a fixed one: the installation on this host may be using that range, and two networks can't share one.
+override_service() { printf '  %s:\n    container_name: !reset null\n    ports: !reset []\n' "$1"; }
+override_network() { printf 'networks:\n  default:\n    ipam: !reset {}\n'; }

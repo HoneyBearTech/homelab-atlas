@@ -224,10 +224,7 @@ mkdir -p "$work/old-host" "$work/new-host" "$key_holder" "$work/backup-server/at
 backup_name=""
 
 # The stack's settings come from the env files in each host's checkout only, never from the caller's environment.
-settings=$(grep -E '^[A-Z][A-Z0-9_]*=' "$root/.env.example" || true)
-while IFS='=' read -r key _; do
-  if [ -n "$key" ]; then unset "$key"; fi
-done <<<"$settings"
+read_settings
 unset COMPOSE_PROFILES COMPOSE_ENV_FILES BACKUP_ENV_FILE
 export COMPOSE_PROJECT_NAME=$project
 # A state directory that doesn't exist: the scripts never take, or wait for, a real pull agent's deploy lock.
@@ -243,7 +240,7 @@ use_host() {
 # caller's directory.
 compose() { docker compose --project-directory "$host" "$@"; }
 
-networks=()
+created_networks=()
 cleanup() {
   status=$?
   if [ "$status" -ne 0 ] && [ -n "$host" ] && [ -f "$host/compose.yaml" ]; then
@@ -258,7 +255,7 @@ cleanup() {
   docker volume ls -q --filter "label=com.docker.compose.project=$project" | xargs -r docker volume rm >/dev/null || true
   docker network ls -q --filter "label=com.docker.compose.project=$project" |
     xargs -r docker network rm >/dev/null || true
-  for network in "${networks[@]+"${networks[@]}"}"; do docker network rm "$network" >/dev/null 2>&1 || true; done
+  for network in "${created_networks[@]+"${created_networks[@]}"}"; do docker network rm "$network" >/dev/null 2>&1 || true; done
   # Services that run as root leave root-owned files in the throwaway directories; remove them as root too.
   docker run --rm --network none -v "$work:/work" "$busybox" find /work -mindepth 1 -delete </dev/null || true
   rm -rf "$work"
@@ -266,23 +263,6 @@ cleanup() {
   exit "$status"
 }
 trap cleanup EXIT
-
-# An address range (a /28) that no Docker network on the host uses, nor any range given as an argument, from
-# 172.16.0.0/16, as in the smoke test.
-free_subnet() {
-  # shellcheck disable=SC2046 # one network id per word
-  docker network inspect --format '{{range .IPAM.Config}}{{.Subnet}} {{end}}' $(docker network ls -q) |
-    python3 -I -c '
-import ipaddress, sys
-used = [ipaddress.ip_network(s) for s in sys.stdin.read().split() + sys.argv[1:] if "." in s]
-for n in range(255, -1, -1):
-    candidate = ipaddress.ip_network(f"172.16.{n}.0/28")
-    if not any(candidate.overlaps(u) for u in used):
-        print(candidate)
-        break
-else:
-    sys.exit("no free /28 in 172.16.0.0/16")' "$@"
-}
 
 # Waits until every service is healthy, retrying once (Recyclarr's fetch of the TRaSH Guides can break off).
 up_and_wait() {
@@ -322,7 +302,6 @@ use_host "$old"
 (umask 077 && age-keygen -o "$key_holder/atlas-backup.key" 2>/dev/null)
 recipient=$(age-keygen -y "$key_holder/atlas-backup.key")
 
-subnets=()
 media_root=""
 while IFS= read -r line; do
   [ -n "$line" ] || continue
@@ -332,10 +311,9 @@ while IFS= read -r line; do
     PGID) value=$(id -g) ;;
     *_ROOT | *_PATH) value=$work/srv/$(echo "$key" | tr 'A-Z_' 'a-z-') ;;
     *_PREFIX) value=${project}_ ;;
-    *_VOLUME | *_NETWORK) value=${project}_$(echo "$key" | tr 'A-Z_' 'a-z-') ;;
+    *_VOLUME | *_NETWORK) value=$(throwaway_name "$key") ;;
     *_SUBNET)
-      value=$(free_subnet "${subnets[@]+"${subnets[@]}"}")
-      subnets+=("$value")
+      next_subnet
       ;;
     *) value=${line#*=} ;;
   esac
@@ -356,9 +334,9 @@ chmod 600 "$old/.env" "$old/autoheal.env" "$old/seerr.env" "$old/backup.env"
   echo "services:"
   for service in $(COMPOSE_FILE=$old/compose.yaml docker compose --project-directory "$old" --profile '*' config \
     --no-interpolate --services); do
-    printf '  %s:\n    container_name: !reset null\n    ports: !reset []\n' "$service"
+    override_service "$service"
   done
-  printf 'networks:\n  default:\n    ipam: !reset {}\n'
+  override_network
 } >"$work/override.yaml"
 
 # Every directory a service bind-mounts, made by the user the apps run as (PUID), as the install docs have it.
@@ -366,14 +344,7 @@ while IFS= read -r source; do
   case $source in "$work"/*) mkdir -p "$source" ;; esac
 done < <(COMPOSE_FILE=$old/compose.yaml docker compose --project-directory "$old" --profile '*' config |
   sed -n 's/^ *source: //p')
-while IFS='=' read -r key value; do
-  case $key in
-    *_NETWORK)
-      docker network create "$value" >/dev/null
-      networks+=("$value")
-      ;;
-  esac
-done <"$old/.env"
+create_networks "$old/.env"
 
 (cd "$old" && compose config --quiet)
 # The services the old host runs: the core ones and those of the profiles its .env (COMPOSE_PROFILES, from
@@ -444,8 +415,8 @@ fi
 
 echo "==> Throwing the old host away: its containers, volumes, networks, checkout, settings, data and backups"
 (cd "$old" && compose down --volumes --remove-orphans --timeout 30)
-for network in "${networks[@]+"${networks[@]}"}"; do docker network rm "$network" >/dev/null; done
-networks=()
+for network in "${created_networks[@]+"${created_networks[@]}"}"; do docker network rm "$network" >/dev/null; done
+created_networks=()
 docker run --rm --network none -v "$work:/work" "$busybox" rm -rf /work/old-host /work/srv </dev/null
 unset COMPOSE_FILE
 host=""

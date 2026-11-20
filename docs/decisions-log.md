@@ -3,6 +3,38 @@
 Decisions about how homelab-atlas is built and maintained, newest first. Each entry says what was decided, why,
 and what was considered and rejected.
 
+## 2026-11-20: The four open issues (atlas-open-issues, #117)
+
+The repo's coordinator had assigned #109 to #112 on 15 November, but no work had started; this job took them
+over, one pull request each (#118 to #121).
+
+**Decided:**
+
+- **autoheal becomes `tmknight/docker-autoheal`.** `willfarrell/autoheal` is built on Alpine 3.18 (end of life);
+  its upstream pins that base, hasn't committed since September 2025 and hasn't answered the issue asking for a
+  newer base. tmknight 0.14.1 does the same job, has versioned tags and a supported base, and was proven end to
+  end behind this stack's socket proxy, hardened, read-only and as user 65534. Rejected: `qmcgaw/deunhealth` (needs
+  Docker's events API; no webhook, stop timeout or release since 2021); younger forks with a handful of stars.
+- **The proxy also allows `GET /info`.** The new image reads it once at start and exits without it. It is
+  read-only but reveals host details (kernel, OS, daemon settings); no container environment, nothing writable.
+  Accepted by the owner with the plan.
+- **The opt-in label changes on every monitored service** (`autoheal.monitor.enable`), as the new image requires.
+  Merging recreates those containers once.
+- **Renovate's pip-compile manager owns `requirements-dev.txt`.** The in-place `pip_requirements` bumps are off,
+  so updates aren't proposed twice.
+
+**Review findings:**
+
+- Fixed: the upgrade notes and the plan said only autoheal and the proxy restart; the label change restarts every
+  monitored app once.
+- Fixed: `GET /info` was described only as read-only; it also reveals host details.
+- Fixed: the image inventory in `dependencies.md` listed the old image as current; the row is marked as history.
+- Noted, accepted: tmknight has one maintainer and its build workflow uses floating action tags; the digest pin and
+  Renovate's three-day wait limit that, but don't remove it. The old image had one maintainer too.
+- Noted: with pip-compile, the lock is resolved on Renovate's side; check that its first update matches CI's
+  Python 3.15.
+- Declined: two lines in `rehearse-rebuild.sh` over 120 characters after #112 (lint passes; style only).
+
 ## 2026-11-15: Triage of the open image-scan alerts (trivy-triage, #108)
 
 **Decided:**

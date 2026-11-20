@@ -58,8 +58,9 @@ header), so a tool's new dependencies and all hashes come with the pull request.
   skip the wait. An image rebuild (a new digest under the same tag) skips it too: Docker Hub dates a rebuild by
   the tag's last push, so a tag rebuilt about weekly would never get through the Monday-only schedule, and rebuilds
   are mostly base-image security refreshes, still gated by the smoke test and the required checks. A moved tag on a
-  pre-commit hook or an Action keeps the wait. A version update
-  from a registry that reports no release date isn't held back either.
+  pre-commit hook or an Action keeps the wait. A version update from a registry that reports no release date isn't
+  held back either. Renovate's periodic refresh of the whole `requirements-dev.txt` is off for the same reason: it
+  would pick the newest version of every tool with no release dates, so it would skip the wait.
 - **Each tool's two pins usually move in one pull request**: ruff, yamllint and shellcheck-py are pinned in
   `requirements-dev.txt` and in `.pre-commit-config.yaml`, and Renovate groups them. Grouping is best-effort: a
   member that hasn't waited out its three days is left out of an otherwise ready group, so the two pins can differ

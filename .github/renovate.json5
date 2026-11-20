@@ -61,6 +61,10 @@
   // manager is off, so the same pins aren't also bumped in place.
   "pip-compile": {
     managerFilePatterns: ["/^requirements-dev\\.txt$/"],
+    // The pip-compile manager turns on a periodic lock-file refresh by default. It re-runs pip-compile for the
+    // whole file and picks the newest version of every tool, with no release dates, so it would skip the three-day
+    // wait and then merge by itself. Off, the tools move one at a time through ordinary updates, which wait.
+    lockFileMaintenance: { enabled: false },
   },
 
   customManagers: [

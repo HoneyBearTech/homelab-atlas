@@ -6,6 +6,15 @@ All notable changes to homelab-atlas are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- autoheal is now `ghcr.io/tmknight/docker-autoheal` 0.14.1 (pinned by digest, run as `65534:65534`) instead of
+  `willfarrell/autoheal`, whose Alpine 3.18 base is end of life. The opt-in label is `autoheal.monitor.enable:
+  "true"` (was `autoheal: "true"`), and `socket-proxy` also answers `GET /info` (read-only; `INFO: 1`). The `latest`
+  policy exception is gone. **Upgrading:** rename `WEBHOOK_URL` to `AUTOHEAL_WEBHOOK_URL` in `autoheal.env`;
+  until then restarts happen without a notice, and the notice now starts with the Docker host's name
+  ([upgrading](docs/upgrading.md#replacing-autoheal-the-autoheal-profile)). Closes #109.
+
 ### Added
 
 - Renovate keeps `.pre-commit-config.yaml` current (hook revs pinned by commit SHA, and the actionlint image),

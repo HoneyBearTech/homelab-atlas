@@ -59,7 +59,7 @@ with every optional profile on and once with the core services only; the policy 
 | recyclarr | none | yes (`/tmp` in memory) | Runs as `PUID:PGID` and writes only its config directory, and its crontab to `/tmp` |
 | seerr | none | yes (`/tmp` in memory) | Runs as `PUID:PGID` (Node under `init`) and writes only its config directory |
 | dozzle | none | yes (`/tmp`, `/data` in memory) | Reads the Docker socket and its certificate and key, all owned by root; writes only its address file to `/tmp` and the notification settings the Dozzle hub sends it to `/data`. The hub keeps those settings and sends them again each time it starts (an agent restarted while the hub runs has none until then) |
-| autoheal | none | yes | Only talks to socket-proxy |
+| autoheal | none | yes | Only talks to socket-proxy; runs as `65534:65534` (nobody) |
 | socket-proxy | none | yes (`/run`, `/tmp` in memory) | Only reads the socket |
 
 Read-only for the linuxserver.io apps was tried again with the images pinned here (`read_only: true` and
@@ -79,6 +79,24 @@ Each capability was found by starting the image without it: the app then fails t
 database, can't repair a `/config` with files owned by another user, or takes 30 seconds to stop and is killed.
 Without `CHOWN` and `DAC_OVERRIDE` the apps' root can only reach what it owns.
 
+### Why this autoheal
+
+The Docker health check only marks a container unhealthy; something has to restart it. Three tools were compared
+(November 2026):
+
+| | `willfarrell/autoheal` (replaced) | `tmknight/docker-autoheal` (chosen) | `qmcgaw/deunhealth` |
+| --- | --- | --- | --- |
+| Base | Alpine 3.18, end of life; upstream pins it and hasn't committed since September 2025 | Alpine 3.24, Rust, versioned tags (0.14.1, 5 November 2026) | Go, no release since 2021 |
+| Needs from the Docker API | list, inspect, restart, stop | list, inspect, restart, stop and `GET /info` once at start | the events API, which the proxy doesn't pass on |
+| Webhook, stop timeout | yes | yes | neither |
+| Tag | only `latest` is maintained (policy exception) | pinned tag and digest, no exception | n/a |
+| Licence | MIT | GPL-3.0 (run unmodified) | MIT |
+
+`tmknight/docker-autoheal` was proven end to end behind this stack's socket proxy, read-only, hardened and as a
+non-root user: it restarted only the labelled unhealthy container and posted the Discord-style webhook.
+`deunhealth` was rejected for the missing events API, webhook and stop timeout. Both autoheal tools have one
+maintainer. The one added call is `GET /info`, read-only daemon information (`INFO: 1` on the proxy).
+
 ## What it doesn't protect
 
 - **The apps themselves.** A vulnerability in Radarr, Sonarr or another app is that project's to fix;
@@ -97,7 +115,8 @@ Without `CHOWN` and `DAC_OVERRIDE` the apps' root can only reach what it owns.
   key (root on the hub's host and on every agent's, and the password manager it is kept in) is trusted too. It is an allowed exception (label
   in `compose.yaml`); keep its port on the LAN.
 - **autoheal's reach.** autoheal never holds the socket: `socket-proxy` does (the second allowed exception) and
-  passes on only listing, inspecting, restarting and stopping containers, on an internal network with no
+  passes on only listing, inspecting, restarting and stopping containers and `GET /info` (read-only daemon
+  information, which autoheal reads once at start and can't run without), on an internal network with no
   published port. Whoever controls autoheal or the proxy can still stop any container on the host and read
   containers' settings, including their environment; this stack keeps no secrets in environment variables.
 - **Restart loops.** autoheal restarts an unhealthy app every few minutes for as long as it stays unhealthy;

@@ -28,7 +28,7 @@ Read by the `autoheal` service (template: [`autoheal.env.example`](../autoheal.e
 
 | Setting | Meaning |
 | --- | --- |
-| `WEBHOOK_URL` | Where autoheal posts a notice each time it restarts a container (a secret). A Discord channel webhook works as is; empty or missing = log only |
+| `AUTOHEAL_WEBHOOK_URL` | Where autoheal posts a notice each time it restarts a container (a secret; the setting was called `WEBHOOK_URL` before the move to `tmknight/docker-autoheal`, and the old name is ignored). A Discord channel webhook works as is; the message starts with the Docker host's name; empty or missing = log only |
 
 ### `seerr.env`
 
@@ -85,7 +85,7 @@ names another file.
 | `recyclarr` | none (always runs) | `recyclarr/recyclarr` | none | no (runs daily) |
 | `seerr` | `requests` | `ghcr.io/seerr-team/seerr` | 5055 → 5055 | yes (requests; signs in with Plex) |
 | `dozzle` | `logs` | `amir20/dozzle` | 7007 → 7007 | no (agent for the Dozzle hub on another host) |
-| `autoheal` | `autoheal` | `willfarrell/autoheal` | none | no (restarts unhealthy services) |
+| `autoheal` | `autoheal` | `ghcr.io/tmknight/docker-autoheal` | none | no (restarts unhealthy services) |
 | `socket-proxy` | `autoheal` | `lscr.io/linuxserver/socket-proxy` | none (internal network `docker-proxy`) | no |
 
 A service with a profile runs only when `COMPOSE_PROFILES` names it ([`.env`](#env)). Ports are published on every
@@ -110,8 +110,8 @@ published; autoheal also joins the default network, to reach its webhook.
 
 | Label | Meaning |
 | --- | --- |
-| `org.honeybeartech.atlas.allow.<rule>` | Lets one service break one policy rule; the value is the reason, and must not be empty. Rules: `image`, `digest`, `latest`, `build`, `privileged`, `no-new-privileges`, `cap-drop`, `cap-add`, `host-network`, `host-pid`, `docker-socket`, `devices`, `healthcheck` ([security.md](security.md#policy)). In use: `dozzle` and `socket-proxy` (`docker-socket`), `autoheal` (`latest`). |
-| `autoheal` | `"true"` on every service autoheal may restart when its health check fails (every app service and socket-proxy). |
+| `org.honeybeartech.atlas.allow.<rule>` | Lets one service break one policy rule; the value is the reason, and must not be empty. Rules: `image`, `digest`, `latest`, `build`, `privileged`, `no-new-privileges`, `cap-drop`, `cap-add`, `host-network`, `host-pid`, `docker-socket`, `devices`, `healthcheck` ([security.md](security.md#policy)). In use: `dozzle` and `socket-proxy` (`docker-socket`), `autoheal`: none now. |
+| `autoheal.monitor.enable` | `"true"` on every service autoheal may restart when its health check fails (every app service and socket-proxy). |
 | `org.honeybeartech.atlas.backup.skip` | Container paths (comma-separated, exact) that `scripts/backup.sh` never archives and `scripts/restore.sh` refuses to write, even if a backup lists them: data too large to back up here or disposable. In use: `/media` on every service that mounts it, and `/incomplete` on SABnzbd, so a backup holds only the apps' `/config`, Recyclarr's `/config` and Radarr's `/scripts`. |
 | `org.honeybeartech.atlas.backup.exclude` | Paths inside a service's data mounts (comma-separated, exact container paths, at any depth) that `scripts/backup.sh` leaves out of the mount's archive and `scripts/restore.sh` leaves in place. A path that isn't inside one of the service's data mounts, or contains `..` or a pattern character (`*?[\`), makes both fail before anything stops. In use: `/config/MediaCover` (posters the app downloads again) on Radarr, Radarr 4K, Sonarr, Sonarr 4K and Lidarr; `/app/config/logs` on Seerr (its rotated logs). |
 

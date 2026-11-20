@@ -195,7 +195,7 @@ if grep -qx autoheal <<<"$active_services"; then has_autoheal=true; fi
     init: true
     tmpfs: [/tmp]
     labels:
-      autoheal: "true"
+      autoheal.monitor.enable: "true"
     healthcheck:
       test: ["CMD", "sh", "-c", "test ! -e /tmp/unhealthy"]
       interval: 2s
@@ -463,7 +463,7 @@ if $has_autoheal; then
   done
   [ "$(docker inspect --format '{{.State.StartedAt}}' "$test_id")" != "$started" ] ||
     fail "autoheal didn't restart the unhealthy container within 2 minutes"
-  compose logs --no-color autoheal | grep -q "found to be unhealthy" || fail "autoheal didn't log the restart"
+  compose logs --no-color autoheal | grep -q "Container restart was successful" || fail "autoheal didn't log the restart"
   compose up --detach --wait --wait-timeout 60 autoheal-test
   echo "autoheal restarted the unhealthy container through socket-proxy, and it's healthy again"
 fi

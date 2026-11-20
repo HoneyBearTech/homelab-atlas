@@ -81,6 +81,15 @@ docker compose ps
 
 Then check each app's **System → Status** and logs (`docker compose logs <service>`) for migration errors.
 
+### Replacing autoheal (the autoheal profile)
+
+autoheal is now `tmknight/docker-autoheal` (the old image's base is end of life; [why](security.md#why-this-autoheal)).
+Containers and labels need nothing from you, but there is **one manual step**: if `autoheal.env` sets `WEBHOOK_URL`,
+rename it to `AUTOHEAL_WEBHOOK_URL`. Until you do, autoheal still restarts unhealthy containers but posts no
+notice. The notice now starts with the Docker host's name. The restart replaces autoheal and `socket-proxy` only,
+not the apps. A service of your own that carries the old `autoheal: "true"` label needs `autoheal.monitor.enable:
+"true"` instead.
+
 ## Following `main`
 
 The maintainer's server doesn't check out releases: it runs `main`, and a small pull agent (kept in the

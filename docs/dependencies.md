@@ -48,7 +48,7 @@ Each release carries a CycloneDX SBOM listing every service's image and digest
   pull requests, so they're squash-merged once every required check has passed (CI with the Compose policy check,
   CodeQL, dependency review, DCO). Nothing skips a check, and a failing update stays open for the maintainer.
 - **Image rebuilds are proposed, and merge, like any other update**: a new digest under the same tag (a rebuild of
-  the same app version, with newer base packages), autoheal's `latest` and busybox included, except that they
+  the same app version, with newer base packages), busybox included, except that they
   skip the three-day wait (below).
 - **A new version waits three days after its release** (`minimumReleaseAge`), so a release that is pulled or
   fixed within days doesn't reach the server; the pull request then merges as above. Fixes for vulnerability alerts
@@ -261,17 +261,18 @@ An operational rollback may require both the previous image and pre-upgrade data
 made after that backup. This repository change does not perform or verify live backups, restores or
 migrations, and reverting an image pin alone does not establish migration reversibility.
 
-The tested newer autoheal digest still uses **Alpine 3.18.12, which is EOL**, so it was rejected and the
-existing pin remained at the time. (Renovate has since moved the pin to `d674ad9`, which is on the same Alpine
-3.18.12 base, checked with `cat /etc/alpine-release` in both digests.) Its zero findings are unreliable evidence of security. Replacement or a supported
-rebuild remains unresolved; no alternative was validated. Dozzle v11.4.2 showed no measured remediation
+The tested newer `willfarrell/autoheal` digest still used **Alpine 3.18.12, which is EOL**, so it was rejected, and
+Renovate's later pin (`d674ad9`) was on the same base. Its zero findings were unreliable evidence of security. That
+image has since been replaced by `ghcr.io/tmknight/docker-autoheal:0.14.1` (Alpine 3.24, pinned by tag and digest,
+no policy exception; [security.md](security.md#why-this-autoheal)); the table and inventory above describe the
+earlier image and were not re-scanned. Dozzle v11.4.2 showed no measured remediation
 benefit, so its previous pin remains. Recyclarr and socket-proxy had no distinct candidate.
 
 #### Coverage limits
 
 - These scans cover Linux amd64 only, not every architecture in a multi-architecture image index.
 - Dozzle has application-package coverage only; full OS/runtime coverage is absent.
-- Autoheal's EOL base weakens vulnerability detection. Bazarr and SABnzbd report third-party-SBOM
+- Bazarr and SABnzbd report third-party-SBOM
   accuracy warnings.
 - Per the [official Alpine release table](https://alpinelinux.org/releases/), Seerr and Bazarr's Alpine
   3.23 has main-only support, not assured support for all community packages. The Radarr, Lidarr,
@@ -294,14 +295,15 @@ same day. Bazarr `v1.6.2-ls367` and Recyclarr `8.7.3` fixed 17. Seven alerts wer
 with its reason in code scanning: Bazarr's `setuptools` (`PackageIndex` path traversal; Bazarr never uses
 `PackageIndex` or installs packages) and SABnzbd's `PyJWT` (six; installed as a requirement, but nothing in
 SABnzbd imports it; only oauthlib does, in code paths SABnzbd's notifications don't use). autoheal and
-socket-proxy were added after that scan; autoheal's only maintained tag is `latest` (its versioned tags stop at
-1.2.0 from 2021), so it's pinned as `latest@sha256:…` with a policy exception, and Renovate proposes its new digests.
+socket-proxy were added after that scan; autoheal's then image (`willfarrell/autoheal`) had `latest` as its only maintained tag, so it was pinned as `latest@sha256:…` with a policy exception; it is now `ghcr.io/tmknight/docker-autoheal` at a versioned tag and digest, which Renovate bumps like the other images.
 
 ## Licenses
 
 homelab-atlas's own files are MIT-licensed. The Python tools must be under an OSI-approved license that
 dependency review allows (MIT, Apache-2.0, BSD, ISC, PSF, MPL-2.0 and similar); yamllint (GPL-3.0) is
-allowed as a development tool. The images keep their own licenses.
+allowed as a development tool. The images keep their own licenses: `tmknight/docker-autoheal` is GPL-3.0, and the
+stack runs the published image unmodified (it doesn't copy or change its code), so the licence puts nothing on this
+repository's own files.
 
 ## Policy for findings from static analysis (SAST)
 

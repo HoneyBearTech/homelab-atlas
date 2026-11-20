@@ -12,7 +12,8 @@ file changes with them, in the same pull request.
   starts the whole stack and waits until every service is healthy.
 - Done: a weekly vulnerability scan of every pinned image (Trivy), reported to code scanning.
 - Done: autoheal restarts any app whose health check fails, through a socket proxy that only allows listing,
-  restarting and stopping containers.
+  restarting and stopping containers, and reading the daemon's information. Since #121 (20 November 2026) it is
+  `tmknight/docker-autoheal`, maintained and on a supported base.
 - Done: backup and restore scripts, exercised end to end by the smoke test in CI, and a documented rebuild of
   the host from a backup.
 - Done: a nightly backup copied to another machine, with retention and a push monitor

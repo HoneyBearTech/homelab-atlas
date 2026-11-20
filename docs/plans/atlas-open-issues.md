@@ -62,7 +62,9 @@ Researcher (done, for #109), Engineers, QA, Security Officer, Auditor.
 - A service that misses the label rename silently stops being healed; the count check guards against that.
 - tmknight's image is GPL-3.0 (run unmodified, noted in `docs/dependencies.md`) and has one maintainer, like the
   image it replaces.
-- Merging #109 or #112 deploys at once; #109 restarts autoheal and the socket proxy, not the apps.
+- Merging #109 or #112 deploys at once. #109 restarts every monitored app once, because the label change
+  recreates their containers (corrected after review; the first version of this plan said only autoheal and the
+  socket proxy restart).
 
 ## Out of scope
 

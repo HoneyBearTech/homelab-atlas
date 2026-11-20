@@ -4,7 +4,7 @@
 
 [tool.ruff]
 line-length = 120
-target-version = "py314"
+target-version = "py315"
 
 [tool.ruff.lint]
 # Every rule family, minus the few that conflict with the formatter or each other (as in the maintainer's

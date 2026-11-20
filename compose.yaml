@@ -62,7 +62,7 @@ services:
     container_name: radarr
     restart: unless-stopped
     labels:
-      autoheal: "true"
+      autoheal.monitor.enable: "true"
       # The media library: on its own storage, far too large to back up here. Never archived or restored.
       org.honeybeartech.atlas.backup.skip: "/media"
       # Posters the app downloads again by itself; too large to copy every night.
@@ -85,7 +85,7 @@ services:
     container_name: radarr4k
     restart: unless-stopped
     labels:
-      autoheal: "true"
+      autoheal.monitor.enable: "true"
       # The media library: on its own storage, far too large to back up here. Never archived or restored.
       org.honeybeartech.atlas.backup.skip: "/media"
       # Posters the app downloads again by itself; too large to copy every night.
@@ -108,7 +108,7 @@ services:
     container_name: sonarr
     restart: unless-stopped
     labels:
-      autoheal: "true"
+      autoheal.monitor.enable: "true"
       # The media library: on its own storage, far too large to back up here. Never archived or restored.
       org.honeybeartech.atlas.backup.skip: "/media"
       # Posters the app downloads again by itself; too large to copy every night.
@@ -130,7 +130,7 @@ services:
     container_name: sonarr4k
     restart: unless-stopped
     labels:
-      autoheal: "true"
+      autoheal.monitor.enable: "true"
       # The media library: on its own storage, far too large to back up here. Never archived or restored.
       org.honeybeartech.atlas.backup.skip: "/media"
       # Posters the app downloads again by itself; too large to copy every night.
@@ -153,7 +153,7 @@ services:
     container_name: lidarr
     restart: unless-stopped
     labels:
-      autoheal: "true"
+      autoheal.monitor.enable: "true"
       # The media library: on its own storage, far too large to back up here. Never archived or restored.
       org.honeybeartech.atlas.backup.skip: "/media"
       # Posters the app downloads again by itself; too large to copy every night.
@@ -175,7 +175,7 @@ services:
     container_name: bazarr
     restart: unless-stopped
     labels:
-      autoheal: "true"
+      autoheal.monitor.enable: "true"
       # The media library: on its own storage, far too large to back up here. Never archived or restored.
       org.honeybeartech.atlas.backup.skip: "/media"
     healthcheck:
@@ -195,7 +195,7 @@ services:
     container_name: bazarr4k
     restart: unless-stopped
     labels:
-      autoheal: "true"
+      autoheal.monitor.enable: "true"
       # The media library: on its own storage, far too large to back up here. Never archived or restored.
       org.honeybeartech.atlas.backup.skip: "/media"
     healthcheck:
@@ -218,7 +218,7 @@ services:
     # backup) instead of being killed after Docker's default 10 s in the middle of a write.
     stop_grace_period: 1m
     labels:
-      autoheal: "true"
+      autoheal.monitor.enable: "true"
       # The media library (on its own storage, far too large to back up here) and unfinished downloads: never
       # archived or restored.
       org.honeybeartech.atlas.backup.skip: "/media,/incomplete"
@@ -246,7 +246,7 @@ services:
     tmpfs:
       - /tmp
     labels:
-      autoheal: "true"
+      autoheal.monitor.enable: "true"
     # Recyclarr has no web server; it's healthy while its scheduler (supercronic) runs.
     healthcheck:
       <<: *healthcheck
@@ -278,7 +278,7 @@ services:
     tmpfs:
       - /tmp
     labels:
-      autoheal: "true"
+      autoheal.monitor.enable: "true"
       # Its own logs: rotated by the app, not worth a nightly copy.
       org.honeybeartech.atlas.backup.exclude: "/app/config/logs"
     # /api/v1/status answers without a login (version only).
@@ -322,7 +322,7 @@ services:
       <<: *healthcheck
       test: ["CMD", "/dozzle", "healthcheck"]
     labels:
-      autoheal: "true"
+      autoheal.monitor.enable: "true"
       org.honeybeartech.atlas.allow.docker-socket: >-
         The Dozzle agent reads container logs through the Docker API for the Dozzle hub. The socket is mounted
         read-only, which protects the socket file but not the API, so the agent's port must stay on the LAN.
@@ -337,16 +337,18 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
-  # Restarts any container labelled autoheal: "true" that Docker reports unhealthy (Docker itself only restarts a
-  # container whose process exits). It reaches Docker only through socket-proxy, which lets it list, inspect,
-  # restart and stop containers and nothing else. Optional restart notices go to a webhook from autoheal.env.
+  # Restarts any container labelled autoheal.monitor.enable: "true" that Docker reports unhealthy (Docker itself only
+  # restarts a container whose process exits). It reaches Docker only through socket-proxy, which lets it list,
+  # inspect, restart and stop containers and read the daemon's information, and nothing else. Optional restart notices
+  # go to a webhook from autoheal.env.
   autoheal:
     <<: *hardened
     profiles: [autoheal]
-    image: willfarrell/autoheal:latest@sha256:d674ad98d23dc3f1871156aaebec0826bd04a159daff79841fc8615af7615fa1
+    image: ghcr.io/tmknight/docker-autoheal:0.14.1@sha256:783c39074238202750c75719f5b0762c03b2a7331056719b598b9506316c27c1
     container_name: autoheal
     restart: unless-stopped
     read_only: true
+    user: "65534:65534"
     # autoheal exits if it can't reach the proxy, so it starts only once the proxy answers. (After a host reboot
     # Docker starts both at once; autoheal then restarts until the proxy is up, a few seconds.)
     depends_on:
@@ -356,18 +358,15 @@ services:
       <<: *healthcheck
       start_period: 1m
       test: ["CMD", "pgrep", "-f", "autoheal"]
-    labels:
-      org.honeybeartech.atlas.allow.latest: >-
-        The image publishes "latest" (rebuilt regularly) and versioned tags only up to 1.2.0 from 2021, so the
-        maintained image is "latest", pinned by digest.
     environment:
-      DOCKER_SOCK: tcp://socket-proxy:2375
-      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_CONNECTION_TYPE: http
+      AUTOHEAL_TCP_HOST: socket-proxy
+      AUTOHEAL_TCP_PORT: 2375
       AUTOHEAL_INTERVAL: 10
       # Give an app time to shut down cleanly (and finish database writes) before it's restarted.
-      AUTOHEAL_DEFAULT_STOP_TIMEOUT: 30
+      AUTOHEAL_STOP_TIMEOUT: 30
       # Discord's webhook API reads the message from "content".
-      WEBHOOK_JSON_KEY: content
+      AUTOHEAL_WEBHOOK_KEY: content
     env_file:
       - path: autoheal.env
         required: false
@@ -376,9 +375,10 @@ services:
       - docker-proxy
 
   # The only service with the Docker socket besides Dozzle. It answers on an internal network with no published
-  # port, and passes on only what autoheal needs: listing and inspecting containers, and restarting or stopping
-  # them (CONTAINERS, ALLOW_RESTARTS). Creating, starting or deleting containers, exec, images, volumes and every
-  # other POST are refused.
+  # port, and passes on only what autoheal needs: listing and inspecting containers, restarting or stopping them
+  # (CONTAINERS, ALLOW_RESTARTS) and the daemon's information, which autoheal reads once at start (INFO). That call is
+  # read-only but reveals host details (kernel, OS, daemon proxy settings, plugins), not container environments.
+  # Creating, starting or deleting containers, exec, images, volumes and every other POST are refused.
   socket-proxy:
     <<: *hardened
     profiles: [autoheal]
@@ -394,16 +394,18 @@ services:
       start_period: 1m
       test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:2375/_ping"]
     labels:
-      autoheal: "true"
+      autoheal.monitor.enable: "true"
       org.honeybeartech.atlas.allow.docker-socket: >-
         A filtering proxy so that autoheal never gets the socket itself: it allows only listing, inspecting,
-        restarting and stopping containers, on an internal network with no published port. The socket mount is
-        read-only, which protects the socket file but not the API; the proxy's filter is what limits it.
+        restarting and stopping containers and reading the daemon's information, on an internal network with no
+        published port. The socket mount is read-only, which protects the socket file but not the API; the proxy's
+        filter is what limits it.
     environment:
       CONTAINERS: 1
       ALLOW_RESTARTS: 1
       POST: 0
       EVENTS: 0
+      INFO: 1
       PING: 1
       VERSION: 1
     volumes:

@@ -17,8 +17,8 @@ upstream images, pinned by digest.
 | Recyclarr | the project's own image | Syncs TRaSH Guides custom formats and quality profiles into Radarr and Sonarr on a schedule |
 | Seerr | the project's own image | Request front end: viewers sign in with Plex and request movies and shows, which it sends to Radarr and Sonarr (the 4K instances for 4K requests); it checks Plex, on another host, for what's already there |
 | Dozzle | the project's own image | Agent that serves the containers' logs (read through the Docker socket) to the homelab's Dozzle on another host, which shows every host's logs in one web UI |
-| autoheal | the project's own image | Restarts any app whose health check fails, and can post a notice to a webhook (Docker on its own only restarts a container that exits) |
-| socket-proxy | linuxserver.io | Gives autoheal a filtered view of the Docker API (list, inspect, restart and stop containers only) on an internal network |
+| autoheal | tmknight (`docker-autoheal`) | Restarts any app whose health check fails, and can post a notice to a webhook (Docker on its own only restarts a container that exits) |
+| socket-proxy | linuxserver.io | Gives autoheal a filtered view of the Docker API (list, inspect, restart and stop containers, and read daemon information) on an internal network |
 
 The 4K instances are separate containers with their own config and library folders, so 4K and regular
 releases are managed independently.

@@ -322,7 +322,7 @@ while IFS= read -r line; do
 done <<<"$settings" >"$old/.env"
 # The optional settings files a host may have: autoheal's (no webhook), Seerr's (no database server: only the
 # template's comments) and the scheduled backup's, copying off the host to the stand-in backup server, encrypted.
-grep -v '^WEBHOOK_URL=.' "$root/autoheal.env.example" >"$old/autoheal.env"
+grep -v '^AUTOHEAL_WEBHOOK_URL=.' "$root/autoheal.env.example" >"$old/autoheal.env"
 grep '^#' "$root/seerr.env.example" >"$old/seerr.env"
 printf 'BACKUP_DIR=%s\nBACKUP_KEEP=1\nBACKUP_REMOTE=%s\nBACKUP_AGE_RECIPIENT=%s\n' "$work/old-host/backups" \
   "$work/backup-server/atlas-backups" "$recipient" >"$old/backup.env"
